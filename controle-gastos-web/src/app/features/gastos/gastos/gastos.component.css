@@ -13,6 +13,10 @@
   gap: 8px;
 }
 
+.input-arquivo-oculto {
+  display: none;
+}
+
 .tabela-scroll {
   overflow-x: auto;
 }

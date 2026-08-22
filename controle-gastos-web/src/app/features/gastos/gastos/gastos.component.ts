@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,6 +14,13 @@ import { GastoFormDialogComponent, GastoFormDialogData } from '../gasto-form-dia
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { exportarGastosCsv } from '../../../core/csv-exporter';
+import { baixarModeloImportacaoGastos } from '../../../core/xlsx-exporter';
+import { lerPlanilhaGastos, LinhaImportacao } from '../../../core/xlsx-importer';
+import {
+  ImportarRevisaoDialogComponent,
+  ImportarRevisaoDialogData
+} from '../importar-revisao-dialog/importar-revisao-dialog.component';
+import { ImportarProgressoDialogComponent } from '../importar-progresso-dialog/importar-progresso-dialog.component';
 
 @Component({
   selector: 'app-gastos',
@@ -34,6 +41,8 @@ import { exportarGastosCsv } from '../../../core/csv-exporter';
   styleUrl: './gastos.component.css'
 })
 export class GastosComponent implements OnInit {
+
+  @ViewChild('inputArquivo') inputArquivo!: ElementRef<HTMLInputElement>;
 
   readonly colunas = ['id', 'descricao', 'valor', 'categoria', 'data', 'acoes'];
   gastos: Gasto[] = [];
@@ -142,6 +151,106 @@ export class GastosComponent implements OnInit {
       return;
     }
     exportarGastosCsv(this.gastos);
+  }
+
+  baixarModeloImportacao(): void {
+    baixarModeloImportacaoGastos();
+  }
+
+  importarPlanilha(): void {
+    this.inputArquivo.nativeElement.click();
+  }
+
+  async onArquivoSelecionado(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const arquivo = input.files?.[0] ?? null;
+    input.value = '';
+
+    if (!arquivo) {
+      return;
+    }
+
+    let linhas: LinhaImportacao[];
+    try {
+      linhas = await lerPlanilhaGastos(arquivo);
+    } catch {
+      this.mostrarErro('Não foi possível ler o arquivo. Verifique se é uma planilha .xlsx válida.');
+      return;
+    }
+
+    if (linhas.length === 0) {
+      this.mostrarErro('A planilha não tem nenhuma linha de dados para importar.');
+      return;
+    }
+
+    const ref = this.dialog.open<ImportarRevisaoDialogComponent, ImportarRevisaoDialogData, LinhaImportacao[]>(
+      ImportarRevisaoDialogComponent,
+      { data: { linhas }, width: '760px', maxWidth: '95vw' }
+    );
+
+    ref.afterClosed().subscribe((linhasConfirmadas) => {
+      if (!linhasConfirmadas || linhasConfirmadas.length === 0) {
+        return;
+      }
+      this.executarImportacao(linhasConfirmadas);
+    });
+  }
+
+  private executarImportacao(linhas: LinhaImportacao[]): void {
+    const progressoRef = this.dialog.open(ImportarProgressoDialogComponent, {
+      disableClose: true,
+      width: '360px'
+    });
+    const instancia = progressoRef.componentInstance;
+    instancia.total = linhas.length;
+    instancia.atual = 0;
+
+    let sucesso = 0;
+    let falha = 0;
+
+    const processarProxima = (indice: number): void => {
+      if (indice >= linhas.length) {
+        progressoRef.close();
+        this.mostrarResumoImportacao(sucesso, falha);
+        this.carregar();
+        return;
+      }
+
+      const linha = linhas[indice];
+      const gasto: Gasto = {
+        descricao: linha.descricao,
+        valor: linha.valor!,
+        categoria: linha.categoria,
+        data: linha.data!
+      };
+
+      this.gastoService.cadastrar(gasto).subscribe({
+        next: () => {
+          sucesso++;
+          instancia.atual = indice + 1;
+          processarProxima(indice + 1);
+        },
+        error: () => {
+          falha++;
+          instancia.atual = indice + 1;
+          processarProxima(indice + 1);
+        }
+      });
+    };
+
+    processarProxima(0);
+  }
+
+  private mostrarResumoImportacao(sucesso: number, falha: number): void {
+    if (falha === 0) {
+      this.mostrarSucesso(`${sucesso} gasto(s) importado(s) com sucesso!`);
+    } else {
+      this.snackBar.open(
+        `${sucesso} gasto(s) importado(s) com sucesso, ${falha} falharam.`,
+        'Fechar',
+        { duration: 6000 }
+      );
+    }
   }
 
   private mensagemErro(erro: unknown): string {

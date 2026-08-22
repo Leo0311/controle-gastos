@@ -1,0 +1,66 @@
+<h2 mat-dialog-title>Revisão antes de importar</h2>
+
+<mat-dialog-content>
+  <p class="resumo">
+    <span class="resumo-ok">{{ linhasValidas.length }} válida(s)</span>
+    @if (linhasInvalidas.length > 0) {
+      <span class="resumo-erro">{{ linhasInvalidas.length }} com erro</span>
+    }
+  </p>
+
+  <div class="tabela-scroll">
+    <table mat-table [dataSource]="dados.linhas" class="tabela-revisao">
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let l">
+          @if (l.valido) {
+            <mat-icon class="icone-ok">check_circle</mat-icon>
+          } @else {
+            <mat-icon class="icone-erro">error</mat-icon>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="linha">
+        <th mat-header-cell *matHeaderCellDef>Linha</th>
+        <td mat-cell *matCellDef="let l">{{ l.linha }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="descricao">
+        <th mat-header-cell *matHeaderCellDef>Descrição</th>
+        <td mat-cell *matCellDef="let l">{{ l.descricao || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="valor">
+        <th mat-header-cell *matHeaderCellDef>Valor</th>
+        <td mat-cell *matCellDef="let l">{{ l.valorExibicao || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="categoria">
+        <th mat-header-cell *matHeaderCellDef>Categoria</th>
+        <td mat-cell *matCellDef="let l">{{ l.categoria || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="data">
+        <th mat-header-cell *matHeaderCellDef>Data</th>
+        <td mat-cell *matCellDef="let l">{{ l.dataExibicao || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="erro">
+        <th mat-header-cell *matHeaderCellDef>Erro</th>
+        <td mat-cell *matCellDef="let l" class="celula-erro">{{ l.erro }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+      <tr mat-row *matRowDef="let row; columns: colunas;" [class.linha-erro]="!row.valido"></tr>
+    </table>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-raised-button color="primary" [disabled]="linhasValidas.length === 0" (click)="confirmar()">
+    Importar {{ linhasValidas.length }} gasto(s)
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,48 @@
+mat-dialog-content {
+  min-width: 320px;
+  max-width: 80vw;
+}
+
+.resumo {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.resumo-ok {
+  color: #1e7e34;
+  font-weight: 600;
+}
+
+.resumo-erro {
+  color: #c62828;
+  font-weight: 600;
+}
+
+.tabela-scroll {
+  overflow-x: auto;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.tabela-revisao {
+  width: 100%;
+}
+
+.icone-ok {
+  color: #1e7e34;
+}
+
+.icone-erro {
+  color: #c62828;
+}
+
+.celula-erro {
+  color: #c62828;
+  font-size: 13px;
+}
+
+.linha-erro {
+  background-color: #fdecea;
+}

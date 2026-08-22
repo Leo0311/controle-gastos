@@ -16,6 +16,17 @@
       </button>
     </mat-menu>
 
+    <button mat-stroked-button (click)="baixarModeloImportacao()">
+      <mat-icon>grid_on</mat-icon>
+      Baixar modelo de importação
+    </button>
+
+    <button mat-stroked-button (click)="importarPlanilha()">
+      <mat-icon>upload_file</mat-icon>
+      Importar planilha
+    </button>
+    <input #inputArquivo type="file" accept=".xlsx" class="input-arquivo-oculto" (change)="onArquivoSelecionado($event)">
+
     <button mat-raised-button color="primary" (click)="novoGasto()">
       <mat-icon>add</mat-icon>
       Novo gasto
