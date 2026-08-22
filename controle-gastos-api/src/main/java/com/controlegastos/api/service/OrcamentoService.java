@@ -49,7 +49,8 @@ public class OrcamentoService {
                 .somarPorCategoriaNoPeriodo(usuarioId, mesAno.atDay(1), mesAno.atEndOfMonth()).stream()
                 .collect(Collectors.toMap(
                         c -> c.getCategoria().toLowerCase(),
-                        GastoRepository.CategoriaTotal::getTotal));
+                        GastoRepository.CategoriaTotal::getTotal,
+                        BigDecimal::add));
 
         return orcamentos.stream()
                 .map(o -> {

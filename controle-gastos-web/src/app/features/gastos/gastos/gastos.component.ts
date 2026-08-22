@@ -9,6 +9,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { GastoService } from '../../../services/gasto.service';
+import { OrcamentoService } from '../../../services/orcamento.service';
 import { Gasto } from '../../../models/gasto.model';
 import { GastoFormDialogComponent, GastoFormDialogData } from '../gasto-form-dialog/gasto-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
@@ -49,6 +50,7 @@ export class GastosComponent implements OnInit {
 
   constructor(
     private readonly gastoService: GastoService,
+    private readonly orcamentoService: OrcamentoService,
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar
   ) { }
@@ -81,12 +83,32 @@ export class GastosComponent implements OnInit {
         return;
       }
       this.gastoService.cadastrar(resultado).subscribe({
-        next: () => {
+        next: (gastoCriado) => {
           this.mostrarSucesso('Gasto cadastrado com sucesso!');
           this.carregar();
+          this.verificarOrcamentoExcedido(gastoCriado);
         },
         error: (erro) => this.mostrarErro(this.mensagemErro(erro))
       });
+    });
+  }
+
+  private verificarOrcamentoExcedido(gasto: Gasto): void {
+    const [ano, mes] = gasto.data.split('-').map(Number);
+    this.orcamentoService.verMes(mes, ano).subscribe({
+      next: (orcamentos) => {
+        const orcamento = orcamentos.find(
+          (o) => o.categoria.toLowerCase() === gasto.categoria.toLowerCase()
+        );
+        if (orcamento?.ultrapassou) {
+          this.snackBar.open(
+            `Atenção: o orçamento de "${orcamento.categoria}" foi ultrapassado neste mês!`,
+            'Fechar',
+            { duration: 7000, panelClass: 'snack-alerta' }
+          );
+        }
+      },
+      error: () => { /* verificação de orçamento é auxiliar; falha aqui não deve incomodar o usuário */ }
     });
   }
 
