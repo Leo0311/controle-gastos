@@ -10,6 +10,8 @@ import com.controlegastos.api.model.Usuario;
 import com.controlegastos.api.repository.UsuarioRepository;
 import com.controlegastos.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UsuarioService {
 
     private static final int TAMANHO_MINIMO_SENHA = 6;
@@ -64,7 +67,11 @@ public class UsuarioService {
             usuario.setTokenRedefinicaoSenha(token);
             usuario.setTokenRedefinicaoExpiracao(LocalDateTime.now().plusHours(1));
             repository.save(usuario);
-            emailService.enviarEmailRedefinicaoSenha(usuario.getEmail(), usuario.getNome(), token);
+            try {
+                emailService.enviarEmailRedefinicaoSenha(usuario.getEmail(), usuario.getNome(), token);
+            } catch (MailException e) {
+                log.error("Falha ao enviar e-mail de redefinição de senha para {}", usuario.getEmail(), e);
+            }
         });
         // Não revela se o e-mail existe ou não: a resposta é sempre a mesma
         // no controller, independente do e-mail ser encontrado aqui.
