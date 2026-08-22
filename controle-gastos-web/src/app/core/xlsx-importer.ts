@@ -96,20 +96,35 @@ function converterData(bruto: unknown): string | null {
     return formatarDataIso(bruto.getFullYear(), bruto.getMonth() + 1, bruto.getDate());
   }
   if (typeof bruto === 'string') {
-    const texto = bruto.trim();
-    const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto);
-    if (!match) {
+    const componentes = extrairComponentesData(bruto.trim());
+    if (!componentes) {
       return null;
     }
-    const dia = Number(match[1]);
-    const mes = Number(match[2]);
-    const ano = Number(match[3]);
+    const [dia, mes, ano] = componentes;
     const data = new Date(ano, mes - 1, dia);
     if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
       return null;
     }
     return formatarDataIso(ano, mes, dia);
   }
+  return null;
+}
+
+/**
+ * Aceita dd/mm/aaaa, dd-mm-aaaa, dd.mm.aaaa (mesmo separador nos dois lados)
+ * e ddmmaaaa sem separador (2+2+4 dígitos fixos).
+ */
+function extrairComponentesData(texto: string): [dia: number, mes: number, ano: number] | null {
+  const comSeparador = /^(\d{1,2})([/\-.])(\d{1,2})\2(\d{4})$/.exec(texto);
+  if (comSeparador) {
+    return [Number(comSeparador[1]), Number(comSeparador[3]), Number(comSeparador[4])];
+  }
+
+  const semSeparador = /^(\d{2})(\d{2})(\d{4})$/.exec(texto);
+  if (semSeparador) {
+    return [Number(semSeparador[1]), Number(semSeparador[2]), Number(semSeparador[3])];
+  }
+
   return null;
 }
 
