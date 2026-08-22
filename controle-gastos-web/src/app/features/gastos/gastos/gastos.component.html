@@ -3,7 +3,7 @@
   <div class="acoes-cabecalho">
     <button mat-stroked-button [matMenuTriggerFor]="menuExportar" [disabled]="gastos.length === 0">
       <mat-icon>download</mat-icon>
-      Exportar CSV
+      Exportar XLSX
     </button>
     <mat-menu #menuExportar="matMenu">
       <button mat-menu-item (click)="exportarTodos()">

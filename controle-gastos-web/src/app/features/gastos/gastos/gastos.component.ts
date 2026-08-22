@@ -13,8 +13,7 @@ import { Gasto } from '../../../models/gasto.model';
 import { GastoFormDialogComponent, GastoFormDialogData } from '../gasto-form-dialog/gasto-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
-import { exportarGastosCsv } from '../../../core/csv-exporter';
-import { baixarModeloImportacaoGastos } from '../../../core/xlsx-exporter';
+import { baixarModeloImportacaoGastos, exportarGastosXlsx } from '../../../core/xlsx-exporter';
 import { lerPlanilhaGastos, LinhaImportacao } from '../../../core/xlsx-importer';
 import {
   ImportarRevisaoDialogComponent,
@@ -139,7 +138,7 @@ export class GastosComponent implements OnInit {
           this.mostrarErro('Nenhum gasto para exportar.');
           return;
         }
-        exportarGastosCsv(gastos);
+        exportarGastosXlsx(gastos);
       },
       error: (erro) => this.mostrarErro(this.mensagemErro(erro))
     });
@@ -150,7 +149,7 @@ export class GastosComponent implements OnInit {
       this.mostrarErro('Nenhum gasto para exportar.');
       return;
     }
-    exportarGastosCsv(this.gastos);
+    exportarGastosXlsx(this.gastos);
   }
 
   baixarModeloImportacao(): void {
