@@ -21,32 +21,32 @@ public class OrcamentoService {
     private final OrcamentoRepository repository;
     private final GastoRepository gastoRepository;
 
-    public List<Orcamento> listarTodos() {
-        return repository.findAll();
+    public List<Orcamento> listarTodos(Integer usuarioId) {
+        return repository.findAllByUsuarioId(usuarioId);
     }
 
-    public Orcamento definir(Orcamento orcamento) {
+    public Orcamento definir(Orcamento orcamento, Integer usuarioId) {
         validar(orcamento);
         orcamento.setId(null);
+        orcamento.setUsuarioId(usuarioId);
         return repository.save(orcamento);
     }
 
-    public void excluir(Integer id) {
-        if (!repository.existsById(id)) {
-            throw new RecursoNaoEncontradoException("Orçamento não encontrado com ID " + id);
-        }
-        repository.deleteById(id);
+    public void excluir(Integer id, Integer usuarioId) {
+        Orcamento existente = repository.findByIdAndUsuarioId(id, usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Orçamento não encontrado com ID " + id));
+        repository.delete(existente);
     }
 
-    public List<OrcamentoMesDTO> orcamentosDoMes(int mes, int ano) {
-        List<Orcamento> orcamentos = repository.findByMesAndAnoOrderByCategoria(mes, ano);
+    public List<OrcamentoMesDTO> orcamentosDoMes(int mes, int ano, Integer usuarioId) {
+        List<Orcamento> orcamentos = repository.findByUsuarioIdAndMesAndAnoOrderByCategoria(usuarioId, mes, ano);
         if (orcamentos.isEmpty()) {
             return List.of();
         }
 
         YearMonth mesAno = YearMonth.of(ano, mes);
         Map<String, BigDecimal> gastosPorCategoria = gastoRepository
-                .somarPorCategoriaNoPeriodo(mesAno.atDay(1), mesAno.atEndOfMonth()).stream()
+                .somarPorCategoriaNoPeriodo(usuarioId, mesAno.atDay(1), mesAno.atEndOfMonth()).stream()
                 .collect(Collectors.toMap(
                         c -> c.getCategoria().toLowerCase(),
                         GastoRepository.CategoriaTotal::getTotal));

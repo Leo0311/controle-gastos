@@ -1,0 +1,55 @@
+<div class="pagina-auth">
+  <mat-card class="card-auth">
+    <mat-card-header>
+      <mat-card-title>Redefinir senha</mat-card-title>
+      <mat-card-subtitle>Controle de Gastos</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (tokenAusente) {
+        <p class="instrucao">Link de redefinição inválido ou incompleto. Solicite um novo link.</p>
+        <p class="link-cadastro"><a routerLink="/esqueci-senha">Solicitar novo link</a></p>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="redefinir()">
+          <mat-form-field appearance="outline" class="campo-largo">
+            <mat-label>Nova senha</mat-label>
+            <input matInput [type]="esconderSenha ? 'password' : 'text'" formControlName="novaSenha" autocomplete="new-password">
+            <button mat-icon-button matSuffix type="button" (click)="esconderSenha = !esconderSenha" [attr.aria-label]="'Mostrar senha'">
+              <mat-icon>{{ esconderSenha ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.controls.novaSenha.hasError('required')) {
+              <mat-error>Nova senha é obrigatória.</mat-error>
+            }
+            @if (form.controls.novaSenha.hasError('minlength')) {
+              <mat-error>A senha deve ter ao menos 6 caracteres.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="campo-largo">
+            <mat-label>Confirmar nova senha</mat-label>
+            <input matInput [type]="esconderConfirmarSenha ? 'password' : 'text'" formControlName="confirmarNovaSenha" autocomplete="new-password">
+            <button mat-icon-button matSuffix type="button" (click)="esconderConfirmarSenha = !esconderConfirmarSenha" [attr.aria-label]="'Mostrar senha'">
+              <mat-icon>{{ esconderConfirmarSenha ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.controls.confirmarNovaSenha.hasError('required')) {
+              <mat-error>Confirme a nova senha.</mat-error>
+            }
+            @if (form.hasError('senhasDiferentes') && !form.controls.confirmarNovaSenha.hasError('required')) {
+              <mat-error>As senhas não coincidem.</mat-error>
+            }
+          </mat-form-field>
+
+          <button mat-raised-button color="primary" type="submit" class="botao-largo" [disabled]="carregando">
+            @if (carregando) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Redefinir senha
+            }
+          </button>
+        </form>
+      }
+
+      <p class="link-cadastro"><a routerLink="/login">Voltar para o login</a></p>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -22,34 +22,35 @@ public class GastoService {
 
     private final GastoRepository repository;
 
-    public List<Gasto> listarTodos() {
-        return repository.findAllByOrderByDataDescIdDesc();
+    public List<Gasto> listarTodos(Integer usuarioId) {
+        return repository.findAllByUsuarioIdOrderByDataDescIdDesc(usuarioId);
     }
 
-    public Gasto buscarPorId(Integer id) {
-        return repository.findById(id)
+    public Gasto buscarPorId(Integer id, Integer usuarioId) {
+        return repository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Gasto não encontrado com ID " + id));
     }
 
-    public List<Gasto> listarPorCategoria(String categoria) {
-        return repository.findByCategoriaIgnoreCaseOrderByDataDescIdDesc(categoria);
+    public List<Gasto> listarPorCategoria(String categoria, Integer usuarioId) {
+        return repository.findByUsuarioIdAndCategoriaIgnoreCaseOrderByDataDescIdDesc(usuarioId, categoria);
     }
 
-    public List<Gasto> listarPorPeriodo(LocalDate inicio, LocalDate fim) {
-        return repository.findByDataBetweenOrderByDataDescIdDesc(inicio, fim);
+    public List<Gasto> listarPorPeriodo(LocalDate inicio, LocalDate fim, Integer usuarioId) {
+        return repository.findByUsuarioIdAndDataBetweenOrderByDataDescIdDesc(usuarioId, inicio, fim);
     }
 
-    public Gasto cadastrar(Gasto gasto) {
+    public Gasto cadastrar(Gasto gasto, Integer usuarioId) {
         validar(gasto);
         gasto.setId(null);
+        gasto.setUsuarioId(usuarioId);
         if (gasto.getData() == null) {
             gasto.setData(LocalDate.now());
         }
         return repository.save(gasto);
     }
 
-    public Gasto atualizar(Integer id, Gasto dados) {
-        Gasto existente = buscarPorId(id);
+    public Gasto atualizar(Integer id, Gasto dados, Integer usuarioId) {
+        Gasto existente = buscarPorId(id, usuarioId);
         validar(dados);
         existente.setDescricao(dados.getDescricao());
         existente.setValor(dados.getValor());
@@ -58,26 +59,26 @@ public class GastoService {
         return repository.save(existente);
     }
 
-    public void excluir(Integer id) {
-        Gasto existente = buscarPorId(id);
+    public void excluir(Integer id, Integer usuarioId) {
+        Gasto existente = buscarPorId(id, usuarioId);
         repository.delete(existente);
     }
 
-    public ResumoDTO resumo() {
-        BigDecimal totalGeral = repository.somarTotal();
-        List<CategoriaTotalDTO> porCategoria = repository.somarPorCategoria().stream()
+    public ResumoDTO resumo(Integer usuarioId) {
+        BigDecimal totalGeral = repository.somarTotal(usuarioId);
+        List<CategoriaTotalDTO> porCategoria = repository.somarPorCategoria(usuarioId).stream()
                 .map(c -> new CategoriaTotalDTO(c.getCategoria(), c.getTotal()))
                 .collect(Collectors.toList());
         return new ResumoDTO(totalGeral, porCategoria);
     }
 
-    public List<TotalMensalDTO> totaisMensais(int meses) {
+    public List<TotalMensalDTO> totaisMensais(int meses, Integer usuarioId) {
         List<TotalMensalDTO> resultado = new ArrayList<>();
         YearMonth atual = YearMonth.now();
 
         for (int i = meses - 1; i >= 0; i--) {
             YearMonth mesAno = atual.minusMonths(i);
-            BigDecimal total = repository.somarNoPeriodo(mesAno.atDay(1), mesAno.atEndOfMonth());
+            BigDecimal total = repository.somarNoPeriodo(usuarioId, mesAno.atDay(1), mesAno.atEndOfMonth());
             resultado.add(new TotalMensalDTO(mesAno.getMonthValue(), mesAno.getYear(), total));
         }
         return resultado;

@@ -3,11 +3,13 @@ package com.controlegastos.api.controller;
 import com.controlegastos.api.dto.ResumoDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
 import com.controlegastos.api.model.Gasto;
+import com.controlegastos.api.security.UsuarioPrincipal;
 import com.controlegastos.api.service.GastoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,51 +32,55 @@ public class GastoController {
     private final GastoService service;
 
     @GetMapping
-    public List<Gasto> listarTodos() {
-        return service.listarTodos();
+    public List<Gasto> listarTodos(@AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.listarTodos(usuario.usuarioId());
     }
 
     @GetMapping("/{id}")
-    public Gasto buscarPorId(@PathVariable Integer id) {
-        return service.buscarPorId(id);
+    public Gasto buscarPorId(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.buscarPorId(id, usuario.usuarioId());
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Gasto cadastrar(@RequestBody Gasto gasto) {
-        return service.cadastrar(gasto);
+    public Gasto cadastrar(@RequestBody Gasto gasto, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.cadastrar(gasto, usuario.usuarioId());
     }
 
     @PutMapping("/{id}")
-    public Gasto atualizar(@PathVariable Integer id, @RequestBody Gasto gasto) {
-        return service.atualizar(id, gasto);
+    public Gasto atualizar(
+            @PathVariable Integer id, @RequestBody Gasto gasto, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.atualizar(id, gasto, usuario.usuarioId());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Integer id) {
-        service.excluir(id);
+    public ResponseEntity<Void> excluir(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        service.excluir(id, usuario.usuarioId());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/categoria/{categoria}")
-    public List<Gasto> listarPorCategoria(@PathVariable String categoria) {
-        return service.listarPorCategoria(categoria);
+    public List<Gasto> listarPorCategoria(
+            @PathVariable String categoria, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.listarPorCategoria(categoria, usuario.usuarioId());
     }
 
     @GetMapping("/periodo")
     public List<Gasto> listarPorPeriodo(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim) {
-        return service.listarPorPeriodo(inicio, fim);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
+            @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.listarPorPeriodo(inicio, fim, usuario.usuarioId());
     }
 
     @GetMapping("/resumo")
-    public ResumoDTO resumo() {
-        return service.resumo();
+    public ResumoDTO resumo(@AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.resumo(usuario.usuarioId());
     }
 
     @GetMapping("/totais-mensais")
-    public List<TotalMensalDTO> totaisMensais(@RequestParam(defaultValue = "6") int meses) {
-        return service.totaisMensais(meses);
+    public List<TotalMensalDTO> totaisMensais(
+            @RequestParam(defaultValue = "6") int meses, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.totaisMensais(meses, usuario.usuarioId());
     }
 }

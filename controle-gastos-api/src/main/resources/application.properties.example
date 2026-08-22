@@ -13,3 +13,17 @@ spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 spring.jpa.open-in-view=false
+
+# JWT - gere um segredo aleatorio de pelo menos 32 bytes (base64), por exemplo:
+# PowerShell: [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Minimum 0 -Maximum 256 }))
+app.jwt.secret=SEU_SEGREDO_JWT_AQUI
+
+app.frontend.url=http://localhost:4200
+
+# E-mail (Gmail SMTP) - use um email de app (nao a senha normal da conta)
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=SEU_EMAIL_AQUI
+spring.mail.password=SUA_SENHA_DE_APP_AQUI
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true

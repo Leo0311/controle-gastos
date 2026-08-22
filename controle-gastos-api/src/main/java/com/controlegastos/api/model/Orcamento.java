@@ -38,4 +38,7 @@ public class Orcamento {
 
     @Column(nullable = false)
     private int ano;
+
+    @Column(name = "usuario_id")
+    private Integer usuarioId;
 }

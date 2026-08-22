@@ -39,4 +39,7 @@ public class Gasto {
 
     @Column(nullable = false)
     private LocalDate data;
+
+    @Column(name = "usuario_id")
+    private Integer usuarioId;
 }

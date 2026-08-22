@@ -2,20 +2,28 @@
   <mat-icon class="logo-icone">account_balance_wallet</mat-icon>
   <span class="titulo">Controle de Gastos</span>
   <span class="espaco"></span>
-  <span class="mes-ano-atual">{{ mesAnoAtual }}</span>
+  @if (usuario$ | async; as usuario) {
+    <span class="mes-ano-atual">{{ mesAnoAtual }}</span>
+    <span class="usuario-nome">{{ usuario.nome }}</span>
+    <button mat-icon-button (click)="sair()" aria-label="Sair" title="Sair">
+      <mat-icon>logout</mat-icon>
+    </button>
+  }
 </mat-toolbar>
 
-<nav mat-tab-nav-bar [tabPanel]="painel">
-  <a mat-tab-link routerLink="/dashboard" routerLinkActive #dashboardLink="routerLinkActive" [active]="dashboardLink.isActive">
-    Dashboard
-  </a>
-  <a mat-tab-link routerLink="/gastos" routerLinkActive #gastosLink="routerLinkActive" [active]="gastosLink.isActive">
-    Gastos
-  </a>
-  <a mat-tab-link routerLink="/orcamentos" routerLinkActive #orcamentosLink="routerLinkActive" [active]="orcamentosLink.isActive">
-    Orçamentos
-  </a>
-</nav>
+@if (usuario$ | async) {
+  <nav mat-tab-nav-bar [tabPanel]="painel">
+    <a mat-tab-link routerLink="/dashboard" routerLinkActive #dashboardLink="routerLinkActive" [active]="dashboardLink.isActive">
+      Dashboard
+    </a>
+    <a mat-tab-link routerLink="/gastos" routerLinkActive #gastosLink="routerLinkActive" [active]="gastosLink.isActive">
+      Gastos
+    </a>
+    <a mat-tab-link routerLink="/orcamentos" routerLinkActive #orcamentosLink="routerLinkActive" [active]="orcamentosLink.isActive">
+      Orçamentos
+    </a>
+  </nav>
+}
 
 <mat-tab-nav-panel #painel>
   <main class="conteudo">
