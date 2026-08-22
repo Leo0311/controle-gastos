@@ -1,0 +1,6 @@
+# Configuração de conexão com o PostgreSQL
+# Copie este arquivo para "database.properties" e ajuste os valores conforme o seu ambiente
+
+db.url=jdbc:postgresql://localhost:5432/controle_gastos
+db.user=postgres
+db.password=SUA_SENHA_AQUI

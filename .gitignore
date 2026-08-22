@@ -1,0 +1,25 @@
+# ===== Java / Maven (controle-gastos, controle-gastos-api) =====
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== IntelliJ IDEA =====
+.idea/
+*.iml
+*.iws
+
+# ===== Node / Angular (controle-gastos-web) =====
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+
+# ===== Credenciais sensíveis (versionar apenas os *.example) =====
+controle-gastos/src/main/resources/database.properties
+controle-gastos-api/src/main/resources/application.properties
+
+# ===== Sistema operacional / editores =====
+.DS_Store
+Thumbs.db
+*.log

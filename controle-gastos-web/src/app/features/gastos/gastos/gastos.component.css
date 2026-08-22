@@ -1,0 +1,30 @@
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.acoes-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tabela-scroll {
+  overflow-x: auto;
+}
+
+.tabela-gastos {
+  width: 100%;
+}
+
+.carregando {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+  min-height: 200px;
+  align-items: center;
+}

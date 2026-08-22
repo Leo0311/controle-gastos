@@ -1,0 +1,47 @@
+<h2 mat-dialog-title>Novo orçamento</h2>
+
+<form [formGroup]="form" (ngSubmit)="salvar()">
+  <mat-dialog-content class="form-content">
+    <mat-form-field appearance="outline" class="campo-largo">
+      <mat-label>Categoria</mat-label>
+      <input matInput formControlName="categoria" maxlength="60">
+      @if (form.controls.categoria.hasError('required')) {
+        <mat-error>Categoria é obrigatória.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor limite</mat-label>
+      <span matTextPrefix>R$&nbsp;</span>
+      <input matInput type="number" step="0.01" min="0.01" formControlName="valorLimite">
+      @if (form.controls.valorLimite.hasError('required')) {
+        <mat-error>Valor limite é obrigatório.</mat-error>
+      }
+      @if (form.controls.valorLimite.hasError('min')) {
+        <mat-error>Valor deve ser maior que zero.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Mês</mat-label>
+      <mat-select formControlName="mes">
+        @for (m of meses; track m.valor) {
+          <mat-option [value]="m.valor">{{ m.nome }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Ano</mat-label>
+      <input matInput type="number" formControlName="ano">
+      @if (form.controls.ano.hasError('required')) {
+        <mat-error>Ano é obrigatório.</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+    <button mat-raised-button color="primary" type="submit">Salvar</button>
+  </mat-dialog-actions>
+</form>

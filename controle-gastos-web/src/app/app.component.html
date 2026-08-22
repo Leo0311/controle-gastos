@@ -1,0 +1,24 @@
+<mat-toolbar color="primary">
+  <mat-icon class="logo-icone">account_balance_wallet</mat-icon>
+  <span class="titulo">Controle de Gastos</span>
+  <span class="espaco"></span>
+  <span class="mes-ano-atual">{{ mesAnoAtual }}</span>
+</mat-toolbar>
+
+<nav mat-tab-nav-bar [tabPanel]="painel">
+  <a mat-tab-link routerLink="/dashboard" routerLinkActive #dashboardLink="routerLinkActive" [active]="dashboardLink.isActive">
+    Dashboard
+  </a>
+  <a mat-tab-link routerLink="/gastos" routerLinkActive #gastosLink="routerLinkActive" [active]="gastosLink.isActive">
+    Gastos
+  </a>
+  <a mat-tab-link routerLink="/orcamentos" routerLinkActive #orcamentosLink="routerLinkActive" [active]="orcamentosLink.isActive">
+    Orçamentos
+  </a>
+</nav>
+
+<mat-tab-nav-panel #painel>
+  <main class="conteudo">
+    <router-outlet></router-outlet>
+  </main>
+</mat-tab-nav-panel>

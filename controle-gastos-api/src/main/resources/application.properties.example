@@ -1,0 +1,15 @@
+spring.application.name=controle-gastos-api
+
+# Mesmo banco PostgreSQL usado pela aplicacao de console (controle-gastos)
+# Copie este arquivo para "application.properties" e ajuste os valores conforme o seu ambiente
+spring.datasource.url=jdbc:postgresql://localhost:5432/controle_gastos
+spring.datasource.username=postgres
+spring.datasource.password=SUA_SENHA_AQUI
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# As tabelas ja existem (criadas pelo schema.sql do projeto console) - nao recriar/alterar,
+# apenas validar se o mapeamento das entidades bate com o schema atual
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false

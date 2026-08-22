@@ -1,0 +1,77 @@
+package com.controlegastos.api.service;
+
+import com.controlegastos.api.dto.OrcamentoMesDTO;
+import com.controlegastos.api.exception.RecursoNaoEncontradoException;
+import com.controlegastos.api.model.Orcamento;
+import com.controlegastos.api.repository.GastoRepository;
+import com.controlegastos.api.repository.OrcamentoRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class OrcamentoService {
+
+    private final OrcamentoRepository repository;
+    private final GastoRepository gastoRepository;
+
+    public List<Orcamento> listarTodos() {
+        return repository.findAll();
+    }
+
+    public Orcamento definir(Orcamento orcamento) {
+        validar(orcamento);
+        orcamento.setId(null);
+        return repository.save(orcamento);
+    }
+
+    public void excluir(Integer id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Orçamento não encontrado com ID " + id);
+        }
+        repository.deleteById(id);
+    }
+
+    public List<OrcamentoMesDTO> orcamentosDoMes(int mes, int ano) {
+        List<Orcamento> orcamentos = repository.findByMesAndAnoOrderByCategoria(mes, ano);
+        if (orcamentos.isEmpty()) {
+            return List.of();
+        }
+
+        YearMonth mesAno = YearMonth.of(ano, mes);
+        Map<String, BigDecimal> gastosPorCategoria = gastoRepository
+                .somarPorCategoriaNoPeriodo(mesAno.atDay(1), mesAno.atEndOfMonth()).stream()
+                .collect(Collectors.toMap(
+                        c -> c.getCategoria().toLowerCase(),
+                        GastoRepository.CategoriaTotal::getTotal));
+
+        return orcamentos.stream()
+                .map(o -> {
+                    BigDecimal gasto = gastosPorCategoria.getOrDefault(o.getCategoria().toLowerCase(), BigDecimal.ZERO);
+                    boolean ultrapassou = gasto.compareTo(o.getValorLimite()) > 0;
+                    return new OrcamentoMesDTO(o.getId(), o.getCategoria(), o.getValorLimite(), gasto, ultrapassou);
+                })
+                .collect(Collectors.toList());
+    }
+
+    private void validar(Orcamento orcamento) {
+        if (orcamento.getCategoria() == null || orcamento.getCategoria().isBlank()) {
+            throw new IllegalArgumentException("Categoria não pode ser vazia.");
+        }
+        if (orcamento.getValorLimite() == null || orcamento.getValorLimite().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Valor limite deve ser maior que zero.");
+        }
+        if (orcamento.getMes() < 1 || orcamento.getMes() > 12) {
+            throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
+        }
+        if (orcamento.getAno() <= 0) {
+            throw new IllegalArgumentException("Ano inválido.");
+        }
+    }
+}
