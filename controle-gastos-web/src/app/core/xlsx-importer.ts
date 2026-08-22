@@ -93,19 +93,15 @@ function converterData(bruto: unknown): string | null {
     if (Number.isNaN(bruto.getTime())) {
       return null;
     }
-    return formatarDataIso(bruto.getFullYear(), bruto.getMonth() + 1, bruto.getDate());
+    return validarEFormatarData(bruto.getFullYear(), bruto.getMonth() + 1, bruto.getDate());
+  }
+  if (typeof bruto === 'number') {
+    const componentes = extrairComponentesDataNumerica(bruto);
+    return componentes ? validarEFormatarData(componentes[2], componentes[1], componentes[0]) : null;
   }
   if (typeof bruto === 'string') {
-    const componentes = extrairComponentesData(bruto.trim());
-    if (!componentes) {
-      return null;
-    }
-    const [dia, mes, ano] = componentes;
-    const data = new Date(ano, mes - 1, dia);
-    if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
-      return null;
-    }
-    return formatarDataIso(ano, mes, dia);
+    const componentes = extrairComponentesDataTexto(bruto.trim());
+    return componentes ? validarEFormatarData(componentes[2], componentes[1], componentes[0]) : null;
   }
   return null;
 }
@@ -114,7 +110,7 @@ function converterData(bruto: unknown): string | null {
  * Aceita dd/mm/aaaa, dd-mm-aaaa, dd.mm.aaaa (mesmo separador nos dois lados)
  * e ddmmaaaa sem separador (2+2+4 dígitos fixos).
  */
-function extrairComponentesData(texto: string): [dia: number, mes: number, ano: number] | null {
+function extrairComponentesDataTexto(texto: string): [dia: number, mes: number, ano: number] | null {
   const comSeparador = /^(\d{1,2})([/\-.])(\d{1,2})\2(\d{4})$/.exec(texto);
   if (comSeparador) {
     return [Number(comSeparador[1]), Number(comSeparador[3]), Number(comSeparador[4])];
@@ -126,6 +122,36 @@ function extrairComponentesData(texto: string): [dia: number, mes: number, ano: 
   }
 
   return null;
+}
+
+/**
+ * Quando a célula de data não está formatada como texto, o Excel/LibreOffice
+ * guarda "22082026" como o número 22082026 (e pode até derrubar zeros à
+ * esquerda do dia/mês, ex: "01082026" vira 1082026). Reconstrói os 8 dígitos
+ * com padStart antes de separar em dia/mês/ano.
+ */
+function extrairComponentesDataNumerica(bruto: number): [dia: number, mes: number, ano: number] | null {
+  if (!Number.isFinite(bruto) || bruto < 0 || !Number.isInteger(bruto)) {
+    return null;
+  }
+  const texto = String(bruto);
+  if (texto.length > 8) {
+    return null;
+  }
+  const textoCompleto = texto.padStart(8, '0');
+  return [
+    Number(textoCompleto.slice(0, 2)),
+    Number(textoCompleto.slice(2, 4)),
+    Number(textoCompleto.slice(4, 8))
+  ];
+}
+
+function validarEFormatarData(ano: number, mes: number, dia: number): string | null {
+  const data = new Date(ano, mes - 1, dia);
+  if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+    return null;
+  }
+  return formatarDataIso(ano, mes, dia);
 }
 
 function formatarDataIso(ano: number, mes: number, dia: number): string {
@@ -147,6 +173,9 @@ function exibirData(bruto: unknown): string {
     const dia = String(bruto.getDate()).padStart(2, '0');
     const mes = String(bruto.getMonth() + 1).padStart(2, '0');
     return `${dia}/${mes}/${bruto.getFullYear()}`;
+  }
+  if (typeof bruto === 'number') {
+    return String(bruto);
   }
   if (typeof bruto === 'string') {
     return bruto.trim();
