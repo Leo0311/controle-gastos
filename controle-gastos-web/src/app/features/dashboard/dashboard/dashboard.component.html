@@ -1,9 +1,29 @@
 <div class="cabecalho">
   <h2>Dashboard</h2>
   <mat-button-toggle-group value="mes" (change)="onPeriodoChange($event)">
-    <mat-button-toggle value="mes">Mês atual</mat-button-toggle>
-    <mat-button-toggle value="ano">Ano atual</mat-button-toggle>
+    <mat-button-toggle value="mes">Destacar mês</mat-button-toggle>
+    <mat-button-toggle value="ano">Destacar ano</mat-button-toggle>
   </mat-button-toggle-group>
+</div>
+
+<div class="filtros">
+  <mat-form-field appearance="outline">
+    <mat-label>Mês</mat-label>
+    <mat-select [(ngModel)]="mes" (selectionChange)="carregar()">
+      @for (m of meses; track m.valor) {
+        <mat-option [value]="m.valor">{{ m.nome }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Ano</mat-label>
+    <mat-select [(ngModel)]="ano" (selectionChange)="carregar()">
+      @for (a of anos; track a) {
+        <mat-option [value]="a">{{ a }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
 </div>
 
 @if (carregando) {
@@ -13,17 +33,17 @@
 } @else {
   <div class="cards">
     <mat-card class="card-stat" [class.card-destaque]="periodoDestaque === 'mes'">
-      <mat-card-subtitle>Total gasto no mês atual</mat-card-subtitle>
-      <mat-card-title>{{ totalMesAtual | currency:'BRL' }}</mat-card-title>
+      <mat-card-subtitle>Total gasto em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
+      <mat-card-title>{{ totalMesSelecionado | currency:'BRL' }}</mat-card-title>
     </mat-card>
 
     <mat-card class="card-stat" [class.card-destaque]="periodoDestaque === 'ano'">
-      <mat-card-subtitle>Total gasto no ano atual</mat-card-subtitle>
-      <mat-card-title>{{ totalAnoAtual | currency:'BRL' }}</mat-card-title>
+      <mat-card-subtitle>Total gasto em {{ ano }}</mat-card-subtitle>
+      <mat-card-title>{{ totalAnoSelecionado | currency:'BRL' }}</mat-card-title>
     </mat-card>
 
     <mat-card class="card-stat">
-      <mat-card-subtitle>Gastos cadastrados no mês</mat-card-subtitle>
+      <mat-card-subtitle>Gastos cadastrados em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ numeroGastosMes }}</mat-card-title>
     </mat-card>
   </div>
@@ -31,7 +51,7 @@
   <div class="graficos">
     <mat-card class="grafico-card">
       <mat-card-subtitle>
-        Distribuição por categoria ({{ periodoDestaque === 'mes' ? 'mês atual' : 'ano atual' }})
+        Distribuição por categoria ({{ periodoDestaque === 'mes' ? (nomeMesSelecionado + '/' + ano) : ano }})
       </mat-card-subtitle>
       @if (pizzaData.labels && pizzaData.labels.length > 0) {
         <div class="grafico-canvas">

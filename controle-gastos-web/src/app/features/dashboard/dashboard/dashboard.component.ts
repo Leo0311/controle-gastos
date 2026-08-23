@@ -1,8 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ChartConfiguration, ChartData } from 'chart.js';
@@ -18,13 +21,21 @@ const CORES_CATEGORIAS = [
 
 const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+const NOMES_MESES_COMPLETO = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [
     CurrencyPipe,
+    FormsModule,
     MatCardModule,
     MatButtonToggleModule,
+    MatFormFieldModule,
+    MatSelectModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
     BaseChartDirective,
@@ -35,11 +46,17 @@ const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
 })
 export class DashboardComponent implements OnInit {
 
+  readonly meses = NOMES_MESES_COMPLETO.map((nome, i) => ({ valor: i + 1, nome }));
+  readonly anos: number[];
+
+  mes = new Date().getMonth() + 1;
+  ano = new Date().getFullYear();
+
   carregando = false;
   periodoDestaque: 'mes' | 'ano' = 'mes';
 
-  totalMesAtual = 0;
-  totalAnoAtual = 0;
+  totalMesSelecionado = 0;
+  totalAnoSelecionado = 0;
   numeroGastosMes = 0;
 
   pizzaData: ChartData<'doughnut', number[], string> = { labels: [], datasets: [{ data: [] }] };
@@ -60,7 +77,10 @@ export class DashboardComponent implements OnInit {
   constructor(
     private readonly gastoService: GastoService,
     private readonly snackBar: MatSnackBar
-  ) { }
+  ) {
+    const anoAtual = new Date().getFullYear();
+    this.anos = Array.from({ length: 6 }, (_, i) => anoAtual - 2 + i);
+  }
 
   ngOnInit(): void {
     this.carregar();
@@ -71,20 +91,20 @@ export class DashboardComponent implements OnInit {
     this.carregar();
   }
 
+  get nomeMesSelecionado(): string {
+    return this.meses.find((m) => m.valor === this.mes)?.nome ?? '';
+  }
+
   carregar(): void {
     this.carregando = true;
 
-    const hoje = new Date();
-    const anoAtual = hoje.getFullYear();
-    const mesAtual = hoje.getMonth() + 1;
+    const inicioMes = this.formatarData(new Date(this.ano, this.mes - 1, 1));
+    const fimMes = this.formatarData(new Date(this.ano, this.mes, 0));
+    const inicioAno = `${this.ano}-01-01`;
+    const fimAno = `${this.ano}-12-31`;
 
-    const inicioMes = this.formatarData(new Date(anoAtual, mesAtual - 1, 1));
-    const fimMes = this.formatarData(new Date(anoAtual, mesAtual, 0));
-    const inicioAno = `${anoAtual}-01-01`;
-    const fimAno = `${anoAtual}-12-31`;
-
-    // A "Distribuição por categoria" acompanha o período em destaque (mês ou ano atual)
-    // selecionado no topo da tela, em vez de somar gastos de todos os tempos.
+    // A "Distribuição por categoria" acompanha o período em destaque (mês ou ano
+    // selecionado acima), em vez de somar gastos de todos os tempos.
     const inicioResumo = this.periodoDestaque === 'mes' ? inicioMes : inicioAno;
     const fimResumo = this.periodoDestaque === 'mes' ? fimMes : fimAno;
 
@@ -95,9 +115,9 @@ export class DashboardComponent implements OnInit {
       totaisMensais: this.gastoService.totaisMensais(6)
     }).subscribe({
       next: ({ gastosMes, gastosAno, resumo, totaisMensais }) => {
-        this.totalMesAtual = gastosMes.reduce((soma, g) => soma + g.valor, 0);
+        this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
-        this.totalAnoAtual = gastosAno.reduce((soma, g) => soma + g.valor, 0);
+        this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
 
         this.pizzaData = {
           labels: resumo.porCategoria.map(c => c.categoria),

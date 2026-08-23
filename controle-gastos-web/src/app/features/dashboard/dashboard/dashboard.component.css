@@ -7,6 +7,13 @@
   gap: 12px;
 }
 
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .carregando {
   display: flex;
   justify-content: center;
