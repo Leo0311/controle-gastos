@@ -242,38 +242,43 @@ export class GastosComponent implements OnInit {
   }
 
   private prepararAtualizacao(linhas: LinhaImportacao[]): void {
-    if (!linhas.some((l) => l.id != null)) {
-      this.prepararVinculoOrcamento(linhas);
-      return;
-    }
-
     this.gastoService.listarTodos().subscribe({
       next: (gastosAtuais) => {
         const mapaGastos = new Map(gastosAtuais.map((g) => [g.id, g]));
         const atualizacoes: AtualizacaoImportacao[] = [];
         const linhasNovas: LinhaImportacao[] = [];
-        const linhasIdNaoEncontrado: LinhaImportacao[] = [];
+        const linhasSuspeitas: LinhaImportacao[] = [];
 
         for (const linha of linhas) {
-          if (linha.id == null) {
-            // planilha padrão (sem coluna ID): linha genuinamente nova
-            linhasNovas.push(linha);
+          if (linha.id != null) {
+            const existente = mapaGastos.get(linha.id);
+            if (!existente) {
+              // tinha ID, mas não corresponde a nenhum gasto atual - pode ser de uma
+              // exportação antiga ou o gasto já foi excluído; não cria sem perguntar
+              linhasSuspeitas.push(linha);
+              continue;
+            }
+            if (this.gastoMudou(existente, linha)) {
+              atualizacoes.push({ linha, existente, atualizar: true });
+            }
+            // id encontrado e sem mudança: não faz nada (não duplica, não atualiza)
             continue;
           }
-          const existente = mapaGastos.get(linha.id);
-          if (!existente) {
-            // tinha ID, mas não corresponde a nenhum gasto atual - pode ser de uma
-            // exportação antiga ou o gasto já foi excluído; não cria sem perguntar
-            linhasIdNaoEncontrado.push(linha);
+
+          // Sem ID (planilha padrão, ou célula ID vazia): se os dados batem exatamente
+          // com um gasto já cadastrado, é provável que a planilha seja uma reimportação
+          // sem a coluna ID (ex: editada a partir do modelo de importação, não da
+          // exportação) - não cria sem perguntar, para não duplicar silenciosamente.
+          const duplicataExata = gastosAtuais.some((g) => !this.gastoMudou(g, linha));
+          if (duplicataExata) {
+            linhasSuspeitas.push(linha);
             continue;
           }
-          if (this.gastoMudou(existente, linha)) {
-            atualizacoes.push({ linha, existente, atualizar: true });
-          }
-          // id encontrado e sem mudança: não faz nada (não duplica, não atualiza)
+
+          linhasNovas.push(linha);
         }
 
-        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasIdNaoEncontrado);
+        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasSuspeitas);
       },
       error: () => this.prepararVinculoOrcamento(linhas)
     });
@@ -282,10 +287,10 @@ export class GastosComponent implements OnInit {
   private confirmarAtualizacoes(
     atualizacoes: AtualizacaoImportacao[],
     linhasNovas: LinhaImportacao[],
-    linhasIdNaoEncontrado: LinhaImportacao[]
+    linhasSuspeitas: LinhaImportacao[]
   ): void {
     if (atualizacoes.length === 0) {
-      this.confirmarLinhasIdNaoEncontrado(linhasNovas, linhasIdNaoEncontrado);
+      this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas);
       return;
     }
 
@@ -297,40 +302,41 @@ export class GastosComponent implements OnInit {
 
     ref.afterClosed().subscribe((decisoes) => {
       this.executarAtualizacoes(decisoes ?? [], () =>
-        this.confirmarLinhasIdNaoEncontrado(linhasNovas, linhasIdNaoEncontrado)
+        this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas)
       );
     });
   }
 
-  private confirmarLinhasIdNaoEncontrado(linhasNovas: LinhaImportacao[], linhasIdNaoEncontrado: LinhaImportacao[]): void {
-    if (linhasIdNaoEncontrado.length === 0) {
+  private confirmarLinhasSuspeitas(linhasNovas: LinhaImportacao[], linhasSuspeitas: LinhaImportacao[]): void {
+    if (linhasSuspeitas.length === 0) {
       this.prepararVinculoOrcamento(linhasNovas);
       return;
     }
 
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
-        titulo: 'ID não encontrado em algumas linhas',
-        mensagem: `${linhasIdNaoEncontrado.length} linha(s) desta planilha têm um ID que não corresponde a `
-          + 'nenhum gasto seu atual. Isso costuma acontecer quando o arquivo é uma exportação antiga, salva há '
-          + 'algum tempo (o ID mudou ou o gasto já foi excluído desde então) - se você reaproveitou um arquivo '
-          + 'salvo anteriormente para editar um valor, prefira sempre clicar em "Exportar XLSX" de novo antes de '
-          + 'editar, para que os IDs estejam atualizados e a importação reconheça o gasto certo em vez de '
-          + 'duplicá-lo. Deseja importar estas linhas como gastos novos mesmo assim?'
+        titulo: 'Possíveis gastos repetidos',
+        mensagem: `${linhasSuspeitas.length} linha(s) desta planilha parecem já existir: ou têm um ID que não `
+          + 'corresponde a nenhum gasto seu atual, ou têm descrição, valor, categoria e data idênticos a um '
+          + 'gasto já cadastrado (sem coluna de ID para confirmar). Isso costuma acontecer quando o arquivo é '
+          + 'uma exportação antiga, ou quando a edição foi feita a partir do modelo de importação em vez do '
+          + 'arquivo gerado por "Exportar XLSX" - prefira sempre exportar de novo antes de editar um valor, '
+          + 'para a importação reconhecer o gasto certo em vez de duplicá-lo. Deseja importar estas linhas '
+          + 'como gastos novos mesmo assim?'
       }
     });
 
     ref.afterClosed().subscribe((confirmado) => {
       if (!confirmado) {
-        if (linhasIdNaoEncontrado.length > 0) {
+        if (linhasSuspeitas.length > 0) {
           this.mostrarErro(
-            `${linhasIdNaoEncontrado.length} linha(s) com ID não encontrado foram ignoradas (não importadas).`
+            `${linhasSuspeitas.length} linha(s) possivelmente repetidas foram ignoradas (não importadas).`
           );
         }
         this.prepararVinculoOrcamento(linhasNovas);
         return;
       }
-      this.prepararVinculoOrcamento([...linhasNovas, ...linhasIdNaoEncontrado]);
+      this.prepararVinculoOrcamento([...linhasNovas, ...linhasSuspeitas]);
     });
   }
 
