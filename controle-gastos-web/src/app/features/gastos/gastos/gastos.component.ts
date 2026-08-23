@@ -251,13 +251,20 @@ export class GastosComponent implements OnInit {
       next: (gastosAtuais) => {
         const mapaGastos = new Map(gastosAtuais.map((g) => [g.id, g]));
         const atualizacoes: AtualizacaoImportacao[] = [];
-        const linhasParaCriar: LinhaImportacao[] = [];
+        const linhasNovas: LinhaImportacao[] = [];
+        const linhasIdNaoEncontrado: LinhaImportacao[] = [];
 
         for (const linha of linhas) {
-          const existente = linha.id != null ? mapaGastos.get(linha.id) : undefined;
+          if (linha.id == null) {
+            // planilha padrão (sem coluna ID): linha genuinamente nova
+            linhasNovas.push(linha);
+            continue;
+          }
+          const existente = mapaGastos.get(linha.id);
           if (!existente) {
-            // sem id (planilha padrão) ou o gasto original não existe mais: importa como novo
-            linhasParaCriar.push(linha);
+            // tinha ID, mas não corresponde a nenhum gasto atual - pode ser de uma
+            // exportação antiga ou o gasto já foi excluído; não cria sem perguntar
+            linhasIdNaoEncontrado.push(linha);
             continue;
           }
           if (this.gastoMudou(existente, linha)) {
@@ -266,22 +273,61 @@ export class GastosComponent implements OnInit {
           // id encontrado e sem mudança: não faz nada (não duplica, não atualiza)
         }
 
-        if (atualizacoes.length === 0) {
-          this.prepararVinculoOrcamento(linhasParaCriar);
-          return;
-        }
-
-        const ref = this.dialog.open<
-          ImportarAtualizacaoDialogComponent,
-          ImportarAtualizacaoDialogData,
-          DecisaoAtualizacao[]
-        >(ImportarAtualizacaoDialogComponent, { data: { atualizacoes }, width: '820px', maxWidth: '95vw' });
-
-        ref.afterClosed().subscribe((decisoes) => {
-          this.executarAtualizacoes(decisoes ?? [], () => this.prepararVinculoOrcamento(linhasParaCriar));
-        });
+        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasIdNaoEncontrado);
       },
       error: () => this.prepararVinculoOrcamento(linhas)
+    });
+  }
+
+  private confirmarAtualizacoes(
+    atualizacoes: AtualizacaoImportacao[],
+    linhasNovas: LinhaImportacao[],
+    linhasIdNaoEncontrado: LinhaImportacao[]
+  ): void {
+    if (atualizacoes.length === 0) {
+      this.confirmarLinhasIdNaoEncontrado(linhasNovas, linhasIdNaoEncontrado);
+      return;
+    }
+
+    const ref = this.dialog.open<
+      ImportarAtualizacaoDialogComponent,
+      ImportarAtualizacaoDialogData,
+      DecisaoAtualizacao[]
+    >(ImportarAtualizacaoDialogComponent, { data: { atualizacoes }, width: '820px', maxWidth: '95vw' });
+
+    ref.afterClosed().subscribe((decisoes) => {
+      this.executarAtualizacoes(decisoes ?? [], () =>
+        this.confirmarLinhasIdNaoEncontrado(linhasNovas, linhasIdNaoEncontrado)
+      );
+    });
+  }
+
+  private confirmarLinhasIdNaoEncontrado(linhasNovas: LinhaImportacao[], linhasIdNaoEncontrado: LinhaImportacao[]): void {
+    if (linhasIdNaoEncontrado.length === 0) {
+      this.prepararVinculoOrcamento(linhasNovas);
+      return;
+    }
+
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'ID não encontrado em algumas linhas',
+        mensagem: `${linhasIdNaoEncontrado.length} linha(s) desta planilha têm um ID que não corresponde a `
+          + 'nenhum gasto seu atual (o gasto pode já ter sido excluído, ou esta planilha é de uma exportação '
+          + 'antiga). Deseja importar essas linhas como gastos novos mesmo assim?'
+      }
+    });
+
+    ref.afterClosed().subscribe((confirmado) => {
+      if (!confirmado) {
+        if (linhasIdNaoEncontrado.length > 0) {
+          this.mostrarErro(
+            `${linhasIdNaoEncontrado.length} linha(s) com ID não encontrado foram ignoradas (não importadas).`
+          );
+        }
+        this.prepararVinculoOrcamento(linhasNovas);
+        return;
+      }
+      this.prepararVinculoOrcamento([...linhasNovas, ...linhasIdNaoEncontrado]);
     });
   }
 
