@@ -34,12 +34,23 @@
   </div>
 </div>
 
+@if (descricaoFiltro) {
+  <div class="filtro-ativo">
+    <mat-icon>filter_alt</mat-icon>
+    <span>Mostrando gastos de {{ descricaoFiltro }}</span>
+    <button mat-button (click)="limparFiltro()">Ver todos os gastos</button>
+  </div>
+}
+
 @if (carregando) {
   <div class="carregando">
     <mat-spinner diameter="40"></mat-spinner>
   </div>
 } @else if (gastos.length === 0) {
-  <app-empty-state icon="receipt_long" mensagem="Nenhum gasto cadastrado ainda."></app-empty-state>
+  <app-empty-state
+    icon="receipt_long"
+    [mensagem]="descricaoFiltro ? 'Nenhum gasto encontrado para ' + descricaoFiltro + '.' : 'Nenhum gasto cadastrado ainda.'"
+  ></app-empty-state>
 } @else {
   <div class="tabela-scroll mat-elevation-z2">
     <table mat-table [dataSource]="gastos" class="tabela-gastos">

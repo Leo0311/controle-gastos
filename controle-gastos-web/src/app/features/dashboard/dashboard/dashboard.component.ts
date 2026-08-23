@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
@@ -8,10 +9,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { ChartConfiguration, ChartData } from 'chart.js';
+import { ChartConfiguration, ChartData, ActiveElement } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 
 import { GastoService } from '../../../services/gasto.service';
+import { TotalMensal } from '../../../models/gasto.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 
 const CORES_CATEGORIAS = [
@@ -63,6 +65,12 @@ export class DashboardComponent implements OnInit {
   readonly pizzaOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
+    onHover: (evento, elementos) => {
+      const alvo = evento.native?.target as HTMLElement | undefined;
+      if (alvo) {
+        alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
+      }
+    },
     plugins: { legend: { position: 'bottom' } }
   };
 
@@ -70,13 +78,22 @@ export class DashboardComponent implements OnInit {
   readonly barrasOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
+    onHover: (evento, elementos) => {
+      const alvo = evento.native?.target as HTMLElement | undefined;
+      if (alvo) {
+        alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
+      }
+    },
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true } }
   };
 
+  private totaisMensaisAtuais: TotalMensal[] = [];
+
   constructor(
     private readonly gastoService: GastoService,
-    private readonly snackBar: MatSnackBar
+    private readonly snackBar: MatSnackBar,
+    private readonly router: Router
   ) {
     const anoAtual = new Date().getFullYear();
     this.anos = Array.from({ length: 6 }, (_, i) => anoAtual - 2 + i);
@@ -135,6 +152,7 @@ export class DashboardComponent implements OnInit {
             backgroundColor: '#3f51b5'
           }]
         };
+        this.totaisMensaisAtuais = totaisMensais;
 
         this.carregando = false;
       },
@@ -143,6 +161,41 @@ export class DashboardComponent implements OnInit {
         this.snackBar.open('Não foi possível carregar o dashboard. Verifique se a API está no ar.', 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  irParaGastosMes(): void {
+    this.router.navigate(['/gastos'], { queryParams: { mes: this.mes, ano: this.ano } });
+  }
+
+  irParaGastosAno(): void {
+    this.router.navigate(['/gastos'], { queryParams: { ano: this.ano } });
+  }
+
+  onPizzaClick(evento: { active?: object[] }): void {
+    const indice = (evento.active as ActiveElement[] | undefined)?.[0]?.index;
+    if (indice === undefined) {
+      return;
+    }
+    const categoria = this.pizzaData.labels?.[indice] as string | undefined;
+    if (!categoria) {
+      return;
+    }
+    const queryParams = this.periodoDestaque === 'mes'
+      ? { mes: this.mes, ano: this.ano, categoria }
+      : { ano: this.ano, categoria };
+    this.router.navigate(['/gastos'], { queryParams });
+  }
+
+  onBarraClick(evento: { active?: object[] }): void {
+    const indice = (evento.active as ActiveElement[] | undefined)?.[0]?.index;
+    if (indice === undefined) {
+      return;
+    }
+    const total = this.totaisMensaisAtuais[indice];
+    if (!total) {
+      return;
+    }
+    this.router.navigate(['/gastos'], { queryParams: { mes: total.mes, ano: total.ano } });
   }
 
   private formatarData(data: Date): string {

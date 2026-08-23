@@ -32,17 +32,37 @@
   </div>
 } @else {
   <div class="cards">
-    <mat-card class="card-stat" [class.card-destaque]="periodoDestaque === 'mes'">
+    <mat-card
+      class="card-stat clicavel"
+      [class.card-destaque]="periodoDestaque === 'mes'"
+      role="button"
+      tabindex="0"
+      (click)="irParaGastosMes()"
+      (keyup.enter)="irParaGastosMes()"
+    >
       <mat-card-subtitle>Total gasto em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ totalMesSelecionado | currency:'BRL' }}</mat-card-title>
     </mat-card>
 
-    <mat-card class="card-stat" [class.card-destaque]="periodoDestaque === 'ano'">
+    <mat-card
+      class="card-stat clicavel"
+      [class.card-destaque]="periodoDestaque === 'ano'"
+      role="button"
+      tabindex="0"
+      (click)="irParaGastosAno()"
+      (keyup.enter)="irParaGastosAno()"
+    >
       <mat-card-subtitle>Total gasto em {{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ totalAnoSelecionado | currency:'BRL' }}</mat-card-title>
     </mat-card>
 
-    <mat-card class="card-stat">
+    <mat-card
+      class="card-stat clicavel"
+      role="button"
+      tabindex="0"
+      (click)="irParaGastosMes()"
+      (keyup.enter)="irParaGastosMes()"
+    >
       <mat-card-subtitle>Gastos cadastrados em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ numeroGastosMes }}</mat-card-title>
     </mat-card>
@@ -54,8 +74,9 @@
         Distribuição por categoria ({{ periodoDestaque === 'mes' ? (nomeMesSelecionado + '/' + ano) : ano }})
       </mat-card-subtitle>
       @if (pizzaData.labels && pizzaData.labels.length > 0) {
+        <p class="dica-clique">Clique em uma categoria para ver os gastos.</p>
         <div class="grafico-canvas">
-          <canvas baseChart [data]="pizzaData" [options]="pizzaOptions" type="doughnut"></canvas>
+          <canvas baseChart [data]="pizzaData" [options]="pizzaOptions" type="doughnut" (chartClick)="onPizzaClick($event)"></canvas>
         </div>
       } @else {
         <app-empty-state icon="donut_large" mensagem="Sem dados para exibir."></app-empty-state>
@@ -64,8 +85,9 @@
 
     <mat-card class="grafico-card">
       <mat-card-subtitle>Total gasto nos últimos 6 meses</mat-card-subtitle>
+      <p class="dica-clique">Clique em um mês para ver os gastos.</p>
       <div class="grafico-canvas">
-        <canvas baseChart [data]="barrasData" [options]="barrasOptions" type="bar"></canvas>
+        <canvas baseChart [data]="barrasData" [options]="barrasOptions" type="bar" (chartClick)="onBarraClick($event)"></canvas>
       </div>
     </mat-card>
   </div>

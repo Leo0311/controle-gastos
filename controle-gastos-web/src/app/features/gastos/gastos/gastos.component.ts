@@ -1,5 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,6 +36,11 @@ import {
   DecisaoAtualizacao
 } from '../importar-atualizacao-dialog/importar-atualizacao-dialog.component';
 
+const NOMES_MESES_COMPLETO = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
 @Component({
   selector: 'app-gastos',
   standalone: true,
@@ -61,22 +67,54 @@ export class GastosComponent implements OnInit {
   gastos: Gasto[] = [];
   carregando = false;
 
+  filtroMes: number | null = null;
+  filtroAno: number | null = null;
+  filtroCategoria: string | null = null;
+
   constructor(
     private readonly gastoService: GastoService,
     private readonly orcamentoService: OrcamentoService,
     private readonly dialog: MatDialog,
-    private readonly snackBar: MatSnackBar
+    private readonly snackBar: MatSnackBar,
+    private readonly route: ActivatedRoute,
+    private readonly router: Router
   ) { }
 
   ngOnInit(): void {
-    this.carregar();
+    this.route.queryParamMap.subscribe((params) => {
+      const mes = Number(params.get('mes'));
+      const ano = Number(params.get('ano'));
+      this.filtroMes = Number.isInteger(mes) && mes >= 1 && mes <= 12 ? mes : null;
+      this.filtroAno = Number.isInteger(ano) && ano > 0 ? ano : null;
+      this.filtroCategoria = params.get('categoria');
+      this.carregar();
+    });
+  }
+
+  get descricaoFiltro(): string {
+    if (!this.filtroAno) {
+      return '';
+    }
+    const periodo = this.filtroMes ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`;
+    return this.filtroCategoria ? `${periodo} · ${this.filtroCategoria}` : periodo;
+  }
+
+  limparFiltro(): void {
+    this.router.navigate(['/gastos']);
   }
 
   carregar(): void {
     this.carregando = true;
-    this.gastoService.listarTodos().subscribe({
+
+    const origem$ = this.filtroAno
+      ? this.gastoService.listarPorPeriodo(...this.intervaloFiltro(this.filtroAno, this.filtroMes))
+      : this.gastoService.listarTodos();
+
+    origem$.subscribe({
       next: (gastos) => {
-        this.gastos = gastos;
+        this.gastos = this.filtroCategoria
+          ? gastos.filter((g) => g.categoria.trim().toLowerCase() === this.filtroCategoria!.trim().toLowerCase())
+          : gastos;
         this.carregando = false;
       },
       error: () => {
@@ -84,6 +122,22 @@ export class GastosComponent implements OnInit {
         this.mostrarErro('Não foi possível carregar os gastos. Verifique se a API está no ar.');
       }
     });
+  }
+
+  private intervaloFiltro(ano: number, mes: number | null): [string, string] {
+    if (mes) {
+      const inicio = new Date(ano, mes - 1, 1);
+      const fim = new Date(ano, mes, 0);
+      return [this.formatarData(inicio), this.formatarData(fim)];
+    }
+    return [`${ano}-01-01`, `${ano}-12-31`];
+  }
+
+  private formatarData(data: Date): string {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
   }
 
   novoGasto(): void {
