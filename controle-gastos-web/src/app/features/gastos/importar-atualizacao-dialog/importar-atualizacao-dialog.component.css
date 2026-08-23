@@ -1,0 +1,20 @@
+mat-dialog-content {
+  min-width: 320px;
+  max-width: 90vw;
+}
+
+.instrucao {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0 0 12px;
+}
+
+.tabela-scroll {
+  overflow-x: auto;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.tabela-atualizacao {
+  width: 100%;
+}

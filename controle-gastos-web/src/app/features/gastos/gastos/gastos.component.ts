@@ -28,6 +28,12 @@ import {
   VinculoImportacao,
   DecisaoVinculo
 } from '../importar-vinculo-orcamento-dialog/importar-vinculo-orcamento-dialog.component';
+import {
+  ImportarAtualizacaoDialogComponent,
+  ImportarAtualizacaoDialogData,
+  AtualizacaoImportacao,
+  DecisaoAtualizacao
+} from '../importar-atualizacao-dialog/importar-atualizacao-dialog.component';
 
 @Component({
   selector: 'app-gastos',
@@ -231,11 +237,130 @@ export class GastosComponent implements OnInit {
       if (!linhasConfirmadas || linhasConfirmadas.length === 0) {
         return;
       }
-      this.prepararVinculoOrcamento(linhasConfirmadas);
+      this.prepararAtualizacao(linhasConfirmadas);
     });
   }
 
+  private prepararAtualizacao(linhas: LinhaImportacao[]): void {
+    if (!linhas.some((l) => l.id != null)) {
+      this.prepararVinculoOrcamento(linhas);
+      return;
+    }
+
+    this.gastoService.listarTodos().subscribe({
+      next: (gastosAtuais) => {
+        const mapaGastos = new Map(gastosAtuais.map((g) => [g.id, g]));
+        const atualizacoes: AtualizacaoImportacao[] = [];
+        const linhasParaCriar: LinhaImportacao[] = [];
+
+        for (const linha of linhas) {
+          const existente = linha.id != null ? mapaGastos.get(linha.id) : undefined;
+          if (!existente) {
+            // sem id (planilha padrão) ou o gasto original não existe mais: importa como novo
+            linhasParaCriar.push(linha);
+            continue;
+          }
+          if (this.gastoMudou(existente, linha)) {
+            atualizacoes.push({ linha, existente, atualizar: true });
+          }
+          // id encontrado e sem mudança: não faz nada (não duplica, não atualiza)
+        }
+
+        if (atualizacoes.length === 0) {
+          this.prepararVinculoOrcamento(linhasParaCriar);
+          return;
+        }
+
+        const ref = this.dialog.open<
+          ImportarAtualizacaoDialogComponent,
+          ImportarAtualizacaoDialogData,
+          DecisaoAtualizacao[]
+        >(ImportarAtualizacaoDialogComponent, { data: { atualizacoes }, width: '820px', maxWidth: '95vw' });
+
+        ref.afterClosed().subscribe((decisoes) => {
+          this.executarAtualizacoes(decisoes ?? [], () => this.prepararVinculoOrcamento(linhasParaCriar));
+        });
+      },
+      error: () => this.prepararVinculoOrcamento(linhas)
+    });
+  }
+
+  private gastoMudou(existente: Gasto, linha: LinhaImportacao): boolean {
+    return existente.descricao !== linha.descricao
+      || Math.abs(existente.valor - (linha.valor ?? 0)) > 0.001
+      || existente.categoria.toLowerCase() !== linha.categoria.toLowerCase()
+      || existente.data !== linha.data;
+  }
+
+  private executarAtualizacoes(decisoes: DecisaoAtualizacao[], aposConcluir: () => void): void {
+    if (decisoes.length === 0) {
+      aposConcluir();
+      return;
+    }
+
+    const progressoRef = this.dialog.open(ImportarProgressoDialogComponent, {
+      disableClose: true,
+      width: '360px'
+    });
+    const instancia = progressoRef.componentInstance;
+    instancia.total = decisoes.length;
+    instancia.atual = 0;
+
+    let sucesso = 0;
+    let falha = 0;
+
+    const processarProxima = (indice: number): void => {
+      if (indice >= decisoes.length) {
+        progressoRef.close();
+        this.mostrarResumoAtualizacao(sucesso, falha);
+        aposConcluir();
+        return;
+      }
+
+      const decisao = decisoes[indice];
+      const gasto: Gasto = {
+        descricao: decisao.linha.descricao,
+        valor: decisao.linha.valor!,
+        categoria: decisao.linha.categoria,
+        data: decisao.linha.data!,
+        orcamentoId: decisao.existente.orcamentoId ?? null
+      };
+
+      this.gastoService.atualizar(decisao.existente.id!, gasto).subscribe({
+        next: () => {
+          sucesso++;
+          instancia.atual = indice + 1;
+          processarProxima(indice + 1);
+        },
+        error: () => {
+          falha++;
+          instancia.atual = indice + 1;
+          processarProxima(indice + 1);
+        }
+      });
+    };
+
+    processarProxima(0);
+  }
+
+  private mostrarResumoAtualizacao(sucesso: number, falha: number): void {
+    if (falha === 0) {
+      this.mostrarSucesso(`${sucesso} gasto(s) atualizado(s) com sucesso!`);
+    } else {
+      this.snackBar.open(
+        `${sucesso} gasto(s) atualizado(s) com sucesso, ${falha} falharam.`,
+        'Fechar',
+        { duration: 6000 }
+      );
+    }
+  }
+
   private prepararVinculoOrcamento(linhas: LinhaImportacao[]): void {
+    if (linhas.length === 0) {
+      this.carregar();
+      return;
+    }
+
     this.orcamentoService.listarTodos().subscribe({
       next: (orcamentos) => {
         const vinculos = this.encontrarVinculosPossiveis(linhas, orcamentos);

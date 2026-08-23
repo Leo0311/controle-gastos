@@ -1,0 +1,60 @@
+<h2 mat-dialog-title>Atualizar gastos já importados</h2>
+
+<mat-dialog-content>
+  <p class="instrucao">
+    Esta planilha parece ter sido exportada anteriormente e {{ dados.atualizacoes.length }} linha(s)
+    têm valores diferentes dos gastos já cadastrados (mostrados como "antigo → novo"). Escolha quais
+    devem ser atualizados. Linhas sem diferença alguma não aparecem aqui e não são alteradas.
+  </p>
+
+  <div class="tabela-scroll">
+    <table mat-table [dataSource]="dados.atualizacoes" class="tabela-atualizacao">
+
+      <ng-container matColumnDef="atualizar">
+        <th mat-header-cell *matHeaderCellDef>
+          <mat-checkbox [checked]="todosMarcados" (change)="alternarTodos($event)"></mat-checkbox>
+        </th>
+        <td mat-cell *matCellDef="let a">
+          <mat-checkbox [(ngModel)]="a.atualizar" (change)="atualizarTodosMarcados()"></mat-checkbox>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef>ID</th>
+        <td mat-cell *matCellDef="let a">{{ a.existente.id }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="descricao">
+        <th mat-header-cell *matHeaderCellDef>Descrição</th>
+        <td mat-cell *matCellDef="let a">{{ formatarCampo(a.existente.descricao, a.linha.descricao) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="valor">
+        <th mat-header-cell *matHeaderCellDef>Valor</th>
+        <td mat-cell *matCellDef="let a">
+          {{ formatarCampo(formatarValor(a.existente.valor), a.linha.valorExibicao) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="categoria">
+        <th mat-header-cell *matHeaderCellDef>Categoria</th>
+        <td mat-cell *matCellDef="let a">{{ formatarCampo(a.existente.categoria, a.linha.categoria) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="data">
+        <th mat-header-cell *matHeaderCellDef>Data</th>
+        <td mat-cell *matCellDef="let a">
+          {{ formatarCampo(formatarData(a.existente.data), a.linha.dataExibicao) }}
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+      <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
+    </table>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="pular()">Não atualizar nenhum</button>
+  <button mat-raised-button color="primary" type="button" (click)="confirmar()">Confirmar atualização</button>
+</mat-dialog-actions>

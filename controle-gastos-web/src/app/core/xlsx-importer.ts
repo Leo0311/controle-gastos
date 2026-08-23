@@ -2,6 +2,8 @@ import * as XLSX from 'xlsx-js-style';
 
 export interface LinhaImportacao {
   linha: number;
+  /** Preenchido quando a planilha é a exportação de gastos (tem coluna ID) e a célula é um ID válido. */
+  id: number | null;
   descricao: string;
   categoria: string;
   valorExibicao: string;
@@ -22,6 +24,15 @@ export async function lerPlanilhaGastos(arquivo: File): Promise<LinhaImportacao[
     defval: ''
   });
 
+  if (linhasBrutas.length === 0) {
+    return [];
+  }
+
+  // A planilha exportada (Exportar XLSX) tem uma coluna ID a mais no início,
+  // que não existe no modelo de importação - sem essa checagem, reimportar o
+  // arquivo exportado desalinha todas as colunas em uma posição.
+  const comColunaId = ehFormatoExportado(linhasBrutas[0]);
+
   const resultado: LinhaImportacao[] = [];
 
   for (let i = 1; i < linhasBrutas.length; i++) {
@@ -35,14 +46,30 @@ export async function lerPlanilhaGastos(arquivo: File): Promise<LinhaImportacao[
       continue;
     }
 
-    resultado.push(validarLinha(linhaBruta, numeroLinha));
+    resultado.push(validarLinha(linhaBruta, numeroLinha, comColunaId));
   }
 
   return resultado;
 }
 
-function validarLinha(linhaBruta: unknown[], numeroLinha: number): LinhaImportacao {
-  const [descricaoBruta, valorBruto, categoriaBruta, dataBruta] = linhaBruta;
+function ehFormatoExportado(cabecalho: unknown[]): boolean {
+  return String(cabecalho[0] ?? '').trim().toLowerCase() === 'id';
+}
+
+function converterId(bruto: unknown): number | null {
+  if (typeof bruto === 'number' && Number.isInteger(bruto)) {
+    return bruto;
+  }
+  if (typeof bruto === 'string' && bruto.trim() !== '') {
+    const numero = Number(bruto.trim());
+    return Number.isInteger(numero) ? numero : null;
+  }
+  return null;
+}
+
+function validarLinha(linhaBruta: unknown[], numeroLinha: number, comColunaId: boolean): LinhaImportacao {
+  const id = comColunaId ? converterId(linhaBruta[0]) : null;
+  const [descricaoBruta, valorBruto, categoriaBruta, dataBruta] = comColunaId ? linhaBruta.slice(1) : linhaBruta;
 
   const descricao = String(descricaoBruta ?? '').trim();
   const categoria = String(categoriaBruta ?? '').trim();
@@ -62,6 +89,7 @@ function validarLinha(linhaBruta: unknown[], numeroLinha: number): LinhaImportac
 
   return {
     linha: numeroLinha,
+    id,
     descricao,
     categoria,
     valorExibicao: exibirValor(valorBruto),
