@@ -37,8 +37,8 @@
       [class.card-destaque]="periodoDestaque === 'mes'"
       role="button"
       tabindex="0"
-      (click)="irParaGastosMes()"
-      (keyup.enter)="irParaGastosMes()"
+      (click)="abrirDetalheMes()"
+      (keyup.enter)="abrirDetalheMes()"
     >
       <mat-card-subtitle>Total gasto em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ totalMesSelecionado | currency:'BRL' }}</mat-card-title>
@@ -49,8 +49,8 @@
       [class.card-destaque]="periodoDestaque === 'ano'"
       role="button"
       tabindex="0"
-      (click)="irParaGastosAno()"
-      (keyup.enter)="irParaGastosAno()"
+      (click)="abrirDetalheAno()"
+      (keyup.enter)="abrirDetalheAno()"
     >
       <mat-card-subtitle>Total gasto em {{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ totalAnoSelecionado | currency:'BRL' }}</mat-card-title>
@@ -60,8 +60,8 @@
       class="card-stat clicavel"
       role="button"
       tabindex="0"
-      (click)="irParaGastosMes()"
-      (keyup.enter)="irParaGastosMes()"
+      (click)="abrirDetalheMes()"
+      (keyup.enter)="abrirDetalheMes()"
     >
       <mat-card-subtitle>Gastos cadastrados em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ numeroGastosMes }}</mat-card-title>
@@ -74,7 +74,7 @@
         Distribuição por categoria ({{ periodoDestaque === 'mes' ? (nomeMesSelecionado + '/' + ano) : ano }})
       </mat-card-subtitle>
       @if (pizzaData.labels && pizzaData.labels.length > 0) {
-        <p class="dica-clique">Clique em uma categoria para ver os gastos.</p>
+        <p class="dica-clique">Clique em uma categoria para ver os detalhes.</p>
         <div class="grafico-canvas">
           <canvas baseChart [data]="pizzaData" [options]="pizzaOptions" type="doughnut" (chartClick)="onPizzaClick($event)"></canvas>
         </div>
@@ -85,7 +85,7 @@
 
     <mat-card class="grafico-card">
       <mat-card-subtitle>Total gasto nos últimos 6 meses</mat-card-subtitle>
-      <p class="dica-clique">Clique em um mês para ver os gastos.</p>
+      <p class="dica-clique">Clique em um mês para ver os detalhes.</p>
       <div class="grafico-canvas">
         <canvas baseChart [data]="barrasData" [options]="barrasOptions" type="bar" (chartClick)="onBarraClick($event)"></canvas>
       </div>

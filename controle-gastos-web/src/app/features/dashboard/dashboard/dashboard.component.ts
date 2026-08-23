@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -15,6 +15,10 @@ import { BaseChartDirective } from 'ng2-charts';
 import { GastoService } from '../../../services/gasto.service';
 import { TotalMensal } from '../../../models/gasto.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import {
+  DashboardDetalheDialogComponent,
+  DashboardDetalheDialogData
+} from '../dashboard-detalhe-dialog/dashboard-detalhe-dialog.component';
 
 const CORES_CATEGORIAS = [
   '#3f51b5', '#e91e63', '#009688', '#ff9800', '#9c27b0',
@@ -36,6 +40,7 @@ const NOMES_MESES_COMPLETO = [
     FormsModule,
     MatCardModule,
     MatButtonToggleModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatSelectModule,
     MatProgressSpinnerModule,
@@ -93,7 +98,7 @@ export class DashboardComponent implements OnInit {
   constructor(
     private readonly gastoService: GastoService,
     private readonly snackBar: MatSnackBar,
-    private readonly router: Router
+    private readonly dialog: MatDialog
   ) {
     const anoAtual = new Date().getFullYear();
     this.anos = Array.from({ length: 6 }, (_, i) => anoAtual - 2 + i);
@@ -163,12 +168,12 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  irParaGastosMes(): void {
-    this.router.navigate(['/gastos'], { queryParams: { mes: this.mes, ano: this.ano } });
+  abrirDetalheMes(): void {
+    this.abrirDetalhe({ mes: this.mes, ano: this.ano, categoria: null });
   }
 
-  irParaGastosAno(): void {
-    this.router.navigate(['/gastos'], { queryParams: { ano: this.ano } });
+  abrirDetalheAno(): void {
+    this.abrirDetalhe({ mes: null, ano: this.ano, categoria: null });
   }
 
   onPizzaClick(evento: { active?: object[] }): void {
@@ -180,10 +185,11 @@ export class DashboardComponent implements OnInit {
     if (!categoria) {
       return;
     }
-    const queryParams = this.periodoDestaque === 'mes'
-      ? { mes: this.mes, ano: this.ano, categoria }
-      : { ano: this.ano, categoria };
-    this.router.navigate(['/gastos'], { queryParams });
+    this.abrirDetalhe(
+      this.periodoDestaque === 'mes'
+        ? { mes: this.mes, ano: this.ano, categoria }
+        : { mes: null, ano: this.ano, categoria }
+    );
   }
 
   onBarraClick(evento: { active?: object[] }): void {
@@ -195,7 +201,14 @@ export class DashboardComponent implements OnInit {
     if (!total) {
       return;
     }
-    this.router.navigate(['/gastos'], { queryParams: { mes: total.mes, ano: total.ano } });
+    this.abrirDetalhe({ mes: total.mes, ano: total.ano, categoria: null });
+  }
+
+  private abrirDetalhe(data: DashboardDetalheDialogData): void {
+    this.dialog.open<DashboardDetalheDialogComponent, DashboardDetalheDialogData>(
+      DashboardDetalheDialogComponent,
+      { data, width: '640px', maxWidth: '95vw' }
+    );
   }
 
   private formatarData(data: Date): string {

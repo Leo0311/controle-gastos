@@ -1,0 +1,22 @@
+.carregando {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
+  min-height: 120px;
+}
+
+.total {
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+
+.tabela-scroll {
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.tabela-detalhe {
+  width: 100%;
+}

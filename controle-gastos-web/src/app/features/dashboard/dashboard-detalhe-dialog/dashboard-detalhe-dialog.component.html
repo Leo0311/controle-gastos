@@ -1,0 +1,46 @@
+<h2 mat-dialog-title>Gastos de {{ titulo }}</h2>
+
+<mat-dialog-content>
+  @if (carregando) {
+    <div class="carregando">
+      <mat-spinner diameter="36"></mat-spinner>
+    </div>
+  } @else if (gastos.length === 0) {
+    <app-empty-state icon="receipt_long" mensagem="Nenhum gasto encontrado para este período."></app-empty-state>
+  } @else {
+    <p class="total">Total: {{ total | currency:'BRL' }} ({{ gastos.length }} gasto(s))</p>
+
+    <div class="tabela-scroll">
+      <table mat-table [dataSource]="gastos" class="tabela-detalhe">
+
+        <ng-container matColumnDef="descricao">
+          <th mat-header-cell *matHeaderCellDef>Descrição</th>
+          <td mat-cell *matCellDef="let gasto">{{ gasto.descricao }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="valor">
+          <th mat-header-cell *matHeaderCellDef>Valor</th>
+          <td mat-cell *matCellDef="let gasto">{{ gasto.valor | currency:'BRL' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="categoria">
+          <th mat-header-cell *matHeaderCellDef>Categoria</th>
+          <td mat-cell *matCellDef="let gasto">{{ gasto.categoria }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="data">
+          <th mat-header-cell *matHeaderCellDef>Data</th>
+          <td mat-cell *matCellDef="let gasto">{{ gasto.data | date:'dd/MM/yyyy':'UTC' }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+        <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
+      </table>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="fechar()">Fechar</button>
+  <button mat-raised-button color="primary" type="button" (click)="irParaGastos()">Ir para Gastos</button>
+</mat-dialog-actions>
