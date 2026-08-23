@@ -248,6 +248,7 @@ export class GastosComponent implements OnInit {
         const atualizacoes: AtualizacaoImportacao[] = [];
         const linhasNovas: LinhaImportacao[] = [];
         const linhasSuspeitas: LinhaImportacao[] = [];
+        const linhasPossivelEdicao: LinhaImportacao[] = [];
 
         for (const linha of linhas) {
           if (linha.id != null) {
@@ -275,10 +276,24 @@ export class GastosComponent implements OnInit {
             continue;
           }
 
+          // Ainda sem ID: descrição e categoria batem com um gasto existente, mas valor
+          // ou data são diferentes - provavelmente é uma tentativa de EDITAR aquele gasto,
+          // mas sem ID não há como ter certeza de qual gasto é (nem atualizá-lo). Sem essa
+          // checagem, a linha seria criada como um gasto novo, duplicando o original.
+          const possivelEdicao = gastosAtuais.some((g) =>
+            g.descricao.trim().toLowerCase() === linha.descricao.trim().toLowerCase()
+            && g.categoria.trim().toLowerCase() === linha.categoria.trim().toLowerCase()
+            && this.gastoMudou(g, linha)
+          );
+          if (possivelEdicao) {
+            linhasPossivelEdicao.push(linha);
+            continue;
+          }
+
           linhasNovas.push(linha);
         }
 
-        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasSuspeitas);
+        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasSuspeitas, linhasPossivelEdicao);
       },
       error: () => this.prepararVinculoOrcamento(linhas)
     });
@@ -287,10 +302,11 @@ export class GastosComponent implements OnInit {
   private confirmarAtualizacoes(
     atualizacoes: AtualizacaoImportacao[],
     linhasNovas: LinhaImportacao[],
-    linhasSuspeitas: LinhaImportacao[]
+    linhasSuspeitas: LinhaImportacao[],
+    linhasPossivelEdicao: LinhaImportacao[]
   ): void {
     if (atualizacoes.length === 0) {
-      this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas);
+      this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao);
       return;
     }
 
@@ -302,14 +318,18 @@ export class GastosComponent implements OnInit {
 
     ref.afterClosed().subscribe((decisoes) => {
       this.executarAtualizacoes(decisoes ?? [], () =>
-        this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas)
+        this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao)
       );
     });
   }
 
-  private confirmarLinhasSuspeitas(linhasNovas: LinhaImportacao[], linhasSuspeitas: LinhaImportacao[]): void {
+  private confirmarLinhasSuspeitas(
+    linhasNovas: LinhaImportacao[],
+    linhasSuspeitas: LinhaImportacao[],
+    linhasPossivelEdicao: LinhaImportacao[]
+  ): void {
     if (linhasSuspeitas.length === 0) {
-      this.prepararVinculoOrcamento(linhasNovas);
+      this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao);
       return;
     }
 
@@ -328,15 +348,44 @@ export class GastosComponent implements OnInit {
 
     ref.afterClosed().subscribe((confirmado) => {
       if (!confirmado) {
-        if (linhasSuspeitas.length > 0) {
-          this.mostrarErro(
-            `${linhasSuspeitas.length} linha(s) possivelmente repetidas foram ignoradas (não importadas).`
-          );
-        }
+        this.mostrarErro(
+          `${linhasSuspeitas.length} linha(s) possivelmente repetidas foram ignoradas (não importadas).`
+        );
+        this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao);
+        return;
+      }
+      this.confirmarLinhasPossivelEdicao([...linhasNovas, ...linhasSuspeitas], linhasPossivelEdicao);
+    });
+  }
+
+  private confirmarLinhasPossivelEdicao(linhasNovas: LinhaImportacao[], linhasPossivelEdicao: LinhaImportacao[]): void {
+    if (linhasPossivelEdicao.length === 0) {
+      this.prepararVinculoOrcamento(linhasNovas);
+      return;
+    }
+
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'Isto parece uma edição, não um gasto novo',
+        mensagem: `${linhasPossivelEdicao.length} linha(s) têm a mesma descrição e categoria de um gasto já `
+          + 'cadastrado, mas com valor ou data diferentes - parece que você editou um gasto existente. Só que '
+          + 'esta planilha não tem a coluna ID, então não é possível ter certeza de qual gasto é (nem '
+          + 'atualizá-lo automaticamente): se confirmar, um gasto NOVO será criado, e o antigo continuará como '
+          + 'estava, duplicado. Para atualizar de verdade um gasto existente, cancele agora, clique em '
+          + '"Exportar XLSX" para gerar um arquivo com a coluna ID, edite esse arquivo (não o modelo de '
+          + 'importação) e reimporte-o. Deseja criar estas linhas como gastos novos mesmo assim?'
+      }
+    });
+
+    ref.afterClosed().subscribe((confirmado) => {
+      if (!confirmado) {
+        this.mostrarErro(
+          `${linhasPossivelEdicao.length} linha(s) que pareciam edições foram ignoradas (não importadas).`
+        );
         this.prepararVinculoOrcamento(linhasNovas);
         return;
       }
-      this.prepararVinculoOrcamento([...linhasNovas, ...linhasSuspeitas]);
+      this.prepararVinculoOrcamento([...linhasNovas, ...linhasPossivelEdicao]);
     });
   }
 
