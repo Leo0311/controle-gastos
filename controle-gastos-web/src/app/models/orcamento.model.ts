@@ -12,4 +12,5 @@ export interface OrcamentoMes {
   valorLimite: number;
   gasto: number;
   ultrapassou: boolean;
+  proximoDoLimite: boolean;
 }

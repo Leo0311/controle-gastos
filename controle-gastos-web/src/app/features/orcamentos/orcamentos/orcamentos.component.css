@@ -45,6 +45,11 @@
   color: #1e7e34;
 }
 
+.status-atencao {
+  background-color: #fff4e5;
+  color: #e65100;
+}
+
 .status-alerta {
   background-color: #fdecea;
   color: #c62828;

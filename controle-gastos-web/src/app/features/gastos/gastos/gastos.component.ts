@@ -108,11 +108,20 @@ export class GastosComponent implements OnInit {
     this.orcamentoService.verMes(mes, ano).subscribe({
       next: (orcamentos) => {
         const orcamento = orcamentos.find((o) => o.id === gasto.orcamentoId);
-        if (orcamento?.ultrapassou) {
+        if (!orcamento) {
+          return;
+        }
+        if (orcamento.ultrapassou) {
           this.snackBar.open(
             `Atenção: o orçamento de "${orcamento.categoria}" foi ultrapassado neste mês!`,
             'Fechar',
             { duration: 7000, panelClass: 'snack-alerta' }
+          );
+        } else if (orcamento.proximoDoLimite) {
+          this.snackBar.open(
+            `Atenção: o orçamento de "${orcamento.categoria}" está próximo do limite neste mês.`,
+            'Fechar',
+            { duration: 6000, panelClass: 'snack-atencao' }
           );
         }
       },

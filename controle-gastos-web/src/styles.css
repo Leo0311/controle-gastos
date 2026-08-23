@@ -8,3 +8,9 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --mdc-snackbar-supporting-text-color: #fff;
   --mat-mdc-snack-bar-button-color: #fff;
 }
+
+.snack-atencao {
+  --mdc-snackbar-container-color: #e65100;
+  --mdc-snackbar-supporting-text-color: #fff;
+  --mat-mdc-snack-bar-button-color: #fff;
+}

@@ -16,6 +16,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrcamentoService {
 
+    private static final BigDecimal PERCENTUAL_ALERTA_PROXIMIDADE = new BigDecimal("0.8");
+
     private final OrcamentoRepository repository;
     private final GastoRepository gastoRepository;
 
@@ -43,7 +45,10 @@ public class OrcamentoService {
                 .map(o -> {
                     BigDecimal gasto = gastoRepository.somarPorOrcamento(o.getId());
                     boolean ultrapassou = gasto.compareTo(o.getValorLimite()) > 0;
-                    return new OrcamentoMesDTO(o.getId(), o.getCategoria(), o.getValorLimite(), gasto, ultrapassou);
+                    boolean proximoDoLimite = !ultrapassou
+                            && gasto.compareTo(o.getValorLimite().multiply(PERCENTUAL_ALERTA_PROXIMIDADE)) >= 0;
+                    return new OrcamentoMesDTO(
+                            o.getId(), o.getCategoria(), o.getValorLimite(), gasto, ultrapassou, proximoDoLimite);
                 })
                 .collect(Collectors.toList());
     }
