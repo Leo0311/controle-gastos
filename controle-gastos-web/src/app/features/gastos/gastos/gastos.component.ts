@@ -249,6 +249,7 @@ export class GastosComponent implements OnInit {
         const linhasNovas: LinhaImportacao[] = [];
         const linhasSuspeitas: LinhaImportacao[] = [];
         const linhasPossivelEdicao: LinhaImportacao[] = [];
+        let semAlteracao = 0;
 
         for (const linha of linhas) {
           if (linha.id != null) {
@@ -261,8 +262,10 @@ export class GastosComponent implements OnInit {
             }
             if (this.gastoMudou(existente, linha)) {
               atualizacoes.push({ linha, existente, atualizar: true });
+            } else {
+              // id encontrado e sem mudança: não duplica, não atualiza, só avisa no final
+              semAlteracao++;
             }
-            // id encontrado e sem mudança: não faz nada (não duplica, não atualiza)
             continue;
           }
 
@@ -293,7 +296,7 @@ export class GastosComponent implements OnInit {
           linhasNovas.push(linha);
         }
 
-        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasSuspeitas, linhasPossivelEdicao);
+        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasSuspeitas, linhasPossivelEdicao, semAlteracao);
       },
       error: () => this.prepararVinculoOrcamento(linhas)
     });
@@ -303,10 +306,11 @@ export class GastosComponent implements OnInit {
     atualizacoes: AtualizacaoImportacao[],
     linhasNovas: LinhaImportacao[],
     linhasSuspeitas: LinhaImportacao[],
-    linhasPossivelEdicao: LinhaImportacao[]
+    linhasPossivelEdicao: LinhaImportacao[],
+    semAlteracao: number
   ): void {
     if (atualizacoes.length === 0) {
-      this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao);
+      this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao, semAlteracao);
       return;
     }
 
@@ -317,8 +321,10 @@ export class GastosComponent implements OnInit {
     >(ImportarAtualizacaoDialogComponent, { data: { atualizacoes }, width: '820px', maxWidth: '95vw' });
 
     ref.afterClosed().subscribe((decisoes) => {
-      this.executarAtualizacoes(decisoes ?? [], () =>
-        this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao)
+      const decididas = decisoes ?? [];
+      const naoAtualizadas = atualizacoes.length - decididas.length;
+      this.executarAtualizacoes(decididas, () =>
+        this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao, semAlteracao + naoAtualizadas)
       );
     });
   }
@@ -326,10 +332,11 @@ export class GastosComponent implements OnInit {
   private confirmarLinhasSuspeitas(
     linhasNovas: LinhaImportacao[],
     linhasSuspeitas: LinhaImportacao[],
-    linhasPossivelEdicao: LinhaImportacao[]
+    linhasPossivelEdicao: LinhaImportacao[],
+    semAlteracao: number
   ): void {
     if (linhasSuspeitas.length === 0) {
-      this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao);
+      this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao, semAlteracao);
       return;
     }
 
@@ -351,16 +358,20 @@ export class GastosComponent implements OnInit {
         this.mostrarErro(
           `${linhasSuspeitas.length} linha(s) possivelmente repetidas foram ignoradas (não importadas).`
         );
-        this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao);
+        this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao, semAlteracao);
         return;
       }
-      this.confirmarLinhasPossivelEdicao([...linhasNovas, ...linhasSuspeitas], linhasPossivelEdicao);
+      this.confirmarLinhasPossivelEdicao([...linhasNovas, ...linhasSuspeitas], linhasPossivelEdicao, semAlteracao);
     });
   }
 
-  private confirmarLinhasPossivelEdicao(linhasNovas: LinhaImportacao[], linhasPossivelEdicao: LinhaImportacao[]): void {
+  private confirmarLinhasPossivelEdicao(
+    linhasNovas: LinhaImportacao[],
+    linhasPossivelEdicao: LinhaImportacao[],
+    semAlteracao: number
+  ): void {
     if (linhasPossivelEdicao.length === 0) {
-      this.prepararVinculoOrcamento(linhasNovas);
+      this.prepararVinculoOrcamento(linhasNovas, semAlteracao);
       return;
     }
 
@@ -382,10 +393,10 @@ export class GastosComponent implements OnInit {
         this.mostrarErro(
           `${linhasPossivelEdicao.length} linha(s) que pareciam edições foram ignoradas (não importadas).`
         );
-        this.prepararVinculoOrcamento(linhasNovas);
+        this.prepararVinculoOrcamento(linhasNovas, semAlteracao);
         return;
       }
-      this.prepararVinculoOrcamento([...linhasNovas, ...linhasPossivelEdicao]);
+      this.prepararVinculoOrcamento([...linhasNovas, ...linhasPossivelEdicao], semAlteracao);
     });
   }
 
@@ -459,7 +470,19 @@ export class GastosComponent implements OnInit {
     }
   }
 
-  private prepararVinculoOrcamento(linhas: LinhaImportacao[]): void {
+  private prepararVinculoOrcamento(linhas: LinhaImportacao[], semAlteracao = 0): void {
+    if (semAlteracao > 0) {
+      // Linhas com ID reconhecido e dados idênticos aos já cadastrados: não duplica,
+      // não atualiza, mas avisa para o usuário não achar que o import "não fez nada".
+      this.snackBar.open(
+        semAlteracao === 1
+          ? 'Este dado já está cadastrado. Como não houve edição, nada foi atualizado.'
+          : `${semAlteracao} dado(s) desta planilha já estão cadastrados. Como não houve edição, nada foi atualizado.`,
+        'Fechar',
+        { duration: 5000 }
+      );
+    }
+
     if (linhas.length === 0) {
       this.carregar();
       return;
