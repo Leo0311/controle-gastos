@@ -312,8 +312,11 @@ export class GastosComponent implements OnInit {
       data: {
         titulo: 'ID não encontrado em algumas linhas',
         mensagem: `${linhasIdNaoEncontrado.length} linha(s) desta planilha têm um ID que não corresponde a `
-          + 'nenhum gasto seu atual (o gasto pode já ter sido excluído, ou esta planilha é de uma exportação '
-          + 'antiga). Deseja importar essas linhas como gastos novos mesmo assim?'
+          + 'nenhum gasto seu atual. Isso costuma acontecer quando o arquivo é uma exportação antiga, salva há '
+          + 'algum tempo (o ID mudou ou o gasto já foi excluído desde então) - se você reaproveitou um arquivo '
+          + 'salvo anteriormente para editar um valor, prefira sempre clicar em "Exportar XLSX" de novo antes de '
+          + 'editar, para que os IDs estejam atualizados e a importação reconheça o gasto certo em vez de '
+          + 'duplicá-lo. Deseja importar estas linhas como gastos novos mesmo assim?'
       }
     });
 
