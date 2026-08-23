@@ -74,7 +74,11 @@ function validarLinha(linhaBruta: unknown[], numeroLinha: number, comColunaId: b
   const descricao = String(descricaoBruta ?? '').trim();
   const categoria = String(categoriaBruta ?? '').trim();
   const valor = converterValor(valorBruto);
-  const data = converterData(dataBruta);
+
+  // Data não informada (célula vazia): assume a data de hoje em vez de rejeitar a linha.
+  const dataInformada = !(dataBruta === '' || dataBruta === null || dataBruta === undefined);
+  const data = dataInformada ? converterData(dataBruta) : dataDeHojeIso();
+  const dataExibicao = dataInformada ? exibirData(dataBruta) : exibirData(new Date());
 
   let erro: string | null = null;
   if (!descricao) {
@@ -83,7 +87,7 @@ function validarLinha(linhaBruta: unknown[], numeroLinha: number, comColunaId: b
     erro = `Valor inválido na linha ${numeroLinha}.`;
   } else if (!categoria) {
     erro = `Categoria vazia na linha ${numeroLinha}.`;
-  } else if (!data) {
+  } else if (dataInformada && !data) {
     erro = `Data inválida na linha ${numeroLinha}.`;
   }
 
@@ -94,7 +98,7 @@ function validarLinha(linhaBruta: unknown[], numeroLinha: number, comColunaId: b
     categoria,
     valorExibicao: exibirValor(valorBruto),
     valor,
-    dataExibicao: exibirData(dataBruta),
+    dataExibicao,
     data,
     valido: erro === null,
     erro
@@ -184,6 +188,11 @@ function validarEFormatarData(ano: number, mes: number, dia: number): string | n
 
 function formatarDataIso(ano: number, mes: number, dia: number): string {
   return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+function dataDeHojeIso(): string {
+  const hoje = new Date();
+  return formatarDataIso(hoje.getFullYear(), hoje.getMonth() + 1, hoje.getDate());
 }
 
 function exibirValor(bruto: unknown): string {
