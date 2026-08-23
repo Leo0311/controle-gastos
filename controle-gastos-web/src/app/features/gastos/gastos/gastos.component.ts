@@ -252,6 +252,16 @@ export class GastosComponent implements OnInit {
         let semAlteracao = 0;
 
         for (const linha of linhas) {
+          // Descrição, valor, categoria e data batem exatamente com um gasto já
+          // cadastrado - é a mesma planilha (ou os mesmos dados) sendo reimportada.
+          // Nunca cria como gasto novo aqui, com ou sem coluna ID e mesmo que o
+          // usuário confirme "importar mesmo assim" mais adiante: só avisa no final.
+          const duplicataExata = gastosAtuais.some((g) => !this.gastoMudou(g, linha));
+          if (duplicataExata) {
+            semAlteracao++;
+            continue;
+          }
+
           if (linha.id != null) {
             const existente = mapaGastos.get(linha.id);
             if (!existente) {
@@ -260,26 +270,12 @@ export class GastosComponent implements OnInit {
               linhasSuspeitas.push(linha);
               continue;
             }
-            if (this.gastoMudou(existente, linha)) {
-              atualizacoes.push({ linha, existente, atualizar: true });
-            } else {
-              // id encontrado e sem mudança: não duplica, não atualiza, só avisa no final
-              semAlteracao++;
-            }
+            // duplicataExata já garantiu que os dados são diferentes dos de existente
+            atualizacoes.push({ linha, existente, atualizar: true });
             continue;
           }
 
-          // Sem ID (planilha padrão, ou célula ID vazia): se os dados batem exatamente
-          // com um gasto já cadastrado, é provável que a planilha seja uma reimportação
-          // sem a coluna ID (ex: editada a partir do modelo de importação, não da
-          // exportação) - não cria sem perguntar, para não duplicar silenciosamente.
-          const duplicataExata = gastosAtuais.some((g) => !this.gastoMudou(g, linha));
-          if (duplicataExata) {
-            linhasSuspeitas.push(linha);
-            continue;
-          }
-
-          // Ainda sem ID: descrição e categoria batem com um gasto existente, mas valor
+          // Sem ID: descrição e categoria batem com um gasto existente, mas valor
           // ou data são diferentes - provavelmente é uma tentativa de EDITAR aquele gasto,
           // mas sem ID não há como ter certeza de qual gasto é (nem atualizá-lo). Sem essa
           // checagem, a linha seria criada como um gasto novo, duplicando o original.
@@ -342,21 +338,19 @@ export class GastosComponent implements OnInit {
 
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
-        titulo: 'Possíveis gastos repetidos',
-        mensagem: `${linhasSuspeitas.length} linha(s) desta planilha parecem já existir: ou têm um ID que não `
-          + 'corresponde a nenhum gasto seu atual, ou têm descrição, valor, categoria e data idênticos a um '
-          + 'gasto já cadastrado (sem coluna de ID para confirmar). Isso costuma acontecer quando o arquivo é '
-          + 'uma exportação antiga, ou quando a edição foi feita a partir do modelo de importação em vez do '
-          + 'arquivo gerado por "Exportar XLSX" - prefira sempre exportar de novo antes de editar um valor, '
-          + 'para a importação reconhecer o gasto certo em vez de duplicá-lo. Deseja importar estas linhas '
-          + 'como gastos novos mesmo assim?'
+        titulo: 'ID não encontrado',
+        mensagem: `${linhasSuspeitas.length} linha(s) desta planilha têm um ID que não corresponde a nenhum `
+          + 'gasto seu atual (o gasto pode já ter sido excluído, ou esta planilha é de uma exportação antiga). '
+          + 'Os dados dessas linhas são diferentes de tudo que você já tem cadastrado, então não são uma '
+          + 'duplicata - mas, por causa do ID estranho, prefira conferir antes de confirmar. Deseja importar '
+          + 'estas linhas como gastos novos mesmo assim?'
       }
     });
 
     ref.afterClosed().subscribe((confirmado) => {
       if (!confirmado) {
         this.mostrarErro(
-          `${linhasSuspeitas.length} linha(s) possivelmente repetidas foram ignoradas (não importadas).`
+          `${linhasSuspeitas.length} linha(s) com ID não encontrado foram ignoradas (não importadas).`
         );
         this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao, semAlteracao);
         return;
@@ -472,8 +466,9 @@ export class GastosComponent implements OnInit {
 
   private prepararVinculoOrcamento(linhas: LinhaImportacao[], semAlteracao = 0): void {
     if (semAlteracao > 0) {
-      // Linhas com ID reconhecido e dados idênticos aos já cadastrados: não duplica,
-      // não atualiza, mas avisa para o usuário não achar que o import "não fez nada".
+      // Linhas com descrição, valor, categoria e data idênticos a um gasto já cadastrado
+      // (com ou sem coluna ID): nunca duplica, mas avisa para o usuário não achar que a
+      // importação "não fez nada".
       this.snackBar.open(
         semAlteracao === 1
           ? 'Este dado já está cadastrado. Como não houve edição, nada foi atualizado.'
