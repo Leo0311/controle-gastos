@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { Gasto } from '../../../models/gasto.model';
+import { Orcamento } from '../../../models/orcamento.model';
 import { GastoFormDialogComponent, GastoFormDialogData } from '../gasto-form-dialog/gasto-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
@@ -21,6 +22,12 @@ import {
   ImportarRevisaoDialogData
 } from '../importar-revisao-dialog/importar-revisao-dialog.component';
 import { ImportarProgressoDialogComponent } from '../importar-progresso-dialog/importar-progresso-dialog.component';
+import {
+  ImportarVinculoOrcamentoDialogComponent,
+  ImportarVinculoOrcamentoDialogData,
+  VinculoImportacao,
+  DecisaoVinculo
+} from '../importar-vinculo-orcamento-dialog/importar-vinculo-orcamento-dialog.component';
 
 @Component({
   selector: 'app-gastos',
@@ -94,12 +101,13 @@ export class GastosComponent implements OnInit {
   }
 
   private verificarOrcamentoExcedido(gasto: Gasto): void {
+    if (!gasto.orcamentoId) {
+      return;
+    }
     const [ano, mes] = gasto.data.split('-').map(Number);
     this.orcamentoService.verMes(mes, ano).subscribe({
       next: (orcamentos) => {
-        const orcamento = orcamentos.find(
-          (o) => o.categoria.toLowerCase() === gasto.categoria.toLowerCase()
-        );
+        const orcamento = orcamentos.find((o) => o.id === gasto.orcamentoId);
         if (orcamento?.ultrapassou) {
           this.snackBar.open(
             `Atenção: o orçamento de "${orcamento.categoria}" foi ultrapassado neste mês!`,
@@ -122,9 +130,10 @@ export class GastosComponent implements OnInit {
         return;
       }
       this.gastoService.atualizar(gasto.id!, resultado).subscribe({
-        next: () => {
+        next: (gastoAtualizado) => {
           this.mostrarSucesso('Gasto atualizado com sucesso!');
           this.carregar();
+          this.verificarOrcamentoExcedido(gastoAtualizado);
         },
         error: (erro) => this.mostrarErro(this.mensagemErro(erro))
       });
@@ -213,11 +222,52 @@ export class GastosComponent implements OnInit {
       if (!linhasConfirmadas || linhasConfirmadas.length === 0) {
         return;
       }
-      this.executarImportacao(linhasConfirmadas);
+      this.prepararVinculoOrcamento(linhasConfirmadas);
     });
   }
 
-  private executarImportacao(linhas: LinhaImportacao[]): void {
+  private prepararVinculoOrcamento(linhas: LinhaImportacao[]): void {
+    this.orcamentoService.listarTodos().subscribe({
+      next: (orcamentos) => {
+        const vinculos = this.encontrarVinculosPossiveis(linhas, orcamentos);
+        if (vinculos.length === 0) {
+          this.executarImportacao(linhas);
+          return;
+        }
+
+        const ref = this.dialog.open<
+          ImportarVinculoOrcamentoDialogComponent,
+          ImportarVinculoOrcamentoDialogData,
+          DecisaoVinculo[]
+        >(ImportarVinculoOrcamentoDialogComponent, { data: { vinculos }, width: '760px', maxWidth: '95vw' });
+
+        ref.afterClosed().subscribe((decisoes) => {
+          const mapaVinculos = new Map((decisoes ?? []).map((d) => [d.linhaNumero, d.orcamentoId]));
+          this.executarImportacao(linhas, mapaVinculos);
+        });
+      },
+      error: () => this.executarImportacao(linhas)
+    });
+  }
+
+  private encontrarVinculosPossiveis(linhas: LinhaImportacao[], orcamentos: Orcamento[]): VinculoImportacao[] {
+    const vinculos: VinculoImportacao[] = [];
+    for (const linha of linhas) {
+      if (!linha.data) {
+        continue;
+      }
+      const [ano, mes] = linha.data.split('-').map(Number);
+      const orcamento = orcamentos.find(
+        (o) => o.mes === mes && o.ano === ano && o.categoria.toLowerCase() === linha.categoria.toLowerCase()
+      );
+      if (orcamento) {
+        vinculos.push({ linha, orcamento, vincular: true });
+      }
+    }
+    return vinculos;
+  }
+
+  private executarImportacao(linhas: LinhaImportacao[], vinculos?: Map<number, number>): void {
     const progressoRef = this.dialog.open(ImportarProgressoDialogComponent, {
       disableClose: true,
       width: '360px'
@@ -242,7 +292,8 @@ export class GastosComponent implements OnInit {
         descricao: linha.descricao,
         valor: linha.valor!,
         categoria: linha.categoria,
-        data: linha.data!
+        data: linha.data!,
+        orcamentoId: vinculos?.get(linha.linha) ?? null
       };
 
       this.gastoService.cadastrar(gasto).subscribe({

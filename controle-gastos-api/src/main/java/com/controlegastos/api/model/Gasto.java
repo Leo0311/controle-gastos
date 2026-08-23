@@ -42,4 +42,7 @@ public class Gasto {
 
     @Column(name = "usuario_id")
     private Integer usuarioId;
+
+    @Column(name = "orcamento_id")
+    private Integer orcamentoId;
 }

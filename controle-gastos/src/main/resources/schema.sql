@@ -50,3 +50,9 @@ CREATE INDEX IF NOT EXISTS idx_orcamentos_usuario ON orcamentos (usuario_id);
 ALTER TABLE orcamentos DROP CONSTRAINT IF EXISTS uq_orcamento_categoria_mes_ano;
 ALTER TABLE orcamentos ADD CONSTRAINT uq_orcamento_usuario_categoria_mes_ano
     UNIQUE (usuario_id, categoria, mes, ano);
+
+-- Vínculo explícito e opcional de um gasto a um orçamento (substitui a comparação
+-- automática por categoria+mês). ON DELETE SET NULL: excluir um orçamento apenas
+-- desvincula os gastos associados, nunca os apaga.
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS orcamento_id INT REFERENCES orcamentos(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_gastos_orcamento ON gastos (orcamento_id);

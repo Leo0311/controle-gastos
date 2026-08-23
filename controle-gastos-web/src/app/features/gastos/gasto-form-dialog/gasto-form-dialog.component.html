@@ -39,6 +39,19 @@
         <mat-error>Data é obrigatória.</mat-error>
       }
     </mat-form-field>
+
+    <mat-form-field appearance="outline" class="campo-largo">
+      <mat-label>Orçamento (opcional)</mat-label>
+      <mat-select formControlName="orcamentoId" (selectionChange)="onOrcamentoSelecionadoManualmente($event)">
+        <mat-option [value]="null">Nenhum</mat-option>
+        @for (o of opcoesOrcamento; track o.id) {
+          <mat-option [value]="o.id">{{ o.categoria }} (limite {{ o.valorLimite | currency:'BRL' }})</mat-option>
+        }
+      </mat-select>
+      @if (opcoesOrcamento.length === 0) {
+        <mat-hint>Nenhum orçamento cadastrado para o mês/ano selecionado.</mat-hint>
+      }
+    </mat-form-field>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">

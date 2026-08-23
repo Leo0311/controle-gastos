@@ -3,9 +3,11 @@ package com.controlegastos.api.service;
 import com.controlegastos.api.dto.CategoriaTotalDTO;
 import com.controlegastos.api.dto.ResumoDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
+import com.controlegastos.api.exception.OrcamentoInvalidoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.repository.GastoRepository;
+import com.controlegastos.api.repository.OrcamentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 public class GastoService {
 
     private final GastoRepository repository;
+    private final OrcamentoRepository orcamentoRepository;
 
     public List<Gasto> listarTodos(Integer usuarioId) {
         return repository.findAllByUsuarioIdOrderByDataDescIdDesc(usuarioId);
@@ -41,6 +44,7 @@ public class GastoService {
 
     public Gasto cadastrar(Gasto gasto, Integer usuarioId) {
         validar(gasto);
+        validarOrcamento(gasto.getOrcamentoId(), usuarioId);
         gasto.setId(null);
         gasto.setUsuarioId(usuarioId);
         if (gasto.getData() == null) {
@@ -52,10 +56,12 @@ public class GastoService {
     public Gasto atualizar(Integer id, Gasto dados, Integer usuarioId) {
         Gasto existente = buscarPorId(id, usuarioId);
         validar(dados);
+        validarOrcamento(dados.getOrcamentoId(), usuarioId);
         existente.setDescricao(dados.getDescricao());
         existente.setValor(dados.getValor());
         existente.setCategoria(dados.getCategoria());
         existente.setData(dados.getData() != null ? dados.getData() : existente.getData());
+        existente.setOrcamentoId(dados.getOrcamentoId());
         return repository.save(existente);
     }
 
@@ -82,6 +88,14 @@ public class GastoService {
             resultado.add(new TotalMensalDTO(mesAno.getMonthValue(), mesAno.getYear(), total));
         }
         return resultado;
+    }
+
+    private void validarOrcamento(Integer orcamentoId, Integer usuarioId) {
+        if (orcamentoId == null) {
+            return;
+        }
+        orcamentoRepository.findByIdAndUsuarioId(orcamentoId, usuarioId)
+                .orElseThrow(() -> new OrcamentoInvalidoException("Orçamento não encontrado ou não pertence ao usuário."));
     }
 
     private void validar(Gasto gasto) {

@@ -9,9 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.YearMonth;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,21 +38,10 @@ public class OrcamentoService {
 
     public List<OrcamentoMesDTO> orcamentosDoMes(int mes, int ano, Integer usuarioId) {
         List<Orcamento> orcamentos = repository.findByUsuarioIdAndMesAndAnoOrderByCategoria(usuarioId, mes, ano);
-        if (orcamentos.isEmpty()) {
-            return List.of();
-        }
-
-        YearMonth mesAno = YearMonth.of(ano, mes);
-        Map<String, BigDecimal> gastosPorCategoria = gastoRepository
-                .somarPorCategoriaNoPeriodo(usuarioId, mesAno.atDay(1), mesAno.atEndOfMonth()).stream()
-                .collect(Collectors.toMap(
-                        c -> c.getCategoria().toLowerCase(),
-                        GastoRepository.CategoriaTotal::getTotal,
-                        BigDecimal::add));
 
         return orcamentos.stream()
                 .map(o -> {
-                    BigDecimal gasto = gastosPorCategoria.getOrDefault(o.getCategoria().toLowerCase(), BigDecimal.ZERO);
+                    BigDecimal gasto = gastoRepository.somarPorOrcamento(o.getId());
                     boolean ultrapassou = gasto.compareTo(o.getValorLimite()) > 0;
                     return new OrcamentoMesDTO(o.getId(), o.getCategoria(), o.getValorLimite(), gasto, ultrapassou);
                 })

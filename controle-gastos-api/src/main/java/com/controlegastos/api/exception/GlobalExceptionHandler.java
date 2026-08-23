@@ -41,4 +41,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> tratarTokenInvalido(TokenInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("erro", e.getMessage()));
     }
+
+    @ExceptionHandler(OrcamentoInvalidoException.class)
+    public ResponseEntity<Map<String, String>> tratarOrcamentoInvalido(OrcamentoInvalidoException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("erro", e.getMessage()));
+    }
 }

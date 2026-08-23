@@ -4,6 +4,7 @@ export interface Gasto {
   valor: number;
   categoria: string;
   data: string; // formato ISO yyyy-MM-dd, igual ao retornado pela API
+  orcamentoId?: number | null;
 }
 
 export interface CategoriaTotal {
