@@ -257,12 +257,14 @@ export class GastosComponent implements OnInit {
         continue;
       }
       const [ano, mes] = linha.data.split('-').map(Number);
-      const orcamento = orcamentos.find(
-        (o) => o.mes === mes && o.ano === ano && o.categoria.toLowerCase() === linha.categoria.toLowerCase()
-      );
-      if (orcamento) {
-        vinculos.push({ linha, orcamento, vincular: true });
+      const opcoes = orcamentos
+        .filter((o) => o.mes === mes && o.ano === ano)
+        .sort((a, b) => a.categoria.localeCompare(b.categoria));
+      if (opcoes.length === 0) {
+        continue;
       }
+      const correspondente = opcoes.find((o) => o.categoria.toLowerCase() === linha.categoria.toLowerCase());
+      vinculos.push({ linha, opcoes, orcamentoId: correspondente?.id ?? null });
     }
     return vinculos;
   }

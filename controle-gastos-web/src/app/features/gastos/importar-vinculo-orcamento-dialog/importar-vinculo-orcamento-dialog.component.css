@@ -18,3 +18,8 @@ mat-dialog-content {
 .tabela-vinculo {
   width: 100%;
 }
+
+.campo-orcamento {
+  width: 260px;
+  margin-top: 12px;
+}
