@@ -70,9 +70,9 @@ public class GastoService {
         repository.delete(existente);
     }
 
-    public ResumoDTO resumo(Integer usuarioId) {
-        BigDecimal totalGeral = repository.somarTotal(usuarioId);
-        List<CategoriaTotalDTO> porCategoria = repository.somarPorCategoria(usuarioId).stream()
+    public ResumoDTO resumo(Integer usuarioId, LocalDate inicio, LocalDate fim) {
+        BigDecimal totalGeral = repository.somarNoPeriodo(usuarioId, inicio, fim);
+        List<CategoriaTotalDTO> porCategoria = repository.somarPorCategoriaNoPeriodo(usuarioId, inicio, fim).stream()
                 .map(c -> new CategoriaTotalDTO(c.getCategoria(), c.getTotal()))
                 .collect(Collectors.toList());
         return new ResumoDTO(totalGeral, porCategoria);

@@ -43,8 +43,9 @@ export class GastoService {
     return this.http.get<Gasto[]>(`${this.baseUrl}/periodo`, { params });
   }
 
-  resumo(): Observable<Resumo> {
-    return this.http.get<Resumo>(`${this.baseUrl}/resumo`);
+  resumo(inicio: string, fim: string): Observable<Resumo> {
+    const params = new HttpParams().set('inicio', inicio).set('fim', fim);
+    return this.http.get<Resumo>(`${this.baseUrl}/resumo`, { params });
   }
 
   totaisMensais(meses = 6): Observable<TotalMensal[]> {

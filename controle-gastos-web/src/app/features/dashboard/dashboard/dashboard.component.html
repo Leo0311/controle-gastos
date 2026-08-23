@@ -30,7 +30,9 @@
 
   <div class="graficos">
     <mat-card class="grafico-card">
-      <mat-card-subtitle>Distribuição por categoria</mat-card-subtitle>
+      <mat-card-subtitle>
+        Distribuição por categoria ({{ periodoDestaque === 'mes' ? 'mês atual' : 'ano atual' }})
+      </mat-card-subtitle>
       @if (pizzaData.labels && pizzaData.labels.length > 0) {
         <div class="grafico-canvas">
           <canvas baseChart [data]="pizzaData" [options]="pizzaOptions" type="doughnut"></canvas>

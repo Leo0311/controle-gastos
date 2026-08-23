@@ -74,8 +74,11 @@ public class GastoController {
     }
 
     @GetMapping("/resumo")
-    public ResumoDTO resumo(@AuthenticationPrincipal UsuarioPrincipal usuario) {
-        return service.resumo(usuario.usuarioId());
+    public ResumoDTO resumo(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
+            @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.resumo(usuario.usuarioId(), inicio, fim);
     }
 
     @GetMapping("/totais-mensais")

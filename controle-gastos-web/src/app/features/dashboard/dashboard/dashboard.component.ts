@@ -68,6 +68,7 @@ export class DashboardComponent implements OnInit {
 
   onPeriodoChange(evento: MatButtonToggleChange): void {
     this.periodoDestaque = evento.value;
+    this.carregar();
   }
 
   carregar(): void {
@@ -82,10 +83,15 @@ export class DashboardComponent implements OnInit {
     const inicioAno = `${anoAtual}-01-01`;
     const fimAno = `${anoAtual}-12-31`;
 
+    // A "Distribuição por categoria" acompanha o período em destaque (mês ou ano atual)
+    // selecionado no topo da tela, em vez de somar gastos de todos os tempos.
+    const inicioResumo = this.periodoDestaque === 'mes' ? inicioMes : inicioAno;
+    const fimResumo = this.periodoDestaque === 'mes' ? fimMes : fimAno;
+
     forkJoin({
       gastosMes: this.gastoService.listarPorPeriodo(inicioMes, fimMes),
       gastosAno: this.gastoService.listarPorPeriodo(inicioAno, fimAno),
-      resumo: this.gastoService.resumo(),
+      resumo: this.gastoService.resumo(inicioResumo, fimResumo),
       totaisMensais: this.gastoService.totaisMensais(6)
     }).subscribe({
       next: ({ gastosMes, gastosAno, resumo, totaisMensais }) => {
