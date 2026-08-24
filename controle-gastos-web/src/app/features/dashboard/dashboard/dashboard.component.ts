@@ -2,10 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -13,12 +15,16 @@ import { ChartConfiguration, ChartData, ActiveElement } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 
 import { GastoService } from '../../../services/gasto.service';
+import { MetaService } from '../../../services/meta.service';
 import { TotalMensal } from '../../../models/gasto.model';
+import { MetaMes, MetaRequest } from '../../../models/meta.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import {
   DashboardDetalheDialogComponent,
   DashboardDetalheDialogData
 } from '../dashboard-detalhe-dialog/dashboard-detalhe-dialog.component';
+import { RendaFormDialogComponent, RendaFormDialogData } from '../renda-form-dialog/renda-form-dialog.component';
+import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog/meta-form-dialog.component';
 
 const CORES_CATEGORIAS = [
   '#3f51b5', '#e91e63', '#009688', '#ff9800', '#9c27b0',
@@ -38,10 +44,12 @@ const NOMES_MESES_COMPLETO = [
   imports: [
     CurrencyPipe,
     FormsModule,
+    MatButtonModule,
     MatCardModule,
     MatButtonToggleModule,
     MatDialogModule,
     MatFormFieldModule,
+    MatIconModule,
     MatSelectModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
@@ -93,10 +101,13 @@ export class DashboardComponent implements OnInit {
     scales: { y: { beginAtZero: true } }
   };
 
+  metaMes: MetaMes | null = null;
+
   private totaisMensaisAtuais: TotalMensal[] = [];
 
   constructor(
     private readonly gastoService: GastoService,
+    private readonly metaService: MetaService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog
   ) {
@@ -134,9 +145,10 @@ export class DashboardComponent implements OnInit {
       gastosMes: this.gastoService.listarPorPeriodo(inicioMes, fimMes),
       gastosAno: this.gastoService.listarPorPeriodo(inicioAno, fimAno),
       resumo: this.gastoService.resumo(inicioResumo, fimResumo),
-      totaisMensais: this.gastoService.totaisMensais(6)
+      totaisMensais: this.gastoService.totaisMensais(6),
+      metaMes: this.metaService.metaDoMes(this.mes, this.ano)
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, totaisMensais }) => {
+      next: ({ gastosMes, gastosAno, resumo, totaisMensais, metaMes }) => {
         this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
@@ -158,6 +170,7 @@ export class DashboardComponent implements OnInit {
           }]
         };
         this.totaisMensaisAtuais = totaisMensais;
+        this.metaMes = metaMes;
 
         this.carregando = false;
       },
@@ -209,6 +222,91 @@ export class DashboardComponent implements OnInit {
       DashboardDetalheDialogComponent,
       { data, width: '640px', maxWidth: '95vw' }
     );
+  }
+
+  get progressoMeta(): { percentualBarra: number; percentualExibido: number; cor: 'verde' | 'amarelo' | 'vermelho' } | null {
+    const meta = this.metaMes;
+    if (!meta || meta.rendaMensal == null || meta.valorMeta == null || meta.economiaReal == null) {
+      return null;
+    }
+
+    // Compara a economia real com o quanto já era esperado ter economizado até
+    // hoje (meta distribuída proporcionalmente pelos dias do mês), não com a
+    // meta cheia - senão o primeiro dia do mês sempre pareceria "atrasado".
+    const diasNoMes = new Date(this.ano, this.mes, 0).getDate();
+    const proporcaoEsperada = this.diaDeReferencia(diasNoMes) / diasNoMes;
+    const economiaEsperada = meta.valorMeta * proporcaoEsperada;
+
+    let cor: 'verde' | 'amarelo' | 'vermelho';
+    if (meta.economiaReal >= economiaEsperada) {
+      cor = 'verde';
+    } else if (meta.economiaReal >= economiaEsperada * 0.7) {
+      cor = 'amarelo';
+    } else {
+      cor = 'vermelho';
+    }
+
+    const percentualExibido = meta.percentualMeta ?? 0;
+    const percentualBarra = Math.min(100, Math.max(0, percentualExibido));
+
+    return { percentualBarra, percentualExibido, cor };
+  }
+
+  abrirDialogoRenda(): void {
+    const ref = this.dialog.open<RendaFormDialogComponent, RendaFormDialogData, number>(
+      RendaFormDialogComponent,
+      { data: { rendaAtual: this.metaMes?.rendaMensal ?? null } }
+    );
+
+    ref.afterClosed().subscribe((rendaMensal) => {
+      if (rendaMensal == null) {
+        return;
+      }
+      this.metaService.atualizarRenda(rendaMensal).subscribe({
+        next: () => {
+          this.snackBar.open('Renda mensal atualizada com sucesso!', 'Fechar', { duration: 3000 });
+          this.carregar();
+        },
+        error: () => this.snackBar.open('Não foi possível atualizar a renda mensal.', 'Fechar', { duration: 5000 })
+      });
+    });
+  }
+
+  abrirDialogoMeta(): void {
+    const ref = this.dialog.open<MetaFormDialogComponent, MetaFormDialogData, MetaRequest>(
+      MetaFormDialogComponent,
+      {
+        data: {
+          mes: this.mes,
+          ano: this.ano,
+          nomeMes: this.nomeMesSelecionado,
+          valorMetaAtual: this.metaMes?.valorMeta ?? null
+        }
+      }
+    );
+
+    ref.afterClosed().subscribe((meta) => {
+      if (!meta) {
+        return;
+      }
+      this.metaService.definir(meta).subscribe({
+        next: () => {
+          this.snackBar.open('Meta de economia definida com sucesso!', 'Fechar', { duration: 3000 });
+          this.carregar();
+        },
+        error: () => this.snackBar.open('Não foi possível definir a meta.', 'Fechar', { duration: 5000 })
+      });
+    });
+  }
+
+  private diaDeReferencia(diasNoMes: number): number {
+    const hoje = new Date();
+    if (hoje.getFullYear() === this.ano && hoje.getMonth() + 1 === this.mes) {
+      return hoje.getDate();
+    }
+    const inicioMesSelecionado = new Date(this.ano, this.mes - 1, 1);
+    const inicioMesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return inicioMesSelecionado < inicioMesAtual ? diasNoMes : 0;
   }
 
   private formatarData(data: Date): string {

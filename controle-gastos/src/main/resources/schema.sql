@@ -56,3 +56,17 @@ ALTER TABLE orcamentos ADD CONSTRAINT uq_orcamento_usuario_categoria_mes_ano
 -- desvincula os gastos associados, nunca os apaga.
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS orcamento_id INT REFERENCES orcamentos(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_gastos_orcamento ON gastos (orcamento_id);
+
+-- Renda mensal esperada, usada para calcular a economia real (renda - gasto) nas Metas.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS renda_mensal NUMERIC(12,2);
+
+-- Meta de economia mensal: quanto o usuário quer economizar em um mês/ano específico.
+CREATE TABLE IF NOT EXISTS metas (
+    id          SERIAL PRIMARY KEY,
+    usuario_id  INT           NOT NULL REFERENCES usuarios(id),
+    mes         INT           NOT NULL CHECK (mes BETWEEN 1 AND 12),
+    ano         INT           NOT NULL CHECK (ano > 0),
+    valor_meta  NUMERIC(12,2) NOT NULL CHECK (valor_meta > 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_metas_usuario_mes_ano ON metas (usuario_id, mes, ano);

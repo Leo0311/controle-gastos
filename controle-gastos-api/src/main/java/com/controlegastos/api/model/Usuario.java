@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -40,4 +41,7 @@ public class Usuario {
 
     @Column(name = "token_redefinicao_expiracao")
     private LocalDateTime tokenRedefinicaoExpiracao;
+
+    @Column(name = "renda_mensal", precision = 12, scale = 2)
+    private BigDecimal rendaMensal;
 }

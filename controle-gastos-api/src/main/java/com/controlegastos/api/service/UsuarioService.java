@@ -3,8 +3,10 @@ package com.controlegastos.api.service;
 import com.controlegastos.api.dto.CadastroRequestDTO;
 import com.controlegastos.api.dto.LoginRequestDTO;
 import com.controlegastos.api.dto.LoginResponseDTO;
+import com.controlegastos.api.dto.RendaDTO;
 import com.controlegastos.api.exception.CredenciaisInvalidasException;
 import com.controlegastos.api.exception.EmailJaCadastradoException;
+import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.exception.TokenInvalidoException;
 import com.controlegastos.api.model.Usuario;
 import com.controlegastos.api.repository.UsuarioRepository;
@@ -15,6 +17,7 @@ import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -98,6 +101,17 @@ public class UsuarioService {
         usuario.setTokenRedefinicaoSenha(null);
         usuario.setTokenRedefinicaoExpiracao(null);
         repository.save(usuario);
+    }
+
+    public RendaDTO atualizarRenda(BigDecimal rendaMensal, Integer usuarioId) {
+        if (rendaMensal == null || rendaMensal.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Renda mensal deve ser maior que zero.");
+        }
+        Usuario usuario = repository.findById(usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado."));
+        usuario.setRendaMensal(rendaMensal);
+        repository.save(usuario);
+        return new RendaDTO(rendaMensal);
     }
 
     private LoginResponseDTO gerarResposta(Usuario usuario) {

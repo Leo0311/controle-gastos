@@ -91,4 +91,57 @@
       </div>
     </mat-card>
   </div>
+
+  <mat-card class="card-meta">
+    <mat-card-title>Meta de Economia do Mês</mat-card-title>
+
+    @if (metaMes; as meta) {
+      @if (meta.rendaMensal == null) {
+        <div class="aviso-meta">
+          <mat-icon>info</mat-icon>
+          <span>Defina sua renda mensal esperada para acompanhar sua meta de economia.</span>
+          <button mat-stroked-button color="primary" (click)="abrirDialogoRenda()">Definir renda mensal</button>
+        </div>
+      } @else if (meta.valorMeta == null) {
+        <div class="aviso-meta">
+          <mat-icon>info</mat-icon>
+          <span>Você ainda não definiu uma meta de economia para {{ nomeMesSelecionado }}/{{ ano }}.</span>
+          <button mat-stroked-button color="primary" (click)="abrirDialogoMeta()">Definir meta deste mês</button>
+        </div>
+      } @else {
+      <div class="resumo-meta">
+        <div class="resumo-meta-item">
+          <span class="resumo-meta-label">Renda</span>
+          <span class="resumo-meta-valor">{{ meta.rendaMensal | currency:'BRL' }}</span>
+        </div>
+        <div class="resumo-meta-item">
+          <span class="resumo-meta-label">Total gasto</span>
+          <span class="resumo-meta-valor">{{ meta.totalGasto | currency:'BRL' }}</span>
+        </div>
+        <div class="resumo-meta-item">
+          <span class="resumo-meta-label">Economia real</span>
+          <span class="resumo-meta-valor">{{ meta.economiaReal | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      @if (progressoMeta; as progresso) {
+        <div class="barra-progresso">
+          <div
+            class="barra-progresso-preenchida"
+            [class.cor-verde]="progresso.cor === 'verde'"
+            [class.cor-amarelo]="progresso.cor === 'amarelo'"
+            [class.cor-vermelho]="progresso.cor === 'vermelho'"
+            [style.width.%]="progresso.percentualBarra"
+          ></div>
+        </div>
+        <p class="texto-progresso-meta">
+          {{ meta.economiaReal | currency:'BRL' }} de {{ meta.valorMeta | currency:'BRL' }} economizados
+          — {{ progresso.percentualExibido }}% da meta
+        </p>
+      }
+
+        <button mat-button class="botao-editar-meta" (click)="abrirDialogoMeta()">Editar meta</button>
+      }
+    }
+  </mat-card>
 }
