@@ -47,7 +47,10 @@ ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS usuario_id INT REFERENCES usuari
 CREATE INDEX IF NOT EXISTS idx_gastos_usuario ON gastos (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_orcamentos_usuario ON orcamentos (usuario_id);
 
+-- Dropa por ambos os nomes (o antigo, de antes do usuario_id, e o atual) para que
+-- este script continue idempotente e possa ser reexecutado em qualquer banco.
 ALTER TABLE orcamentos DROP CONSTRAINT IF EXISTS uq_orcamento_categoria_mes_ano;
+ALTER TABLE orcamentos DROP CONSTRAINT IF EXISTS uq_orcamento_usuario_categoria_mes_ano;
 ALTER TABLE orcamentos ADD CONSTRAINT uq_orcamento_usuario_categoria_mes_ano
     UNIQUE (usuario_id, categoria, mes, ano);
 
