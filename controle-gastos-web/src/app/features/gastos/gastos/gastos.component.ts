@@ -467,7 +467,8 @@ export class GastosComponent implements OnInit {
 
     const progressoRef = this.dialog.open(ImportarProgressoDialogComponent, {
       disableClose: true,
-      width: '360px'
+      width: '360px',
+      maxWidth: '95vw'
     });
     const instancia = progressoRef.componentInstance;
     instancia.total = decisoes.length;
@@ -586,7 +587,8 @@ export class GastosComponent implements OnInit {
   private executarImportacao(linhas: LinhaImportacao[], vinculos?: Map<number, number>): void {
     const progressoRef = this.dialog.open(ImportarProgressoDialogComponent, {
       disableClose: true,
-      width: '360px'
+      width: '360px',
+      maxWidth: '95vw'
     });
     const instancia = progressoRef.componentInstance;
     instancia.total = linhas.length;

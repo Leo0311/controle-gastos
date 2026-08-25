@@ -2,6 +2,12 @@ mat-dialog-content {
   min-width: 300px;
 }
 
+@media (max-width: 599px) {
+  mat-dialog-content {
+    min-width: 0;
+  }
+}
+
 .status {
   margin-top: 12px;
   text-align: center;

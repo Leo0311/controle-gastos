@@ -1,6 +1,11 @@
 mat-dialog-content {
   min-width: 320px;
-  max-width: 80vw;
+}
+
+@media (max-width: 599px) {
+  mat-dialog-content {
+    min-width: 0;
+  }
 }
 
 .instrucao {
@@ -22,4 +27,10 @@ mat-dialog-content {
 .campo-orcamento {
   width: 260px;
   margin-top: 12px;
+}
+
+@media (max-width: 599px) {
+  .campo-orcamento {
+    width: 180px;
+  }
 }
