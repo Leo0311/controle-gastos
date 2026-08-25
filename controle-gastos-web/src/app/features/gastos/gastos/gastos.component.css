@@ -43,10 +43,16 @@
   background-color: #e8eaf6;
   color: #283593;
   border-radius: 4px;
+  flex-wrap: wrap;
 }
 
 .filtro-ativo span {
-  flex: 1;
+  /* flex-basis de 200px (em vez de 0) evita que o texto quebre em várias
+     linhas curtas cedo demais - ele só cede espaço quando realmente não
+     há mais lugar, e o botão "Ver todos os gastos" quebra para a linha
+     de baixo primeiro. */
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 .tabela-scroll {
