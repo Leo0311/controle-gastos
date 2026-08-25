@@ -84,7 +84,7 @@ export class OrcamentosComponent implements OnInit {
   novoOrcamento(): void {
     const ref = this.dialog.open<OrcamentoFormDialogComponent, OrcamentoFormDialogData, Orcamento>(
       OrcamentoFormDialogComponent,
-      { data: { mes: this.mes, ano: this.ano } }
+      { data: { mes: this.mes, ano: this.ano }, width: '480px', maxWidth: '95vw' }
     );
 
     ref.afterClosed().subscribe((resultado) => {

@@ -2,7 +2,7 @@
 
 <form [formGroup]="form" (ngSubmit)="salvar()">
   <mat-dialog-content class="form-content">
-    <mat-form-field appearance="outline" class="campo-largo">
+    <mat-form-field appearance="outline">
       <mat-label>Categoria</mat-label>
       <input matInput formControlName="categoria" maxlength="60">
       @if (form.controls.categoria.hasError('required')) {

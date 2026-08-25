@@ -255,7 +255,7 @@ export class DashboardComponent implements OnInit {
   abrirDialogoRenda(): void {
     const ref = this.dialog.open<RendaFormDialogComponent, RendaFormDialogData, number>(
       RendaFormDialogComponent,
-      { data: { rendaAtual: this.metaMes?.rendaMensal ?? null } }
+      { data: { rendaAtual: this.metaMes?.rendaMensal ?? null }, width: '420px', maxWidth: '95vw' }
     );
 
     ref.afterClosed().subscribe((rendaMensal) => {
@@ -281,7 +281,9 @@ export class DashboardComponent implements OnInit {
           ano: this.ano,
           nomeMes: this.nomeMesSelecionado,
           valorMetaAtual: this.metaMes?.valorMeta ?? null
-        }
+        },
+        width: '420px',
+        maxWidth: '95vw'
       }
     );
 
