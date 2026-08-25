@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { AsyncPipe, CurrencyPipe } from '@angular/common';
 import { Component, Inject, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -7,6 +7,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatSelectModule, MatSelectChange } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { map } from 'rxjs';
 
 import { Gasto } from '../../../models/gasto.model';
 import { Orcamento } from '../../../models/orcamento.model';
@@ -20,6 +22,7 @@ export interface GastoFormDialogData {
   selector: 'app-gasto-form-dialog',
   standalone: true,
   imports: [
+    AsyncPipe,
     CurrencyPipe,
     ReactiveFormsModule,
     MatDialogModule,
@@ -36,6 +39,12 @@ export class GastoFormDialogComponent implements OnInit {
 
   private readonly fb = inject(FormBuilder);
   private readonly orcamentoService = inject(OrcamentoService);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+
+  // Em telas pequenas, o datepicker abre em modo touch (calendário em tela cheia,
+  // mais fácil de usar com o dedo) em vez do pequeno popup ancorado no input.
+  readonly telaPequena$ = this.breakpointObserver.observe(Breakpoints.Handset)
+    .pipe(map((resultado) => resultado.matches));
 
   readonly editando: boolean;
 

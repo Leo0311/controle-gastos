@@ -2,7 +2,7 @@
 
 <form [formGroup]="form" (ngSubmit)="salvar()">
   <mat-dialog-content class="form-content">
-    <mat-form-field appearance="outline" class="campo-largo">
+    <mat-form-field appearance="outline">
       <mat-label>Descrição</mat-label>
       <input matInput formControlName="descricao" maxlength="150">
       @if (form.controls.descricao.hasError('required')) {
@@ -34,13 +34,13 @@
       <mat-label>Data</mat-label>
       <input matInput [matDatepicker]="picker" formControlName="data">
       <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-      <mat-datepicker #picker></mat-datepicker>
+      <mat-datepicker #picker [touchUi]="(telaPequena$ | async) ?? false"></mat-datepicker>
       @if (form.controls.data.hasError('required')) {
         <mat-error>Data é obrigatória.</mat-error>
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="campo-largo">
+    <mat-form-field appearance="outline">
       <mat-label>Orçamento (opcional)</mat-label>
       <mat-select formControlName="orcamentoId" (selectionChange)="onOrcamentoSelecionadoManualmente($event)">
         <mat-option [value]="null">Nenhum</mat-option>

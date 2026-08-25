@@ -142,7 +142,9 @@ export class GastosComponent implements OnInit {
 
   novoGasto(): void {
     const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, Gasto>(GastoFormDialogComponent, {
-      data: { gasto: null }
+      data: { gasto: null },
+      width: '480px',
+      maxWidth: '95vw'
     });
 
     ref.afterClosed().subscribe((resultado) => {
@@ -191,7 +193,9 @@ export class GastosComponent implements OnInit {
 
   editar(gasto: Gasto): void {
     const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, Gasto>(GastoFormDialogComponent, {
-      data: { gasto }
+      data: { gasto },
+      width: '480px',
+      maxWidth: '95vw'
     });
 
     ref.afterClosed().subscribe((resultado) => {
