@@ -1,0 +1,25 @@
+# Blueprint do Render para o frontend Angular (Static Site).
+#
+# A API (controle-gastos-api) já está publicada separadamente como Web Service
+# via Docker (ver controle-gastos-api/Dockerfile) e não está descrita aqui,
+# para não arriscar o Render tentar reconciliar/recriar um serviço que já
+# existe com configuração própria (env vars de banco, JWT, e-mail etc.).
+services:
+  - type: web
+    name: controle-gastos-web
+    runtime: static
+    rootDir: controle-gastos-web
+    buildCommand: npm install && npm run build -- --configuration production
+    # O builder "application" do Angular 18 (esbuild) gera os arquivos servíveis
+    # dentro de uma subpasta "browser/" (outputPath do angular.json é
+    # "dist/controle-gastos-web", mas o conteúdo publicável fica em
+    # "dist/controle-gastos-web/browser") - confirmado rodando o build local.
+    staticPublishPath: dist/controle-gastos-web/browser
+    # Necessário para o Angular Router: sem isso, recarregar a página ou abrir
+    # um link direto para uma rota (ex: /redefinir-senha?token=... vindo do
+    # e-mail) devolve 404 do servidor estático em vez de deixar o Angular
+    # tratar a rota no lado do cliente.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
