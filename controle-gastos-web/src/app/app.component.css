@@ -1,26 +1,43 @@
 .logo-icone {
   margin-right: 12px;
+  flex-shrink: 0;
 }
 
 .titulo {
   font-size: 20px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .espaco {
   flex: 1 1 auto;
+  /* Sem isso, o item flex nunca encolhe abaixo do seu conteúdo (min-width:
+     auto é o padrão), e o resto da toolbar (nome do usuário, botão Sair)
+     é empurrado para fora da tela em vez de o espaço vazio ceder lugar. */
+  min-width: 0;
 }
 
 .mes-ano-atual {
   font-size: 14px;
   opacity: 0.85;
   margin-right: 16px;
+  white-space: nowrap;
 }
 
 .usuario-nome {
   font-size: 14px;
   opacity: 0.9;
   margin-right: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.botao-sair {
+  flex-shrink: 0;
 }
 
 .conteudo {
@@ -32,5 +49,16 @@
 @media (max-width: 600px) {
   .mes-ano-atual {
     display: none;
+  }
+
+  /* Em telas pequenas, o título por extenso disputa espaço com o nome do
+     usuário e o botão Sair - some com ele e mantém só o ícone, evitando
+     que a barra transborde horizontalmente e corte o botão Sair. */
+  .titulo {
+    display: none;
+  }
+
+  .usuario-nome {
+    max-width: 100px;
   }
 }

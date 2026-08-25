@@ -5,7 +5,7 @@
   @if (usuario$ | async; as usuario) {
     <span class="mes-ano-atual">{{ mesAnoAtual }}</span>
     <span class="usuario-nome">{{ usuario.nome }}</span>
-    <button mat-icon-button (click)="sair()" aria-label="Sair" title="Sair">
+    <button class="botao-sair" mat-icon-button (click)="sair()" aria-label="Sair" title="Sair">
       <mat-icon>logout</mat-icon>
     </button>
   }
