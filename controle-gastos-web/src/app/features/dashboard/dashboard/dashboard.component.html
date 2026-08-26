@@ -135,8 +135,13 @@
           ></div>
         </div>
         <p class="texto-progresso-meta">
-          {{ meta.economiaReal | currency:'BRL' }} de {{ meta.valorMeta | currency:'BRL' }} economizados
-          — {{ progresso.percentualExibido }}% da meta
+          Você já gastou {{ meta.totalGasto | currency:'BRL' }} este mês.
+          @if (meta.economiaReal! >= 0) {
+            Se continuar assim, sobrarão {{ meta.economiaReal | currency:'BRL' }} ao final
+          } @else {
+            Se continuar assim, faltarão {{ -meta.economiaReal! | currency:'BRL' }} ao final
+          }
+          — sua meta é {{ meta.valorMeta | currency:'BRL' }} de sobra ({{ progresso.percentualExibido }}% atingido).
         </p>
       }
 

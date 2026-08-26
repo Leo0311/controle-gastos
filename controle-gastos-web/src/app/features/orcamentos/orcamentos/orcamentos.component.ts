@@ -4,9 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
@@ -25,9 +27,11 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
     MatTableModule,
     MatButtonModule,
     MatIconModule,
+    MatMenuModule,
     MatDialogModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
+    MatProgressBarModule,
     MatFormFieldModule,
     MatSelectModule,
     EmptyStateComponent
@@ -37,7 +41,7 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
 })
 export class OrcamentosComponent implements OnInit {
 
-  readonly colunas = ['categoria', 'valorLimite', 'gasto', 'status', 'acoes'];
+  readonly colunas = ['categoria', 'valorLimite', 'percentual', 'status', 'acoes'];
 
   readonly meses = [
     { valor: 1, nome: 'Janeiro' }, { valor: 2, nome: 'Fevereiro' }, { valor: 3, nome: 'Março' },
@@ -99,6 +103,58 @@ export class OrcamentosComponent implements OnInit {
         error: (erro) => this.mostrarErro(this.mensagemErro(erro))
       });
     });
+  }
+
+  editar(orcamento: OrcamentoMes): void {
+    const ref = this.dialog.open<OrcamentoFormDialogComponent, OrcamentoFormDialogData, Orcamento>(
+      OrcamentoFormDialogComponent,
+      {
+        data: {
+          mes: this.mes,
+          ano: this.ano,
+          orcamento: { id: orcamento.id, categoria: orcamento.categoria, valorLimite: orcamento.valorLimite, mes: this.mes, ano: this.ano }
+        },
+        width: '480px',
+        maxWidth: '95vw'
+      }
+    );
+
+    ref.afterClosed().subscribe((resultado) => {
+      if (!resultado) {
+        return;
+      }
+      this.orcamentoService.atualizar(orcamento.id, resultado).subscribe({
+        next: () => {
+          this.mostrarSucesso('Orçamento atualizado com sucesso!');
+          this.carregar();
+        },
+        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+      });
+    });
+  }
+
+  percentualUsado(orcamento: OrcamentoMes): number {
+    if (!orcamento.valorLimite || orcamento.valorLimite <= 0) {
+      return 0;
+    }
+    return Math.min(100, (orcamento.gasto / orcamento.valorLimite) * 100);
+  }
+
+  percentualExibido(orcamento: OrcamentoMes): number {
+    if (!orcamento.valorLimite || orcamento.valorLimite <= 0) {
+      return 0;
+    }
+    return Math.round((orcamento.gasto / orcamento.valorLimite) * 100);
+  }
+
+  corProgresso(orcamento: OrcamentoMes): 'ok' | 'atencao' | 'alerta' {
+    if (orcamento.ultrapassou) {
+      return 'alerta';
+    }
+    if (orcamento.proximoDoLimite) {
+      return 'atencao';
+    }
+    return 'ok';
   }
 
   excluir(orcamento: OrcamentoMes): void {

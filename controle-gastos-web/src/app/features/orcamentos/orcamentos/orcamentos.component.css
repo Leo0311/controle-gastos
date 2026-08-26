@@ -22,6 +22,39 @@
   width: 100%;
 }
 
+@media (max-width: 599px) {
+  .tabela-scroll {
+    overflow-x: visible;
+  }
+
+  .tabela-orcamentos th,
+  .tabela-orcamentos td {
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .tabela-orcamentos .mat-column-categoria {
+    max-width: 56px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tabela-orcamentos .mat-column-valorLimite {
+    max-width: 66px;
+  }
+
+  .tabela-orcamentos .mat-column-status {
+    max-width: 60px;
+  }
+
+  .tabela-orcamentos th.mat-column-acoes,
+  .tabela-orcamentos td.mat-column-acoes {
+    max-width: 36px;
+    padding-left: 0;
+  }
+}
+
 .carregando {
   display: flex;
   justify-content: center;
@@ -38,6 +71,17 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  .status-badge {
+    padding: 2px 6px;
+    font-size: 9px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+  }
 }
 
 .status-ok {
@@ -53,4 +97,66 @@
 .status-alerta {
   background-color: #fdecea;
   color: #c62828;
+}
+
+.celula-percentual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 90px;
+}
+
+.celula-percentual mat-progress-bar {
+  flex: 1 1 60px;
+  min-width: 0;
+  border-radius: 4px;
+}
+
+.texto-percentual {
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  min-width: 32px;
+}
+
+.texto-valor-gasto {
+  display: block;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.6);
+  margin-top: 2px;
+}
+
+.cor-verde {
+  --mdc-linear-progress-active-indicator-color: #1e7e34;
+  --mdc-linear-progress-track-color: #e6f4ea;
+}
+
+.cor-amarelo {
+  --mdc-linear-progress-active-indicator-color: #e65100;
+  --mdc-linear-progress-track-color: #fff4e5;
+}
+
+.cor-vermelho {
+  --mdc-linear-progress-active-indicator-color: #c62828;
+  --mdc-linear-progress-track-color: #fdecea;
+}
+
+@media (max-width: 599px) {
+  .celula-percentual {
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .celula-percentual mat-progress-bar {
+    flex-basis: 30px;
+  }
+
+  .texto-percentual {
+    min-width: 0;
+    font-size: 10px;
+  }
+
+  .texto-valor-gasto {
+    font-size: 9px;
+  }
 }

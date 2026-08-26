@@ -22,6 +22,10 @@ export class OrcamentoService {
     return this.http.post<Orcamento>(this.baseUrl, orcamento);
   }
 
+  atualizar(id: number, orcamento: Orcamento): Observable<Orcamento> {
+    return this.http.put<Orcamento>(`${this.baseUrl}/${id}`, orcamento);
+  }
+
   excluir(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

@@ -12,6 +12,16 @@
   width: 100%;
 }
 
+.icone-ajuda {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  vertical-align: text-top;
+  margin-left: 4px;
+  cursor: help;
+  color: rgba(0, 0, 0, 0.5);
+}
+
 @media (max-width: 599px) {
   .form-content {
     min-width: 0;

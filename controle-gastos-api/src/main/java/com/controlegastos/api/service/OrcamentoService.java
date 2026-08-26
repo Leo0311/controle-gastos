@@ -32,6 +32,25 @@ public class OrcamentoService {
         return repository.save(orcamento);
     }
 
+    public Orcamento atualizar(Integer id, Orcamento dados, Integer usuarioId) {
+        validar(dados);
+
+        Orcamento existente = repository.findByIdAndUsuarioId(id, usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Orçamento não encontrado com ID " + id));
+
+        boolean jaExiste = repository.findByUsuarioIdAndCategoriaIgnoreCaseAndMesAndAnoAndIdNot(
+                usuarioId, dados.getCategoria(), dados.getMes(), dados.getAno(), id).isPresent();
+        if (jaExiste) {
+            throw new IllegalArgumentException("Já existe um orçamento definido para essa categoria/mês/ano.");
+        }
+
+        existente.setCategoria(dados.getCategoria());
+        existente.setValorLimite(dados.getValorLimite());
+        existente.setMes(dados.getMes());
+        existente.setAno(dados.getAno());
+        return repository.save(existente);
+    }
+
     public void excluir(Integer id, Integer usuarioId) {
         Orcamento existente = repository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Orçamento não encontrado com ID " + id));

@@ -41,7 +41,15 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>Orçamento (opcional)</mat-label>
+      <mat-label>
+        Orçamento (opcional)
+        <mat-icon
+          class="icone-ajuda"
+          aria-label="Ajuda sobre o campo Orçamento"
+          matTooltip="Campo opcional. Se não informado, o gasto não desconta de nenhum orçamento. Selecione um orçamento existente para descontar o valor dele, ou crie um novo orçamento primeiro."
+          matTooltipPosition="above"
+        >help_outline</mat-icon>
+      </mat-label>
       <mat-select formControlName="orcamentoId" (selectionChange)="onOrcamentoSelecionadoManualmente($event)">
         <mat-option [value]="null">Nenhum</mat-option>
         @for (o of opcoesOrcamento; track o.id) {

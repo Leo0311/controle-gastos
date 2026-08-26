@@ -13,4 +13,7 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Integer> {
     Optional<Orcamento> findByIdAndUsuarioId(Integer id, Integer usuarioId);
 
     List<Orcamento> findByUsuarioIdAndMesAndAnoOrderByCategoria(Integer usuarioId, int mes, int ano);
+
+    Optional<Orcamento> findByUsuarioIdAndCategoriaIgnoreCaseAndMesAndAnoAndIdNot(
+            Integer usuarioId, String categoria, int mes, int ano, Integer id);
 }

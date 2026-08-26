@@ -11,6 +11,7 @@ import { Orcamento } from '../../../models/orcamento.model';
 export interface OrcamentoFormDialogData {
   mes: number;
   ano: number;
+  orcamento?: Orcamento | null;
 }
 
 @Component({
@@ -38,6 +39,8 @@ export class OrcamentoFormDialogComponent {
     { valor: 10, nome: 'Outubro' }, { valor: 11, nome: 'Novembro' }, { valor: 12, nome: 'Dezembro' }
   ];
 
+  readonly editando: boolean;
+
   readonly form = this.fb.group({
     categoria: ['', [Validators.required, Validators.maxLength(60)]],
     valorLimite: [null as number | null, [Validators.required, Validators.min(0.01)]],
@@ -49,7 +52,17 @@ export class OrcamentoFormDialogComponent {
     private readonly dialogRef: MatDialogRef<OrcamentoFormDialogComponent>,
     @Inject(MAT_DIALOG_DATA) data: OrcamentoFormDialogData
   ) {
-    this.form.patchValue({ mes: data.mes, ano: data.ano });
+    this.editando = !!data.orcamento;
+    if (data.orcamento) {
+      this.form.patchValue({
+        categoria: data.orcamento.categoria,
+        valorLimite: data.orcamento.valorLimite,
+        mes: data.orcamento.mes,
+        ano: data.orcamento.ano
+      });
+    } else {
+      this.form.patchValue({ mes: data.mes, ano: data.ano });
+    }
   }
 
   cancelar(): void {

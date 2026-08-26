@@ -63,6 +63,49 @@
   width: 100%;
 }
 
+@media (max-width: 599px) {
+  .tabela-scroll {
+    overflow-x: visible;
+  }
+
+  .tabela-gastos th,
+  .tabela-gastos td {
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .tabela-gastos .mat-column-descricao {
+    max-width: 56px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tabela-gastos .mat-column-categoria {
+    max-width: 44px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tabela-gastos .mat-column-valor {
+    max-width: 60px;
+  }
+
+  .tabela-gastos .mat-column-data {
+    max-width: 76px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tabela-gastos th.mat-column-acoes,
+  .tabela-gastos td.mat-column-acoes {
+    max-width: 36px;
+    padding-left: 0;
+  }
+}
+
 .carregando {
   display: flex;
   justify-content: center;

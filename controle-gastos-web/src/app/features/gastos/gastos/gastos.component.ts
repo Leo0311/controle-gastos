@@ -63,7 +63,7 @@ export class GastosComponent implements OnInit {
 
   @ViewChild('inputArquivo') inputArquivo!: ElementRef<HTMLInputElement>;
 
-  readonly colunas = ['id', 'descricao', 'valor', 'categoria', 'data', 'acoes'];
+  readonly colunas = ['descricao', 'valor', 'categoria', 'data', 'acoes'];
   gastos: Gasto[] = [];
   carregando = false;
 
