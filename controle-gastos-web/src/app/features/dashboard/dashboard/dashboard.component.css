@@ -144,6 +144,9 @@
   color: rgba(0, 0, 0, 0.7);
 }
 
-.botao-editar-meta {
+.acoes-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-top: 8px;
 }
