@@ -179,6 +179,12 @@ export class GastosComponent implements OnInit {
             'Fechar',
             { duration: 7000, panelClass: 'snack-alerta' }
           );
+        } else if (orcamento.completo) {
+          this.snackBar.open(
+            `O orçamento de "${orcamento.categoria}" atingiu exatamente o limite neste mês.`,
+            'Fechar',
+            { duration: 6000, panelClass: 'snack-atencao' }
+          );
         } else if (orcamento.proximoDoLimite) {
           this.snackBar.open(
             `Atenção: o orçamento de "${orcamento.categoria}" está próximo do limite neste mês.`,

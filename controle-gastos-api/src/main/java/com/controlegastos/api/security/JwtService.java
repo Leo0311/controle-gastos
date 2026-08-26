@@ -14,7 +14,7 @@ import java.util.Date;
 @Component
 public class JwtService {
 
-    private static final long VALIDADE_MS = 1000L * 60 * 60 * 24; // 24 horas
+    private static final long VALIDADE_MS = 1000L * 60 * 60 * 6; // 6 horas
 
     private final SecretKey chave;
 

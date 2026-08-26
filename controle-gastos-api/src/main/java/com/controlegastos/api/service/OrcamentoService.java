@@ -64,10 +64,11 @@ public class OrcamentoService {
                 .map(o -> {
                     BigDecimal gasto = gastoRepository.somarPorOrcamento(o.getId());
                     boolean ultrapassou = gasto.compareTo(o.getValorLimite()) > 0;
-                    boolean proximoDoLimite = !ultrapassou
+                    boolean completo = gasto.compareTo(o.getValorLimite()) == 0;
+                    boolean proximoDoLimite = !ultrapassou && !completo
                             && gasto.compareTo(o.getValorLimite().multiply(PERCENTUAL_ALERTA_PROXIMIDADE)) >= 0;
                     return new OrcamentoMesDTO(
-                            o.getId(), o.getCategoria(), o.getValorLimite(), gasto, ultrapassou, proximoDoLimite);
+                            o.getId(), o.getCategoria(), o.getValorLimite(), gasto, ultrapassou, completo, proximoDoLimite);
                 })
                 .collect(Collectors.toList());
     }

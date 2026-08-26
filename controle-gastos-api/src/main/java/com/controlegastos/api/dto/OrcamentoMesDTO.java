@@ -13,5 +13,6 @@ public class OrcamentoMesDTO {
     private BigDecimal valorLimite;
     private BigDecimal gasto;
     private boolean ultrapassou;
+    private boolean completo;
     private boolean proximoDoLimite;
 }

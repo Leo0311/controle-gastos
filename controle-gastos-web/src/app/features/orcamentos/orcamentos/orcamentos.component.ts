@@ -147,9 +147,12 @@ export class OrcamentosComponent implements OnInit {
     return Math.round((orcamento.gasto / orcamento.valorLimite) * 100);
   }
 
-  corProgresso(orcamento: OrcamentoMes): 'ok' | 'atencao' | 'alerta' {
+  corProgresso(orcamento: OrcamentoMes): 'ok' | 'atencao' | 'alerta' | 'completo' {
     if (orcamento.ultrapassou) {
       return 'alerta';
+    }
+    if (orcamento.completo) {
+      return 'completo';
     }
     if (orcamento.proximoDoLimite) {
       return 'atencao';

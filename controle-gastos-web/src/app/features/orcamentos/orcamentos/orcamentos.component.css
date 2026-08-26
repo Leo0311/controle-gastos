@@ -99,6 +99,11 @@
   color: #c62828;
 }
 
+.status-completo {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
 .celula-percentual {
   display: flex;
   align-items: center;
@@ -139,6 +144,11 @@
 .cor-vermelho {
   --mdc-linear-progress-active-indicator-color: #c62828;
   --mdc-linear-progress-track-color: #fdecea;
+}
+
+.cor-azul {
+  --mdc-linear-progress-active-indicator-color: #1565c0;
+  --mdc-linear-progress-track-color: #e3f2fd;
 }
 
 @media (max-width: 599px) {
