@@ -14,6 +14,14 @@ const ESTILO_EXEMPLO = {
   font: { italic: true, color: { rgb: '757575' } }
 };
 
+// Além do estilo visual (itálico/cinza), força 2 casas decimais na célula de
+// valor - sem isso, o Excel exibe o número bruto (ex: "45.9" em vez de
+// "45,90"), que fica ambíguo/inconsistente com o resto do app.
+const ESTILO_EXEMPLO_VALOR = {
+  ...ESTILO_EXEMPLO,
+  numFmt: '0.00'
+};
+
 export function baixarModeloImportacaoGastos(): void {
   const cabecalho = ['Descrição', 'Valor', 'Categoria', 'Data'];
   const linhaExemplo = ['Almoço no restaurante', 45.9, 'Alimentação', '15/03/2026'];
@@ -24,9 +32,10 @@ export function baixarModeloImportacaoGastos(): void {
     planilha[endereco].s = ESTILO_CABECALHO;
   });
 
-  ['A2', 'B2', 'C2', 'D2'].forEach((endereco) => {
+  ['A2', 'C2', 'D2'].forEach((endereco) => {
     planilha[endereco].s = ESTILO_EXEMPLO;
   });
+  planilha['B2'].s = ESTILO_EXEMPLO_VALOR;
 
   planilha['!cols'] = [
     { wch: 30 },

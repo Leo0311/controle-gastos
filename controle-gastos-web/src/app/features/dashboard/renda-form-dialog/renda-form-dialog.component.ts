@@ -5,6 +5,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 
+import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
+
 export interface RendaFormDialogData {
   rendaAtual: number | null;
 }
@@ -12,7 +14,14 @@ export interface RendaFormDialogData {
 @Component({
   selector: 'app-renda-form-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MascaraMoedaDirective
+  ],
   templateUrl: './renda-form-dialog.component.html',
   styleUrl: './renda-form-dialog.component.css'
 })

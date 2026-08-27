@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 
 import { MetaRequest } from '../../../models/meta.model';
+import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
 
 export interface MetaFormDialogData {
   mes: number;
@@ -17,7 +18,14 @@ export interface MetaFormDialogData {
 @Component({
   selector: 'app-meta-form-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MascaraMoedaDirective
+  ],
   templateUrl: './meta-form-dialog.component.html',
   styleUrl: './meta-form-dialog.component.css'
 })
