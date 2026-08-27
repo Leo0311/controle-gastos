@@ -1,34 +1,56 @@
 # Controle de Gastos
 
-Sistema de controle de gastos pessoais composto por três aplicações independentes que compartilham o mesmo banco de dados PostgreSQL: uma aplicação de console em Java, uma API REST em Spring Boot e um frontend web em Angular.
+Sistema de controle de gastos pessoais com autenticação, orçamentos por categoria vinculados aos gastos, metas de economia mensais e dashboard com gráficos. Composto por três aplicações que compartilham o mesmo banco PostgreSQL: uma aplicação de console em Java, uma API REST em Spring Boot e um frontend web em Angular.
+
+## Produção
+
+- **Frontend**: https://controle-gastos-web-v8wf.onrender.com
+- **API**: https://controle-gastos-api-cfr4.onrender.com/api
+
+Hospedados no [Render](https://render.com) (frontend como Static Site via Blueprint em `render.yaml`, API como Web Service via Docker); banco PostgreSQL gerenciado pelo [Neon](https://neon.tech).
 
 ## Estrutura do repositório
 
 ```
 controle-gastos/            (raiz do repositório)
 ├── controle-gastos/         # Aplicação de console em Java (Maven), acesso direto ao banco via JDBC
-├── controle-gastos-api/     # API REST em Spring Boot, mapeando as mesmas tabelas via JPA
+├── controle-gastos-api/     # API REST em Spring Boot, com autenticação JWT
 └── controle-gastos-web/     # Frontend em Angular 18 + Angular Material, consumindo a API REST
 ```
 
 - **`controle-gastos/`** — aplicação de linha de comando (menu interativo) para cadastrar e consultar gastos e orçamentos diretamente no PostgreSQL, sem depender da API.
-- **`controle-gastos-api/`** — API REST (Java 17 + Spring Boot) que expõe os mesmos dados via HTTP/JSON, usada pelo frontend Angular.
-- **`controle-gastos-web/`** — SPA em Angular que consome a API para oferecer telas de Dashboard, Gastos e Orçamentos.
+- **`controle-gastos-api/`** — API REST (Java 17 + Spring Boot) com autenticação JWT, usada pelo frontend Angular.
+- **`controle-gastos-web/`** — SPA em Angular que consome a API para oferecer telas de Login/Cadastro, Dashboard, Gastos e Orçamentos, responsiva em mobile.
 
 ## Funcionalidades
 
-- Cadastro, edição e exclusão de gastos (descrição, valor, categoria, data)
-- Listagem de gastos por categoria, período ou mês/ano
-- Definição de orçamento por categoria/mês, com alerta visual quando o gasto ultrapassa o valor orçado
-- Dashboard com cards de totais (mês/ano atual) e gráficos (distribuição por categoria e evolução dos últimos meses)
-- Exportação de gastos para CSV
-- Exportação de um modelo `.xlsx` para importação e importação de planilha de gastos, com revisão e validação linha a linha antes de confirmar
+### Autenticação
+Cadastro e login com senha (hash no banco), sessão persistida em `localStorage` (sobrevive a F5 e a fechar/reabrir a aba) com token JWT válido por 6 horas, logout automático quando o token expira, e recuperação de senha por e-mail (link com token válido por 1 hora).
+
+### Gastos
+CRUD completo (descrição, valor, categoria, data), listagem por categoria/período/mês, exportação e importação em lote via planilha `.xlsx` (ver abaixo). Cada gasto pode ser vinculado a um orçamento do mês/categoria correspondente.
+
+### Orçamentos
+Limite de valor por categoria e mês/ano, com edição. O uso de cada orçamento (soma dos gastos vinculados a ele) é classificado em 4 status, exibidos com barra de progresso colorida: **OK** (< 80%), **Atenção** (80–99%), **Completo** (exatamente 100%) e **Ultrapassou** (> 100%).
+
+### Metas de economia
+No Dashboard, o usuário define uma renda mensal e uma meta de economia (valor que deseja ter sobrando no fim do mês). O app calcula `renda − total gasto no mês = economia projetada` e compara com a meta, mostrando o progresso numa barra colorida (verde/amarelo/vermelho) que leva em conta quantos dias do mês já passaram.
+
+### Dashboard
+Cards de totais do mês/ano selecionado, gráfico de pizza (distribuição por categoria) e gráfico de barras (evolução dos últimos 6 meses) — ambos clicáveis, abrindo o detalhamento dos gastos do período/categoria selecionado.
+
+### Exportação e importação de planilhas (.xlsx)
+Exportação de todos os gastos para `.xlsx`, download de um modelo de planilha para importação, e um fluxo guiado de importação que revisa cada linha, detecta duplicatas e possíveis edições de gastos já cadastrados, e sugere automaticamente o vínculo com orçamentos existentes antes de confirmar a gravação em lote.
+
+### Campos de valor monetário
+Todos os campos de valor (Valor do gasto, Valor Limite do orçamento, Renda mensal, Meta de economia) usam uma máscara de digitação estilo "caixa registradora": os dígitos entram da direita para a esquerda (centavos primeiro), com suporte completo a Backspace, seleção de texto e colar — funcionando de forma idêntica em desktop e mobile.
 
 ## Tecnologias
 
-- **Backend**: Java 17, Maven, Spring Boot (API REST), Spring Data JPA, JDBC puro (console)
-- **Banco de dados**: PostgreSQL
-- **Frontend**: Angular 18, Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas)
+- **Backend**: Java 17, Maven, Spring Boot 4, Spring Data JPA, Spring Security + JWT (jjwt), Spring Mail
+- **Banco de dados**: PostgreSQL (Neon em produção)
+- **Frontend**: Angular 18 (standalone components), Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas)
+- **Deploy**: Render (frontend como Static Site, API como Web Service via Docker)
 
 ## Pré-requisitos
 
@@ -45,9 +67,9 @@ As três partes usam o mesmo banco `controle_gastos`. Crie o banco:
 CREATE DATABASE controle_gastos;
 ```
 
-Depois, conectado a esse banco, rode o script `controle-gastos/src/main/resources/schema.sql`, que cria as tabelas `gastos` e `orcamentos`.
+Depois, conectado a esse banco, rode o script `controle-gastos/src/main/resources/schema.sql`, que cria as tabelas usadas pela aplicação (`usuarios`, `gastos`, `orcamentos`, `metas`, etc.).
 
-## Como rodar cada parte
+## Como rodar cada parte localmente
 
 ### 1. Console (`controle-gastos/`)
 
@@ -62,7 +84,7 @@ Mais detalhes em [`controle-gastos/README.md`](controle-gastos/README.md).
 
 ### 2. API REST (`controle-gastos-api/`)
 
-Copie `src/main/resources/application.properties.example` para `application.properties` e ajuste usuário/senha do PostgreSQL. Depois:
+Copie `src/main/resources/application.properties.example` para `application.properties` e ajuste: usuário/senha do PostgreSQL, um segredo JWT (`app.jwt.secret`) e as credenciais SMTP usadas para o e-mail de recuperação de senha (`spring.mail.*` — o arquivo de exemplo tem instruções para gerar ambos). Depois:
 
 ```bash
 cd controle-gastos-api
