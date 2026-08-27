@@ -43,6 +43,7 @@ public class GastoService {
     }
 
     public Gasto cadastrar(Gasto gasto, Integer usuarioId) {
+        normalizar(gasto);
         validar(gasto);
         validarOrcamento(gasto.getOrcamentoId(), usuarioId);
         gasto.setId(null);
@@ -55,14 +56,24 @@ public class GastoService {
 
     public Gasto atualizar(Integer id, Gasto dados, Integer usuarioId) {
         Gasto existente = buscarPorId(id, usuarioId);
+        normalizar(dados);
         validar(dados);
         validarOrcamento(dados.getOrcamentoId(), usuarioId);
         existente.setDescricao(dados.getDescricao());
         existente.setValor(dados.getValor());
         existente.setCategoria(dados.getCategoria());
+        existente.setSubcategoria(dados.getSubcategoria());
         existente.setData(dados.getData() != null ? dados.getData() : existente.getData());
         existente.setOrcamentoId(dados.getOrcamentoId());
         return repository.save(existente);
+    }
+
+    // Trata subcategoria em branco como ausente (null), igual ao restante do app.
+    private void normalizar(Gasto gasto) {
+        if (gasto.getSubcategoria() != null) {
+            String subcategoria = gasto.getSubcategoria().trim();
+            gasto.setSubcategoria(subcategoria.isEmpty() ? null : subcategoria);
+        }
     }
 
     public void excluir(Integer id, Integer usuarioId) {

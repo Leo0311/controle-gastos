@@ -30,6 +30,9 @@ public class Orcamento {
     @Column(nullable = false, length = 60)
     private String categoria;
 
+    @Column(length = 60)
+    private String subcategoria;
+
     @Column(name = "valor_limite", nullable = false, precision = 12, scale = 2)
     private BigDecimal valorLimite;
 

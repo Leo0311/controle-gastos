@@ -64,6 +64,7 @@ export class GastoFormDialogComponent implements OnInit {
     descricao: ['', [Validators.required, Validators.maxLength(150)]],
     valor: [null as number | null, [Validators.required, Validators.min(0.01)]],
     categoria: ['', [Validators.required, Validators.maxLength(60)]],
+    subcategoria: ['', [Validators.maxLength(60)]],
     data: [new Date(), [Validators.required]],
     orcamentoId: [null as number | null]
   });
@@ -82,6 +83,7 @@ export class GastoFormDialogComponent implements OnInit {
         descricao: data.gasto.descricao,
         valor: data.gasto.valor,
         categoria: data.gasto.categoria,
+        subcategoria: data.gasto.subcategoria ?? '',
         data: this.parseDataLocal(data.gasto.data),
         orcamentoId: data.gasto.orcamentoId ?? null
       });
@@ -98,6 +100,7 @@ export class GastoFormDialogComponent implements OnInit {
     });
 
     this.form.controls.categoria.valueChanges.subscribe(() => this.atualizarOpcoesOrcamento());
+    this.form.controls.subcategoria.valueChanges.subscribe(() => this.atualizarOpcoesOrcamento());
     this.form.controls.data.valueChanges.subscribe(() => this.atualizarOpcoesOrcamento());
   }
 
@@ -120,6 +123,7 @@ export class GastoFormDialogComponent implements OnInit {
       descricao: valores.descricao!.trim(),
       valor: valores.valor!,
       categoria: valores.categoria!.trim(),
+      subcategoria: valores.subcategoria?.trim() || null,
       data: this.formatarDataIso(valores.data!),
       orcamentoId: valores.orcamentoId ?? null
     };
@@ -137,15 +141,30 @@ export class GastoFormDialogComponent implements OnInit {
     const ano = data.getFullYear();
     this.opcoesOrcamento = this.todosOrcamentos
       .filter((o) => o.mes === mes && o.ano === ano)
-      .sort((a, b) => a.categoria.localeCompare(b.categoria));
+      // Orçamentos gerais (sem subcategoria) aparecem antes dos específicos da
+      // mesma categoria, para ficar visualmente claro qual é o "guarda-chuva".
+      .sort((a, b) =>
+        a.categoria.localeCompare(b.categoria)
+        || Number(!!a.subcategoria) - Number(!!b.subcategoria)
+        || (a.subcategoria ?? '').localeCompare(b.subcategoria ?? ''));
 
     if (this.escolhaManual) {
       return;
     }
 
     const categoria = (this.form.controls.categoria.value ?? '').trim().toLowerCase();
-    const correspondente = this.opcoesOrcamento.find((o) => o.categoria.toLowerCase() === categoria);
-    this.form.controls.orcamentoId.setValue(correspondente?.id ?? null);
+    const subcategoria = (this.form.controls.subcategoria.value ?? '').trim().toLowerCase();
+
+    // Se o gasto já tem subcategoria preenchida, prioriza o orçamento específico
+    // daquela subcategoria; só cai para o orçamento geral da categoria (sem
+    // subcategoria) se não houver um específico correspondente.
+    const especifico = subcategoria
+      ? this.opcoesOrcamento.find((o) =>
+          o.categoria.toLowerCase() === categoria && (o.subcategoria ?? '').toLowerCase() === subcategoria)
+      : undefined;
+    const geral = this.opcoesOrcamento.find((o) => o.categoria.toLowerCase() === categoria && !o.subcategoria);
+
+    this.form.controls.orcamentoId.setValue((especifico ?? geral)?.id ?? null);
   }
 
   private parseDataLocal(iso: string): Date {

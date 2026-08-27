@@ -31,6 +31,11 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
+      <mat-label>Subcategoria (opcional)</mat-label>
+      <input matInput formControlName="subcategoria" maxlength="60">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
       <mat-label>Data</mat-label>
       <input matInput [matDatepicker]="picker" formControlName="data">
       <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
@@ -53,7 +58,9 @@
       <mat-select formControlName="orcamentoId" (selectionChange)="onOrcamentoSelecionadoManualmente($event)">
         <mat-option [value]="null">Nenhum</mat-option>
         @for (o of opcoesOrcamento; track o.id) {
-          <mat-option [value]="o.id">{{ o.categoria }} (limite {{ o.valorLimite | currency:'BRL' }})</mat-option>
+          <mat-option [value]="o.id">
+            {{ o.categoria }}{{ o.subcategoria ? ' / ' + o.subcategoria : '' }} (limite {{ o.valorLimite | currency:'BRL' }})
+          </mat-option>
         }
       </mat-select>
       @if (opcoesOrcamento.length === 0) {

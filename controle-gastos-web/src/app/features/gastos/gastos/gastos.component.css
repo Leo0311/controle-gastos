@@ -63,6 +63,14 @@
   width: 100%;
 }
 
+.subcategoria-label {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 599px) {
   .tabela-scroll {
     overflow-x: visible;
@@ -82,10 +90,14 @@
   }
 
   .tabela-gastos .mat-column-categoria {
-    max-width: 44px;
+    max-width: 60px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .tabela-gastos .subcategoria-label {
+    font-size: 9px;
   }
 
   .tabela-gastos .mat-column-valor {

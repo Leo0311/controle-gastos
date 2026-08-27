@@ -32,7 +32,7 @@ export interface DecisaoAtualizacao {
 })
 export class ImportarAtualizacaoDialogComponent {
 
-  readonly colunas = ['atualizar', 'id', 'descricao', 'valor', 'categoria', 'data'];
+  readonly colunas = ['atualizar', 'id', 'descricao', 'valor', 'categoria', 'subcategoria', 'data'];
 
   todosMarcados = true;
 

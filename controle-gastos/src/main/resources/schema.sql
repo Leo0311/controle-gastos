@@ -73,3 +73,24 @@ CREATE TABLE IF NOT EXISTS metas (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_metas_usuario_mes_ano ON metas (usuario_id, mes, ano);
+
+-- Subcategoria: campo opcional, texto livre, complementar à categoria (mesma regra
+-- de "sem lista fixa" da categoria). Nullable de propósito - gastos/orçamentos
+-- antigos continuam válidos sem subcategoria (orçamento "geral" da categoria).
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS subcategoria VARCHAR(60);
+ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS subcategoria VARCHAR(60);
+
+CREATE INDEX IF NOT EXISTS idx_gastos_subcategoria ON gastos (subcategoria);
+
+-- A constraint antiga (categoria, mes, ano) não permitia um orçamento "geral" da
+-- categoria coexistir com um orçamento de subcategoria específica no mesmo mês.
+-- Troca por um índice único por expressão: COALESCE(subcategoria, '') trata os
+-- dois NULLs (dois orçamentos "gerais" da mesma categoria) como iguais entre si
+-- -- ao contrário de uma UNIQUE constraint comum, em que o padrão SQL trata cada
+-- NULL como distinto e permitiria duplicar orçamentos gerais sem erro nenhum.
+ALTER TABLE orcamentos DROP CONSTRAINT IF EXISTS uq_orcamento_categoria_mes_ano;
+ALTER TABLE orcamentos DROP CONSTRAINT IF EXISTS uq_orcamento_usuario_categoria_mes_ano;
+DROP INDEX IF EXISTS uq_orcamento_usuario_categoria_mes_ano;
+DROP INDEX IF EXISTS uq_orcamento_usuario_categoria_subcategoria_mes_ano;
+CREATE UNIQUE INDEX uq_orcamento_usuario_categoria_subcategoria_mes_ano
+    ON orcamentos (usuario_id, categoria, COALESCE(subcategoria, ''), mes, ano);

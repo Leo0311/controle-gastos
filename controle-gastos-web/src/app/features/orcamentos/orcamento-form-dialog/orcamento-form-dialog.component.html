@@ -11,6 +11,12 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
+      <mat-label>Subcategoria (opcional)</mat-label>
+      <input matInput formControlName="subcategoria" maxlength="60">
+      <mat-hint>Deixe em branco para um orçamento geral da categoria.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
       <mat-label>Valor limite</mat-label>
       <span matTextPrefix>R$&nbsp;</span>
       <input matInput appMascaraMoeda placeholder="0,00" formControlName="valorLimite">

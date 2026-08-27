@@ -37,6 +37,9 @@ public class Gasto {
     @Column(nullable = false, length = 60)
     private String categoria;
 
+    @Column(length = 60)
+    private String subcategoria;
+
     @Column(nullable = false)
     private LocalDate data;
 

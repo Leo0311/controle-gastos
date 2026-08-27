@@ -462,6 +462,7 @@ export class GastosComponent implements OnInit {
     return existente.descricao !== linha.descricao
       || Math.abs(existente.valor - (linha.valor ?? 0)) > 0.001
       || existente.categoria.toLowerCase() !== linha.categoria.toLowerCase()
+      || (existente.subcategoria ?? '').toLowerCase() !== (linha.subcategoria ?? '').toLowerCase()
       || existente.data !== linha.data;
   }
 
@@ -496,6 +497,7 @@ export class GastosComponent implements OnInit {
         descricao: decisao.linha.descricao,
         valor: decisao.linha.valor!,
         categoria: decisao.linha.categoria,
+        subcategoria: decisao.linha.subcategoria,
         data: decisao.linha.data!,
         orcamentoId: decisao.existente.orcamentoId ?? null
       };
@@ -580,12 +582,22 @@ export class GastosComponent implements OnInit {
       const [ano, mes] = linha.data.split('-').map(Number);
       const opcoes = orcamentos
         .filter((o) => o.mes === mes && o.ano === ano)
-        .sort((a, b) => a.categoria.localeCompare(b.categoria));
+        .sort((a, b) =>
+          a.categoria.localeCompare(b.categoria)
+          || Number(!!a.subcategoria) - Number(!!b.subcategoria)
+          || (a.subcategoria ?? '').localeCompare(b.subcategoria ?? ''));
       if (opcoes.length === 0) {
         continue;
       }
-      const correspondente = opcoes.find((o) => o.categoria.toLowerCase() === linha.categoria.toLowerCase());
-      vinculos.push({ linha, opcoes, orcamentoId: correspondente?.id ?? null });
+      // Prioriza o orçamento específico da subcategoria da linha; só cai para o
+      // orçamento geral da categoria (sem subcategoria) se não houver um específico.
+      const categoria = linha.categoria.toLowerCase();
+      const subcategoria = (linha.subcategoria ?? '').toLowerCase();
+      const especifico = subcategoria
+        ? opcoes.find((o) => o.categoria.toLowerCase() === categoria && (o.subcategoria ?? '').toLowerCase() === subcategoria)
+        : undefined;
+      const geral = opcoes.find((o) => o.categoria.toLowerCase() === categoria && !o.subcategoria);
+      vinculos.push({ linha, opcoes, orcamentoId: (especifico ?? geral)?.id ?? null });
     }
     return vinculos;
   }
@@ -616,6 +628,7 @@ export class GastosComponent implements OnInit {
         descricao: linha.descricao,
         valor: linha.valor!,
         categoria: linha.categoria,
+        subcategoria: linha.subcategoria,
         data: linha.data!,
         orcamentoId: vinculos?.get(linha.linha) ?? null
       };

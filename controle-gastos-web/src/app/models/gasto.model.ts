@@ -3,6 +3,7 @@ export interface Gasto {
   descricao: string;
   valor: number;
   categoria: string;
+  subcategoria?: string | null;
   data: string; // formato ISO yyyy-MM-dd, igual ao retornado pela API
   orcamentoId?: number | null;
 }

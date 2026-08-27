@@ -23,16 +23,16 @@ const ESTILO_EXEMPLO_VALOR = {
 };
 
 export function baixarModeloImportacaoGastos(): void {
-  const cabecalho = ['Descrição', 'Valor', 'Categoria', 'Data'];
-  const linhaExemplo = ['Almoço no restaurante', 45.9, 'Alimentação', '15/03/2026'];
+  const cabecalho = ['Descrição', 'Valor', 'Categoria', 'Subcategoria (opcional)', 'Data'];
+  const linhaExemplo = ['Almoço no restaurante', 45.9, 'Alimentação', 'Restaurante', '15/03/2026'];
 
   const planilha = XLSX.utils.aoa_to_sheet([cabecalho, linhaExemplo]);
 
-  ['A1', 'B1', 'C1', 'D1'].forEach((endereco) => {
+  ['A1', 'B1', 'C1', 'D1', 'E1'].forEach((endereco) => {
     planilha[endereco].s = ESTILO_CABECALHO;
   });
 
-  ['A2', 'C2', 'D2'].forEach((endereco) => {
+  ['A2', 'C2', 'D2', 'E2'].forEach((endereco) => {
     planilha[endereco].s = ESTILO_EXEMPLO;
   });
   planilha['B2'].s = ESTILO_EXEMPLO_VALOR;
@@ -40,6 +40,7 @@ export function baixarModeloImportacaoGastos(): void {
   planilha['!cols'] = [
     { wch: 30 },
     { wch: 12 },
+    { wch: 20 },
     { wch: 20 },
     { wch: 14 }
   ];
@@ -51,12 +52,13 @@ export function baixarModeloImportacaoGastos(): void {
 }
 
 export function exportarGastosXlsx(gastos: Gasto[]): void {
-  const cabecalho = ['ID', 'Descrição', 'Valor', 'Categoria', 'Data'];
+  const cabecalho = ['ID', 'Descrição', 'Valor', 'Categoria', 'Subcategoria', 'Data'];
   const linhas = gastos.map((gasto) => [
     gasto.id,
     gasto.descricao,
     gasto.valor,
     gasto.categoria,
+    gasto.subcategoria ?? '',
     formatarDataExibicao(gasto.data)
   ]);
 
@@ -73,6 +75,7 @@ export function exportarGastosXlsx(gastos: Gasto[]): void {
     { wch: 8 },
     { wch: 30 },
     { wch: 12 },
+    { wch: 20 },
     { wch: 20 },
     { wch: 14 }
   ];

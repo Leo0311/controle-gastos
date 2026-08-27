@@ -31,7 +31,9 @@
             <mat-select [(ngModel)]="v.orcamentoId">
               <mat-option [value]="null">Nenhum</mat-option>
               @for (o of v.opcoes; track o.id) {
-                <mat-option [value]="o.id">{{ o.categoria }} (limite {{ o.valorLimite | currency:'BRL' }})</mat-option>
+                <mat-option [value]="o.id">
+                  {{ o.categoria }}{{ o.subcategoria ? ' / ' + o.subcategoria : '' }} (limite {{ o.valorLimite | currency:'BRL' }})
+                </mat-option>
               }
             </mat-select>
           </mat-form-field>

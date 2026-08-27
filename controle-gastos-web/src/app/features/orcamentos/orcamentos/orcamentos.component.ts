@@ -112,7 +112,14 @@ export class OrcamentosComponent implements OnInit {
         data: {
           mes: this.mes,
           ano: this.ano,
-          orcamento: { id: orcamento.id, categoria: orcamento.categoria, valorLimite: orcamento.valorLimite, mes: this.mes, ano: this.ano }
+          orcamento: {
+            id: orcamento.id,
+            categoria: orcamento.categoria,
+            subcategoria: orcamento.subcategoria,
+            valorLimite: orcamento.valorLimite,
+            mes: this.mes,
+            ano: this.ano
+          }
         },
         width: '480px',
         maxWidth: '95vw'

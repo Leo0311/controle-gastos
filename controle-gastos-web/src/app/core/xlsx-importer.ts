@@ -6,6 +6,7 @@ export interface LinhaImportacao {
   id: number | null;
   descricao: string;
   categoria: string;
+  subcategoria: string | null;
   valorExibicao: string;
   valor: number | null;
   dataExibicao: string;
@@ -33,6 +34,13 @@ export async function lerPlanilhaGastos(arquivo: File): Promise<LinhaImportacao[
   // arquivo exportado desalinha todas as colunas em uma posição.
   const comColunaId = ehFormatoExportado(linhasBrutas[0]);
 
+  // Compatibilidade com planilhas geradas antes da coluna Subcategoria existir
+  // (modelo/exportação antigos, sem essa coluna): detecta pela contagem de
+  // colunas do cabeçalho, em vez de assumir sempre o layout novo - sem isso,
+  // reimportar um arquivo antigo leria a Data de onde a Subcategoria estaria.
+  const colunasBase = comColunaId ? 1 : 0;
+  const comSubcategoria = linhasBrutas[0].length >= colunasBase + 5;
+
   const resultado: LinhaImportacao[] = [];
 
   for (let i = 1; i < linhasBrutas.length; i++) {
@@ -46,7 +54,7 @@ export async function lerPlanilhaGastos(arquivo: File): Promise<LinhaImportacao[
       continue;
     }
 
-    resultado.push(validarLinha(linhaBruta, numeroLinha, comColunaId));
+    resultado.push(validarLinha(linhaBruta, numeroLinha, comColunaId, comSubcategoria));
   }
 
   return resultado;
@@ -67,12 +75,22 @@ function converterId(bruto: unknown): number | null {
   return null;
 }
 
-function validarLinha(linhaBruta: unknown[], numeroLinha: number, comColunaId: boolean): LinhaImportacao {
+function validarLinha(
+  linhaBruta: unknown[], numeroLinha: number, comColunaId: boolean, comSubcategoria: boolean
+): LinhaImportacao {
   const id = comColunaId ? converterId(linhaBruta[0]) : null;
-  const [descricaoBruta, valorBruto, categoriaBruta, dataBruta] = comColunaId ? linhaBruta.slice(1) : linhaBruta;
+  const semId = comColunaId ? linhaBruta.slice(1) : linhaBruta;
+
+  // Layout antigo (sem a coluna Subcategoria): completa a posição dela com
+  // undefined para que o restante da leitura (descrição/valor/categoria/data)
+  // não desalinhe - uma planilha antiga sem essa coluna continua válida.
+  const [descricaoBruta, valorBruto, categoriaBruta, subcategoriaBruta, dataBruta] = comSubcategoria
+    ? semId
+    : [semId[0], semId[1], semId[2], undefined, semId[3]];
 
   const descricao = String(descricaoBruta ?? '').trim();
   const categoria = String(categoriaBruta ?? '').trim();
+  const subcategoria = String(subcategoriaBruta ?? '').trim() || null;
   const valor = converterValor(valorBruto);
 
   // Data não informada (célula vazia): assume a data de hoje em vez de rejeitar a linha.
@@ -96,6 +114,7 @@ function validarLinha(linhaBruta: unknown[], numeroLinha: number, comColunaId: b
     id,
     descricao,
     categoria,
+    subcategoria,
     valorExibicao: exibirValor(valorBruto),
     valor,
     dataExibicao,

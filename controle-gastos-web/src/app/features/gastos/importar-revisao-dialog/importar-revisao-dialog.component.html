@@ -39,7 +39,9 @@
 
       <ng-container matColumnDef="categoria">
         <th mat-header-cell *matHeaderCellDef>Categoria</th>
-        <td mat-cell *matCellDef="let l">{{ l.categoria || '—' }}</td>
+        <td mat-cell *matCellDef="let l">
+          {{ l.categoria || '—' }}{{ l.subcategoria ? ' / ' + l.subcategoria : '' }}
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="data">

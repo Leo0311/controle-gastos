@@ -45,6 +45,7 @@ export class OrcamentoFormDialogComponent {
 
   readonly form = this.fb.group({
     categoria: ['', [Validators.required, Validators.maxLength(60)]],
+    subcategoria: ['', [Validators.maxLength(60)]],
     valorLimite: [null as number | null, [Validators.required, Validators.min(0.01)]],
     mes: [1, [Validators.required]],
     ano: [new Date().getFullYear(), [Validators.required, Validators.min(2000)]]
@@ -58,6 +59,7 @@ export class OrcamentoFormDialogComponent {
     if (data.orcamento) {
       this.form.patchValue({
         categoria: data.orcamento.categoria,
+        subcategoria: data.orcamento.subcategoria ?? '',
         valorLimite: data.orcamento.valorLimite,
         mes: data.orcamento.mes,
         ano: data.orcamento.ano
@@ -80,6 +82,7 @@ export class OrcamentoFormDialogComponent {
     const valores = this.form.getRawValue();
     const orcamento: Orcamento = {
       categoria: valores.categoria!.trim(),
+      subcategoria: valores.subcategoria?.trim() || null,
       valorLimite: valores.valorLimite!,
       mes: valores.mes!,
       ano: valores.ano!

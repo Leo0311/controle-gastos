@@ -28,10 +28,10 @@ controle-gastos/            (raiz do repositório)
 Cadastro e login com senha (hash no banco), sessão persistida em `localStorage` (sobrevive a F5 e a fechar/reabrir a aba) com token JWT válido por 6 horas, logout automático quando o token expira, e recuperação de senha por e-mail (link com token válido por 1 hora).
 
 ### Gastos
-CRUD completo (descrição, valor, categoria, data), listagem por categoria/período/mês, exportação e importação em lote via planilha `.xlsx` (ver abaixo). Cada gasto pode ser vinculado a um orçamento do mês/categoria correspondente.
+CRUD completo (descrição, valor, categoria, subcategoria opcional, data), listagem por categoria/período/mês, exportação e importação em lote via planilha `.xlsx` (ver abaixo). Cada gasto pode ser vinculado a um orçamento do mês/categoria (ou categoria+subcategoria) correspondente.
 
 ### Orçamentos
-Limite de valor por categoria e mês/ano, com edição. O uso de cada orçamento (soma dos gastos vinculados a ele) é classificado em 4 status, exibidos com barra de progresso colorida: **OK** (< 80%), **Atenção** (80–99%), **Completo** (exatamente 100%) e **Ultrapassou** (> 100%).
+Limite de valor por categoria e mês/ano, com edição. A subcategoria é opcional e também texto livre: um orçamento pode ser **geral** (sem subcategoria, cobrindo a categoria inteira) ou **específico** de uma subcategoria — os dois podem coexistir no mesmo mês para a mesma categoria (ex: um orçamento geral de "Lazer" e outro só para "Lazer/Cinema"), sem conflito. Um gasto vinculado ao orçamento específico de uma subcategoria conta só para ele, nunca para o orçamento geral da categoria. O uso de cada orçamento (soma dos gastos vinculados a ele) é classificado em 4 status, exibidos com barra de progresso colorida: **OK** (< 80%), **Atenção** (80–99%), **Completo** (exatamente 100%) e **Ultrapassou** (> 100%).
 
 ### Metas de economia
 No Dashboard, o usuário define uma renda mensal e uma meta de economia (valor que deseja ter sobrando no fim do mês). O app calcula `renda − total gasto no mês = economia projetada` e compara com a meta, mostrando o progresso numa barra colorida (verde/amarelo/vermelho) que leva em conta quantos dias do mês já passaram.
@@ -40,7 +40,7 @@ No Dashboard, o usuário define uma renda mensal e uma meta de economia (valor q
 Cards de totais do mês/ano selecionado, gráfico de pizza (distribuição por categoria) e gráfico de barras (evolução dos últimos 6 meses) — ambos clicáveis, abrindo o detalhamento dos gastos do período/categoria selecionado.
 
 ### Exportação e importação de planilhas (.xlsx)
-Exportação de todos os gastos para `.xlsx`, download de um modelo de planilha para importação, e um fluxo guiado de importação que revisa cada linha, detecta duplicatas e possíveis edições de gastos já cadastrados, e sugere automaticamente o vínculo com orçamentos existentes antes de confirmar a gravação em lote.
+Exportação de todos os gastos para `.xlsx` (incluindo a coluna Subcategoria), download de um modelo de planilha para importação, e um fluxo guiado de importação que revisa cada linha, detecta duplicatas e possíveis edições de gastos já cadastrados, e sugere automaticamente o vínculo com orçamentos existentes (priorizando o orçamento específico da subcategoria da linha, com o geral da categoria como alternativa) antes de confirmar a gravação em lote. Planilhas antigas, de antes da coluna Subcategoria existir, continuam sendo importadas normalmente.
 
 ### Campos de valor monetário
 Todos os campos de valor (Valor do gasto, Valor Limite do orçamento, Renda mensal, Meta de economia) usam uma máscara de digitação estilo "caixa registradora": os dígitos entram da direita para a esquerda (centavos primeiro), com suporte completo a Backspace, seleção de texto e colar — funcionando de forma idêntica em desktop e mobile.

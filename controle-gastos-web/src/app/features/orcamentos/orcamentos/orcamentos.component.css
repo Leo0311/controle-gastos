@@ -104,6 +104,14 @@
   color: #1565c0;
 }
 
+.subcategoria-label {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .celula-percentual {
   display: flex;
   align-items: center;
@@ -167,6 +175,10 @@
   }
 
   .texto-valor-gasto {
+    font-size: 9px;
+  }
+
+  .subcategoria-label {
     font-size: 9px;
   }
 }

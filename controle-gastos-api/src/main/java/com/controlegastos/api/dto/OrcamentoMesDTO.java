@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 public class OrcamentoMesDTO {
     private Integer id;
     private String categoria;
+    private String subcategoria;
     private BigDecimal valorLimite;
     private BigDecimal gasto;
     private boolean ultrapassou;
