@@ -11,6 +11,15 @@ const MAX_CENTAVOS = 999999999999;
  * digitar 1, 0, 1, 0 em sequência mostra 0,01 -> 0,10 -> 1,01 -> 10,10).
  * O FormControl associado sempre recebe o valor decimal real (ex: 10.10),
  * nunca a string formatada - a formatação é só a exibição no input.
+ *
+ * A lógica roda inteiramente em cima do evento "beforeinput" (não keydown):
+ * teclados virtuais (Android/iOS) frequentemente não disparam keydown com
+ * key:"Backspace" para a tecla de apagar - por causa da composição do
+ * teclado, ela chega como key:"Unidentified", então uma máscara baseada em
+ * keydown simplesmente não reage no celular. O "beforeinput" sempre carrega
+ * o inputType real (insertText, deleteContentBackward etc.), é cancelável
+ * em qualquer plataforma e por isso é o único jeito confiável de ter o
+ * mesmo comportamento em desktop e mobile.
  */
 @Directive({
   selector: 'input[appMascaraMoeda]',
@@ -36,32 +45,49 @@ export class MascaraMoedaDirective implements ControlValueAccessor {
 
   constructor(private readonly el: ElementRef<HTMLInputElement>) { }
 
-  @HostListener('keydown', ['$event'])
-  onKeyDown(evento: KeyboardEvent): void {
-    if (evento.ctrlKey || evento.metaKey) {
-      return;
-    }
+  @HostListener('beforeinput', ['$event'])
+  onBeforeInput(evento: InputEvent): void {
+    const alvo = evento.target as HTMLInputElement;
+    const haSelecao = alvo.selectionStart !== alvo.selectionEnd;
 
-    if (evento.key === 'Backspace') {
-      evento.preventDefault();
-      this.centavos = Math.trunc(this.centavos / 10);
-      this.emitirEAtualizar();
-      return;
-    }
-
-    if (evento.key >= '0' && evento.key <= '9') {
-      evento.preventDefault();
-      if (this.centavos < MAX_CENTAVOS) {
-        this.centavos = this.centavos * 10 + Number(evento.key);
+    switch (evento.inputType) {
+      case 'insertText':
+      case 'insertCompositionText':
+      case 'insertFromDrop': {
+        evento.preventDefault();
+        const digitos = (evento.data ?? '').replace(/\D/g, '');
+        for (const digito of digitos) {
+          if (this.centavos < MAX_CENTAVOS) {
+            this.centavos = this.centavos * 10 + Number(digito);
+          }
+        }
+        this.emitirEAtualizar();
+        return;
       }
-      this.emitirEAtualizar();
-      return;
-    }
 
-    // Bloqueia qualquer outro caractere imprimível (letras, ponto, vírgula, símbolos);
-    // teclas de controle (Tab, setas, Delete, Enter...) mantêm o comportamento padrão.
-    if (evento.key.length === 1) {
-      evento.preventDefault();
+      case 'deleteContentBackward':
+      case 'deleteContentForward':
+      case 'deleteByCut': {
+        evento.preventDefault();
+        // Com uma seleção ativa (Ctrl+A, seleção manual, ou "cortar"), apagar
+        // limpa o campo inteiro em vez de remover só um dígito - selecionar
+        // tudo e apertar Backspace/Delete precisa esvaziar o campo de verdade.
+        this.centavos = haSelecao ? 0 : Math.trunc(this.centavos / 10);
+        this.emitirEAtualizar();
+        return;
+      }
+
+      case 'insertFromPaste':
+        // Colar é tratado inteiramente pelo listener de "paste" abaixo (que já
+        // dá preventDefault e nunca deixa o beforeinput correspondente rodar
+        // o efeito padrão); isso aqui é só uma trava de segurança.
+        evento.preventDefault();
+        return;
+
+      default:
+        // Qualquer outro tipo (undo/redo, autocorreção etc.) é bloqueado para
+        // manter o campo sempre controlado pelo estado em centavos.
+        evento.preventDefault();
     }
   }
 
