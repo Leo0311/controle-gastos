@@ -15,6 +15,7 @@ import { map } from 'rxjs';
 import { Gasto } from '../../../models/gasto.model';
 import { Orcamento } from '../../../models/orcamento.model';
 import { OrcamentoService } from '../../../services/orcamento.service';
+import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
 
 export interface GastoFormDialogData {
   gasto: Gasto | null;
@@ -34,7 +35,8 @@ export interface GastoFormDialogData {
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MascaraMoedaDirective
   ],
   templateUrl: './gasto-form-dialog.component.html',
   styleUrl: './gasto-form-dialog.component.css'

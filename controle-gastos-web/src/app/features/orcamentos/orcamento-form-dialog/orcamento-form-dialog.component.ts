@@ -7,6 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 
 import { Orcamento } from '../../../models/orcamento.model';
+import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
 
 export interface OrcamentoFormDialogData {
   mes: number;
@@ -23,7 +24,8 @@ export interface OrcamentoFormDialogData {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatButtonModule
+    MatButtonModule,
+    MascaraMoedaDirective
   ],
   templateUrl: './orcamento-form-dialog.component.html',
   styleUrl: './orcamento-form-dialog.component.css'
