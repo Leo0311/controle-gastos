@@ -8,11 +8,14 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { firstValueFrom } from 'rxjs';
 
 import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
+import { CategoriaService } from '../../../services/categoria.service';
 import { Gasto } from '../../../models/gasto.model';
 import { Orcamento } from '../../../models/orcamento.model';
+import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { GastoFormDialogComponent, GastoFormDialogData } from '../gasto-form-dialog/gasto-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
@@ -71,9 +74,17 @@ export class GastosComponent implements OnInit {
   filtroAno: number | null = null;
   filtroCategoria: string | null = null;
 
+  private todasCategorias: Categoria[] = [];
+  private todasSubcategorias: Subcategoria[] = [];
+  private categoriasPorId = new Map<number, Categoria>();
+  // Resultado da resolução texto -> categoria/subcategoria gerenciada da importação
+  // em andamento (ver resolverCategorias) - chave é chaveCategoria(categoria, subcategoria).
+  private categoriasResolvidas = new Map<string, { categoriaId: number; subcategoriaId: number | null }>();
+
   constructor(
     private readonly gastoService: GastoService,
     private readonly orcamentoService: OrcamentoService,
+    private readonly categoriaService: CategoriaService,
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar,
     private readonly route: ActivatedRoute,
@@ -81,6 +92,18 @@ export class GastosComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.categoriaService.listarVisiveis().subscribe({
+      next: (categorias) => {
+        this.todasCategorias = categorias;
+        this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c]));
+      },
+      error: () => { /* usado só pro emoji na tabela e na importação; sem ela ainda funciona sem emoji */ }
+    });
+    this.categoriaService.listarTodasSubcategorias().subscribe({
+      next: (subcategorias) => { this.todasSubcategorias = subcategorias; },
+      error: () => { /* usado só na resolução de categoria durante a importação */ }
+    });
+
     this.route.queryParamMap.subscribe((params) => {
       const mes = Number(params.get('mes'));
       const ano = Number(params.get('ano'));
@@ -89,6 +112,10 @@ export class GastosComponent implements OnInit {
       this.filtroCategoria = params.get('categoria');
       this.carregar();
     });
+  }
+
+  categoriaEmoji(categoriaId: number | null | undefined): string {
+    return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
   }
 
   get descricaoFiltro(): string {
@@ -113,7 +140,7 @@ export class GastosComponent implements OnInit {
     origem$.subscribe({
       next: (gastos) => {
         this.gastos = this.filtroCategoria
-          ? gastos.filter((g) => g.categoria.trim().toLowerCase() === this.filtroCategoria!.trim().toLowerCase())
+          ? gastos.filter((g) => (g.categoria ?? '').trim().toLowerCase() === this.filtroCategoria!.trim().toLowerCase())
           : gastos;
         this.carregando = false;
       },
@@ -301,8 +328,60 @@ export class GastosComponent implements OnInit {
       if (!linhasConfirmadas || linhasConfirmadas.length === 0) {
         return;
       }
-      this.prepararAtualizacao(linhasConfirmadas);
+      this.resolverCategoriasEProsseguir(linhasConfirmadas);
     });
+  }
+
+  // Categoria/subcategoria da planilha chegam como texto puro; aqui cada uma vira
+  // uma categoria/subcategoria gerenciada de verdade antes de prosseguir - criando
+  // uma privada nova quando o texto não bate (sem diferenciar maiúsculas/minúsculas)
+  // com nenhuma categoria já visível pro usuário, igual à migração feita no banco.
+  private async resolverCategorias(linhas: LinhaImportacao[]): Promise<void> {
+    const resolvidas = new Map<string, { categoriaId: number; subcategoriaId: number | null }>();
+    let categorias = this.todasCategorias;
+    let subcategorias = this.todasSubcategorias;
+
+    for (const linha of linhas) {
+      const chave = this.chaveCategoria(linha.categoria, linha.subcategoria);
+      if (resolvidas.has(chave)) {
+        continue;
+      }
+
+      let categoria = categorias.find((c) => c.nome.toLowerCase() === linha.categoria.trim().toLowerCase());
+      if (!categoria) {
+        categoria = await firstValueFrom(this.categoriaService.criar({ nome: linha.categoria.trim(), emoji: '📁' }));
+        categorias = [...categorias, categoria];
+      }
+
+      let subcategoriaId: number | null = null;
+      const nomeSub = linha.subcategoria?.trim();
+      if (nomeSub) {
+        let subcategoria = subcategorias.find((s) =>
+          s.categoriaId === categoria!.id && s.nome.toLowerCase() === nomeSub.toLowerCase());
+        if (!subcategoria) {
+          subcategoria = await firstValueFrom(this.categoriaService.criarSubcategoria(categoria.id!, { nome: nomeSub }));
+          subcategorias = [...subcategorias, subcategoria];
+        }
+        subcategoriaId = subcategoria.id!;
+      }
+
+      resolvidas.set(chave, { categoriaId: categoria.id!, subcategoriaId });
+    }
+
+    this.todasCategorias = categorias;
+    this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c]));
+    this.todasSubcategorias = subcategorias;
+    this.categoriasResolvidas = resolvidas;
+  }
+
+  private chaveCategoria(categoria: string, subcategoria: string | null): string {
+    return `${categoria.trim().toLowerCase()}|${(subcategoria ?? '').trim().toLowerCase()}`;
+  }
+
+  private resolverCategoriasEProsseguir(linhas: LinhaImportacao[]): void {
+    this.resolverCategorias(linhas)
+      .then(() => this.prepararAtualizacao(linhas))
+      .catch(() => this.mostrarErro('Não foi possível preparar as categorias desta planilha para importação.'));
   }
 
   private prepararAtualizacao(linhas: LinhaImportacao[]): void {
@@ -345,7 +424,7 @@ export class GastosComponent implements OnInit {
           // checagem, a linha seria criada como um gasto novo, duplicando o original.
           const possivelEdicao = gastosAtuais.some((g) =>
             g.descricao.trim().toLowerCase() === linha.descricao.trim().toLowerCase()
-            && g.categoria.trim().toLowerCase() === linha.categoria.trim().toLowerCase()
+            && (g.categoria ?? '').trim().toLowerCase() === linha.categoria.trim().toLowerCase()
             && this.gastoMudou(g, linha)
           );
           if (possivelEdicao) {
@@ -461,7 +540,7 @@ export class GastosComponent implements OnInit {
   private gastoMudou(existente: Gasto, linha: LinhaImportacao): boolean {
     return existente.descricao !== linha.descricao
       || Math.abs(existente.valor - (linha.valor ?? 0)) > 0.001
-      || existente.categoria.toLowerCase() !== linha.categoria.toLowerCase()
+      || (existente.categoria ?? '').toLowerCase() !== linha.categoria.toLowerCase()
       || (existente.subcategoria ?? '').toLowerCase() !== (linha.subcategoria ?? '').toLowerCase()
       || existente.data !== linha.data;
   }
@@ -493,11 +572,12 @@ export class GastosComponent implements OnInit {
       }
 
       const decisao = decisoes[indice];
+      const resolvida = this.categoriasResolvidas.get(this.chaveCategoria(decisao.linha.categoria, decisao.linha.subcategoria));
       const gasto: Gasto = {
         descricao: decisao.linha.descricao,
         valor: decisao.linha.valor!,
-        categoria: decisao.linha.categoria,
-        subcategoria: decisao.linha.subcategoria,
+        categoriaId: resolvida!.categoriaId,
+        subcategoriaId: resolvida!.subcategoriaId,
         data: decisao.linha.data!,
         orcamentoId: decisao.existente.orcamentoId ?? null
       };
@@ -583,20 +663,20 @@ export class GastosComponent implements OnInit {
       const opcoes = orcamentos
         .filter((o) => o.mes === mes && o.ano === ano)
         .sort((a, b) =>
-          a.categoria.localeCompare(b.categoria)
+          (a.categoria ?? '').localeCompare(b.categoria ?? '')
           || Number(!!a.subcategoria) - Number(!!b.subcategoria)
           || (a.subcategoria ?? '').localeCompare(b.subcategoria ?? ''));
       if (opcoes.length === 0) {
         continue;
       }
-      // Prioriza o orçamento específico da subcategoria da linha; só cai para o
-      // orçamento geral da categoria (sem subcategoria) se não houver um específico.
-      const categoria = linha.categoria.toLowerCase();
-      const subcategoria = (linha.subcategoria ?? '').toLowerCase();
-      const especifico = subcategoria
-        ? opcoes.find((o) => o.categoria.toLowerCase() === categoria && (o.subcategoria ?? '').toLowerCase() === subcategoria)
+      // Prioriza o orçamento específico da subcategoria da linha (já resolvida em
+      // resolverCategorias); só cai para o orçamento geral da categoria (sem
+      // subcategoria) se não houver um específico.
+      const resolvida = this.categoriasResolvidas.get(this.chaveCategoria(linha.categoria, linha.subcategoria));
+      const especifico = resolvida?.subcategoriaId
+        ? opcoes.find((o) => o.categoriaId === resolvida.categoriaId && o.subcategoriaId === resolvida.subcategoriaId)
         : undefined;
-      const geral = opcoes.find((o) => o.categoria.toLowerCase() === categoria && !o.subcategoria);
+      const geral = opcoes.find((o) => o.categoriaId === resolvida?.categoriaId && !o.subcategoriaId);
       vinculos.push({ linha, opcoes, orcamentoId: (especifico ?? geral)?.id ?? null });
     }
     return vinculos;
@@ -624,11 +704,12 @@ export class GastosComponent implements OnInit {
       }
 
       const linha = linhas[indice];
+      const resolvida = this.categoriasResolvidas.get(this.chaveCategoria(linha.categoria, linha.subcategoria));
       const gasto: Gasto = {
         descricao: linha.descricao,
         valor: linha.valor!,
-        categoria: linha.categoria,
-        subcategoria: linha.subcategoria,
+        categoriaId: resolvida!.categoriaId,
+        subcategoriaId: resolvida!.subcategoriaId,
         data: linha.data!,
         orcamentoId: vinculos?.get(linha.linha) ?? null
       };

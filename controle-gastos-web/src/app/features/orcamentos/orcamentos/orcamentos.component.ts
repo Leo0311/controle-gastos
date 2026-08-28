@@ -13,7 +13,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
 import { OrcamentoService } from '../../../services/orcamento.service';
+import { CategoriaService } from '../../../services/categoria.service';
 import { Orcamento, OrcamentoMes } from '../../../models/orcamento.model';
+import { Categoria } from '../../../models/categoria.model';
 import { OrcamentoFormDialogComponent, OrcamentoFormDialogData } from '../orcamento-form-dialog/orcamento-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
@@ -58,8 +60,11 @@ export class OrcamentosComponent implements OnInit {
   orcamentos: OrcamentoMes[] = [];
   carregando = false;
 
+  private categoriasPorId = new Map<number, Categoria>();
+
   constructor(
     private readonly orcamentoService: OrcamentoService,
+    private readonly categoriaService: CategoriaService,
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar
   ) {
@@ -68,6 +73,12 @@ export class OrcamentosComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.categoriaService.listarVisiveis().subscribe({
+      next: (categorias) => {
+        this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c]));
+      },
+      error: () => { /* usado só pro emoji na tabela; sem ela a categoria só aparece sem emoji */ }
+    });
     this.carregar();
   }
 
@@ -75,7 +86,10 @@ export class OrcamentosComponent implements OnInit {
     this.carregando = true;
     this.orcamentoService.verMes(this.mes, this.ano).subscribe({
       next: (orcamentos) => {
-        this.orcamentos = orcamentos;
+        this.orcamentos = [...orcamentos].sort((a, b) =>
+          (a.categoria ?? '').localeCompare(b.categoria ?? '')
+          || Number(!!a.subcategoriaId) - Number(!!b.subcategoriaId)
+          || (a.subcategoria ?? '').localeCompare(b.subcategoria ?? ''));
         this.carregando = false;
       },
       error: () => {
@@ -83,6 +97,10 @@ export class OrcamentosComponent implements OnInit {
         this.mostrarErro('Não foi possível carregar os orçamentos. Verifique se a API está no ar.');
       }
     });
+  }
+
+  categoriaEmoji(categoriaId: number | null): string {
+    return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
   }
 
   novoOrcamento(): void {
@@ -114,8 +132,8 @@ export class OrcamentosComponent implements OnInit {
           ano: this.ano,
           orcamento: {
             id: orcamento.id,
-            categoria: orcamento.categoria,
-            subcategoria: orcamento.subcategoria,
+            categoriaId: orcamento.categoriaId!,
+            subcategoriaId: orcamento.subcategoriaId,
             valorLimite: orcamento.valorLimite,
             mes: this.mes,
             ano: this.ano

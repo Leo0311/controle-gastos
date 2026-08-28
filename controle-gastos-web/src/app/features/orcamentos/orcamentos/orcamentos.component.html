@@ -39,7 +39,7 @@
       <ng-container matColumnDef="categoria">
         <th mat-header-cell *matHeaderCellDef>Categoria</th>
         <td mat-cell *matCellDef="let o">
-          {{ o.categoria }}
+          {{ categoriaEmoji(o.categoriaId) }} {{ o.categoria }}
           @if (o.subcategoria) {
             <div class="subcategoria-label">{{ o.subcategoria }}</div>
           }

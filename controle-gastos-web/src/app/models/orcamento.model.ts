@@ -1,6 +1,9 @@
 export interface Orcamento {
   id?: number;
-  categoria: string;
+  categoriaId: number;
+  subcategoriaId?: number | null;
+  // Nome espelhado, só para leitura - ver comentário equivalente em Gasto.
+  categoria?: string;
   subcategoria?: string | null;
   valorLimite: number;
   mes: number;
@@ -9,7 +12,9 @@ export interface Orcamento {
 
 export interface OrcamentoMes {
   id: number;
+  categoriaId: number | null;
   categoria: string;
+  subcategoriaId: number | null;
   subcategoria: string | null;
   valorLimite: number;
   gasto: number;

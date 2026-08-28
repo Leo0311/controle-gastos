@@ -9,7 +9,9 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class OrcamentoMesDTO {
     private Integer id;
+    private Integer categoriaId;
     private String categoria;
+    private Integer subcategoriaId;
     private String subcategoria;
     private BigDecimal valorLimite;
     private BigDecimal gasto;

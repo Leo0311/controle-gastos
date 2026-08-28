@@ -20,9 +20,16 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
 
     List<Gasto> findByUsuarioIdAndDataBetweenOrderByDataDescIdDesc(Integer usuarioId, LocalDate inicio, LocalDate fim);
 
-    @Query("SELECT LOWER(g.categoria) AS categoria, SUM(g.valor) AS total FROM Gasto g "
+    boolean existsByCategoriaId(Integer categoriaId);
+
+    boolean existsBySubcategoriaId(Integer subcategoriaId);
+
+    // Agrupa por categoriaId quando presente (fonte de verdade); GROUP BY também por
+    // LOWER(categoria) porque categoriaId nulo (gastos legados, sem categoria gerenciada
+    // vinculada) não separa grupos no SQL - todo NULL cai no mesmo grupo por padrão.
+    @Query("SELECT g.categoriaId AS categoriaId, LOWER(g.categoria) AS categoria, SUM(g.valor) AS total FROM Gasto g "
             + "WHERE g.usuarioId = :usuarioId AND g.data BETWEEN :inicio AND :fim "
-            + "GROUP BY LOWER(g.categoria) ORDER BY SUM(g.valor) DESC")
+            + "GROUP BY g.categoriaId, LOWER(g.categoria) ORDER BY SUM(g.valor) DESC")
     List<CategoriaTotal> somarPorCategoriaNoPeriodo(
             @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
@@ -35,6 +42,8 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
             @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
     interface CategoriaTotal {
+        Integer getCategoriaId();
+
         String getCategoria();
 
         BigDecimal getTotal();

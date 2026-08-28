@@ -2,9 +2,13 @@ package com.controlegastos.api.service;
 
 import com.controlegastos.api.dto.OrcamentoMesDTO;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
+import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Orcamento;
+import com.controlegastos.api.model.Subcategoria;
+import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
+import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,17 +28,19 @@ public class OrcamentoService {
 
     private final OrcamentoRepository repository;
     private final GastoRepository gastoRepository;
+    private final CategoriaRepository categoriaRepository;
+    private final SubcategoriaRepository subcategoriaRepository;
 
     public List<Orcamento> listarTodos(Integer usuarioId) {
         return repository.findAllByUsuarioId(usuarioId);
     }
 
     public Orcamento definir(Orcamento orcamento, Integer usuarioId) {
-        normalizar(orcamento);
         validar(orcamento);
+        resolverCategoria(orcamento, usuarioId);
 
         boolean jaExiste = repository.findDuplicado(
-                usuarioId, orcamento.getCategoria(), orcamento.getSubcategoria(),
+                usuarioId, orcamento.getCategoriaId(), orcamento.getSubcategoriaId(),
                 orcamento.getMes(), orcamento.getAno(), SEM_ID).isPresent();
         if (jaExiste) {
             throw new IllegalArgumentException(mensagemDuplicidade(orcamento));
@@ -46,14 +52,14 @@ public class OrcamentoService {
     }
 
     public Orcamento atualizar(Integer id, Orcamento dados, Integer usuarioId) {
-        normalizar(dados);
         validar(dados);
+        resolverCategoria(dados, usuarioId);
 
         Orcamento existente = repository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Orçamento não encontrado com ID " + id));
 
         boolean jaExiste = repository.findDuplicado(
-                usuarioId, dados.getCategoria(), dados.getSubcategoria(), dados.getMes(), dados.getAno(), id)
+                usuarioId, dados.getCategoriaId(), dados.getSubcategoriaId(), dados.getMes(), dados.getAno(), id)
                 .isPresent();
         if (jaExiste) {
             throw new IllegalArgumentException(mensagemDuplicidade(dados));
@@ -61,14 +67,37 @@ public class OrcamentoService {
 
         existente.setCategoria(dados.getCategoria());
         existente.setSubcategoria(dados.getSubcategoria());
+        existente.setCategoriaId(dados.getCategoriaId());
+        existente.setSubcategoriaId(dados.getSubcategoriaId());
         existente.setValorLimite(dados.getValorLimite());
         existente.setMes(dados.getMes());
         existente.setAno(dados.getAno());
         return repository.save(existente);
     }
 
+    // Confirma que a categoria (e a subcategoria, se houver) escolhidas existem e são
+    // visíveis para o usuário, e espelha o nome delas nas colunas de texto legadas -
+    // mesma lógica usada em GastoService.
+    private void resolverCategoria(Orcamento orcamento, Integer usuarioId) {
+        Categoria categoria = categoriaRepository.findByIdVisivel(orcamento.getCategoriaId(), usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Categoria inválida ou não pertence ao usuário."));
+        orcamento.setCategoria(categoria.getNome());
+
+        if (orcamento.getSubcategoriaId() == null) {
+            orcamento.setSubcategoria(null);
+            return;
+        }
+        Subcategoria subcategoria = subcategoriaRepository
+                .findByIdAndUsuarioId(orcamento.getSubcategoriaId(), usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Subcategoria inválida ou não pertence ao usuário."));
+        if (!subcategoria.getCategoriaId().equals(categoria.getId())) {
+            throw new IllegalArgumentException("Subcategoria não pertence à categoria selecionada.");
+        }
+        orcamento.setSubcategoria(subcategoria.getNome());
+    }
+
     private String mensagemDuplicidade(Orcamento orcamento) {
-        return orcamento.getSubcategoria() == null
+        return orcamento.getSubcategoriaId() == null
                 ? "Já existe um orçamento geral definido para essa categoria/mês/ano."
                 : "Já existe um orçamento definido para essa categoria/subcategoria/mês/ano.";
     }
@@ -80,8 +109,7 @@ public class OrcamentoService {
     }
 
     public List<OrcamentoMesDTO> orcamentosDoMes(int mes, int ano, Integer usuarioId) {
-        List<Orcamento> orcamentos = repository
-                .findByUsuarioIdAndMesAndAnoOrderByCategoriaAscSubcategoriaAsc(usuarioId, mes, ano);
+        List<Orcamento> orcamentos = repository.findByUsuarioIdAndMesAndAno(usuarioId, mes, ano);
 
         return orcamentos.stream()
                 .map(o -> {
@@ -95,25 +123,14 @@ public class OrcamentoService {
                     boolean proximoDoLimite = !ultrapassou && !completo
                             && gasto.compareTo(o.getValorLimite().multiply(PERCENTUAL_ALERTA_PROXIMIDADE)) >= 0;
                     return new OrcamentoMesDTO(
-                            o.getId(), o.getCategoria(), o.getSubcategoria(), o.getValorLimite(), gasto,
-                            ultrapassou, completo, proximoDoLimite);
+                            o.getId(), o.getCategoriaId(), o.getCategoria(), o.getSubcategoriaId(), o.getSubcategoria(),
+                            o.getValorLimite(), gasto, ultrapassou, completo, proximoDoLimite);
                 })
                 .collect(Collectors.toList());
     }
 
-    // Trata "" como ausência de subcategoria, igual a null - sem isso, um orçamento
-    // salvo com subcategoria "" e outro com null seriam tratados como diferentes
-    // pelo índice único do banco (COALESCE(subcategoria, '') não normaliza "" != null
-    // da mesma forma), permitindo duplicidade que deveria ter sido barrada.
-    private void normalizar(Orcamento orcamento) {
-        if (orcamento.getSubcategoria() != null) {
-            String subcategoria = orcamento.getSubcategoria().trim();
-            orcamento.setSubcategoria(subcategoria.isEmpty() ? null : subcategoria);
-        }
-    }
-
     private void validar(Orcamento orcamento) {
-        if (orcamento.getCategoria() == null || orcamento.getCategoria().isBlank()) {
+        if (orcamento.getCategoriaId() == null) {
             throw new IllegalArgumentException("Categoria não pode ser vazia.");
         }
         if (orcamento.getValorLimite() == null || orcamento.getValorLimite().compareTo(BigDecimal.ZERO) <= 0) {

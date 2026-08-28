@@ -54,7 +54,7 @@ export class DashboardDetalheDialogComponent implements OnInit {
     this.gastoService.listarPorPeriodo(inicio, fim).subscribe({
       next: (gastos) => {
         this.gastos = this.data.categoria
-          ? gastos.filter((g) => g.categoria.trim().toLowerCase() === this.data.categoria!.trim().toLowerCase())
+          ? gastos.filter((g) => (g.categoria ?? '').trim().toLowerCase() === this.data.categoria!.trim().toLowerCase())
           : gastos;
         this.carregando = false;
       },

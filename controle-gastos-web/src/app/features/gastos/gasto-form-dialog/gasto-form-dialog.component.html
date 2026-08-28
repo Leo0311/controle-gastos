@@ -24,15 +24,37 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Categoria</mat-label>
-      <input matInput formControlName="categoria" maxlength="60">
-      @if (form.controls.categoria.hasError('required')) {
+      <mat-select formControlName="categoriaId" (selectionChange)="onCategoriaChange($event)">
+        @for (c of opcoesCategoria; track c.id) {
+          <mat-option [value]="c.id">{{ c.emoji }} {{ c.nome }}</mat-option>
+        }
+        <mat-option [value]="NOVA_CATEGORIA">
+          <mat-icon inline>add</mat-icon> Nova categoria...
+        </mat-option>
+      </mat-select>
+      @if (form.controls.categoriaId.hasError('required')) {
         <mat-error>Categoria é obrigatória.</mat-error>
       }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>Subcategoria (opcional)</mat-label>
-      <input matInput formControlName="subcategoria" maxlength="60">
+      <mat-select
+        formControlName="subcategoriaId"
+        (selectionChange)="onSubcategoriaChange($event)"
+        [disabled]="!form.controls.categoriaId.value"
+      >
+        <mat-option [value]="null">Nenhuma</mat-option>
+        @for (s of opcoesSubcategoria; track s.id) {
+          <mat-option [value]="s.id">{{ s.nome }}</mat-option>
+        }
+        <mat-option [value]="NOVA_SUBCATEGORIA">
+          <mat-icon inline>add</mat-icon> Nova subcategoria...
+        </mat-option>
+      </mat-select>
+      @if (!form.controls.categoriaId.value) {
+        <mat-hint>Escolha uma categoria primeiro.</mat-hint>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">

@@ -1,0 +1,59 @@
+.form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 320px;
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-top: 4px;
+}
+
+.form-content mat-form-field {
+  width: 100%;
+}
+
+.campo-emoji input {
+  font-size: 20px;
+}
+
+.rotulo-paleta {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.paleta {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+
+.botao-emoji {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.botao-emoji:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.botao-emoji.selecionado {
+  border-color: #3f51b5;
+  background-color: #e8eaf6;
+}
+
+@media (max-width: 599px) {
+  .form-content {
+    min-width: 0;
+    max-height: 60vh;
+  }
+
+  .paleta {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}

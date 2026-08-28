@@ -27,11 +27,18 @@ public class Orcamento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    // Espelham o nome da categoria/subcategoria gerenciada - ver comentário equivalente em Gasto.
     @Column(nullable = false, length = 60)
     private String categoria;
 
     @Column(length = 60)
     private String subcategoria;
+
+    @Column(name = "categoria_id")
+    private Integer categoriaId;
+
+    @Column(name = "subcategoria_id")
+    private Integer subcategoriaId;
 
     @Column(name = "valor_limite", nullable = false, precision = 12, scale = 2)
     private BigDecimal valorLimite;

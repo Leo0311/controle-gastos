@@ -1,0 +1,71 @@
+<div class="cabecalho">
+  <h2>Categorias</h2>
+  <button mat-raised-button color="primary" (click)="novaCategoria()">
+    <mat-icon>add</mat-icon>
+    Nova categoria
+  </button>
+</div>
+
+@if (carregando) {
+  <div class="carregando">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+} @else if (categorias.length === 0) {
+  <app-empty-state icon="category" mensagem="Nenhuma categoria encontrada."></app-empty-state>
+} @else {
+  <mat-accordion class="lista-categorias" multi>
+    @for (categoria of categorias; track categoria.id) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title class="titulo-categoria">
+            <span class="emoji-categoria">{{ categoria.emoji }}</span>
+            <span>{{ categoria.nome }}</span>
+            @if (!categoria.usuarioId) {
+              <mat-chip class="chip-sistema">Sistema</mat-chip>
+            }
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="acoes-categoria">
+          @if (categoria.usuarioId) {
+            <button mat-button (click)="editarCategoria(categoria)">
+              <mat-icon>edit</mat-icon>
+              Editar
+            </button>
+            <button mat-button color="warn" (click)="excluirCategoria(categoria)">
+              <mat-icon>delete</mat-icon>
+              Excluir
+            </button>
+          } @else {
+            <span class="aviso-sistema">Categoria padrão do sistema - não pode ser editada nem excluída.</span>
+          }
+        </div>
+
+        <h4 class="titulo-subcategorias">Subcategorias</h4>
+        @if (subcategoriasDe(categoria.id!).length === 0) {
+          <p class="sem-subcategorias">Nenhuma subcategoria ainda.</p>
+        } @else {
+          <ul class="lista-subcategorias">
+            @for (subcategoria of subcategoriasDe(categoria.id!); track subcategoria.id) {
+              <li>
+                <span>{{ subcategoria.nome }}</span>
+                <span class="acoes-subcategoria">
+                  <button mat-icon-button (click)="editarSubcategoria(categoria, subcategoria)" aria-label="Editar subcategoria">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="excluirSubcategoria(subcategoria)" aria-label="Excluir subcategoria">
+                    <mat-icon color="warn">delete</mat-icon>
+                  </button>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+        <button mat-button (click)="novaSubcategoria(categoria)">
+          <mat-icon>add</mat-icon>
+          Nova subcategoria
+        </button>
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+}

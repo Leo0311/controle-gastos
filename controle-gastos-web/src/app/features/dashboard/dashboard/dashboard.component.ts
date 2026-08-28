@@ -16,8 +16,10 @@ import { BaseChartDirective } from 'ng2-charts';
 
 import { GastoService } from '../../../services/gasto.service';
 import { MetaService } from '../../../services/meta.service';
+import { CategoriaService } from '../../../services/categoria.service';
 import { TotalMensal } from '../../../models/gasto.model';
 import { MetaMes, MetaRequest } from '../../../models/meta.model';
+import { Categoria } from '../../../models/categoria.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import {
   DashboardDetalheDialogComponent,
@@ -104,10 +106,16 @@ export class DashboardComponent implements OnInit {
   metaMes: MetaMes | null = null;
 
   private totaisMensaisAtuais: TotalMensal[] = [];
+  private categoriasPorId = new Map<number, Categoria>();
+  // Nomes puros (sem emoji) na mesma ordem de pizzaData.labels - usado pro clique na
+  // fatia, já que o rótulo exibido tem o emoji prefixado e não bate mais com
+  // gasto.categoria (texto puro) no filtro do dialog de detalhe.
+  private nomesCategoriaPizza: string[] = [];
 
   constructor(
     private readonly gastoService: GastoService,
     private readonly metaService: MetaService,
+    private readonly categoriaService: CategoriaService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog
   ) {
@@ -116,6 +124,10 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.categoriaService.listarVisiveis().subscribe({
+      next: (categorias) => { this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c])); },
+      error: () => { /* usado só pro emoji na legenda do gráfico de pizza */ }
+    });
     this.carregar();
   }
 
@@ -153,8 +165,12 @@ export class DashboardComponent implements OnInit {
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
 
+        this.nomesCategoriaPizza = resumo.porCategoria.map(c => c.categoria);
         this.pizzaData = {
-          labels: resumo.porCategoria.map(c => c.categoria),
+          labels: resumo.porCategoria.map(c => {
+            const emoji = c.categoriaId ? this.categoriasPorId.get(c.categoriaId)?.emoji : null;
+            return emoji ? `${emoji} ${c.categoria}` : c.categoria;
+          }),
           datasets: [{
             data: resumo.porCategoria.map(c => c.total),
             backgroundColor: resumo.porCategoria.map((_, i) => CORES_CATEGORIAS[i % CORES_CATEGORIAS.length])
@@ -194,7 +210,7 @@ export class DashboardComponent implements OnInit {
     if (indice === undefined) {
       return;
     }
-    const categoria = this.pizzaData.labels?.[indice] as string | undefined;
+    const categoria = this.nomesCategoriaPizza[indice] as string | undefined;
     if (!categoria) {
       return;
     }
