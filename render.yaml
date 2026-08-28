@@ -23,3 +23,11 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # O Render infere o Content-Type pela extensão do arquivo e não reconhece
+    # ".webmanifest" (cai em binary/octet-stream) - o Chrome recusa o manifest
+    # nesse content-type e não considera o site instalável como PWA. Força o
+    # tipo correto explicitamente.
+    headers:
+      - path: /manifest.webmanifest
+        name: Content-Type
+        value: application/manifest+json
