@@ -48,11 +48,14 @@ Exportação de todos os gastos para `.xlsx` (incluindo a coluna Subcategoria), 
 ### Campos de valor monetário
 Todos os campos de valor (Valor do gasto, Valor Limite do orçamento, Renda mensal, Meta de economia) usam uma máscara de digitação estilo "caixa registradora": os dígitos entram da direita para a esquerda (centavos primeiro), com suporte completo a Backspace, seleção de texto e colar — funcionando de forma idêntica em desktop e mobile.
 
+### PWA (app instalável)
+O frontend é um Progressive Web App: pode ser instalado a partir do navegador (ícone de instalar no desktop, "Adicionar à tela inicial" no mobile) e abre em janela própria, sem a barra de endereço do navegador. Um service worker (gerado pelo `@angular/service-worker`) faz cache apenas dos arquivos estáticos da build (JS, CSS, HTML, ícones) para carregamento mais rápido em visitas repetidas; chamadas à API nunca são cacheadas, sempre vão direto para o backend. Só funciona em contexto seguro (HTTPS ou `localhost`) — em produção já funciona automaticamente, já que o Render Static Site serve com HTTPS.
+
 ## Tecnologias
 
 - **Backend**: Java 17, Maven, Spring Boot 4, Spring Data JPA, Spring Security + JWT (jjwt), Spring Mail
 - **Banco de dados**: PostgreSQL (Neon em produção)
-- **Frontend**: Angular 18 (standalone components), Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas)
+- **Frontend**: Angular 18 (standalone components), Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas), `@angular/service-worker` (PWA instalável)
 - **Deploy**: Render (frontend como Static Site, API como Web Service via Docker)
 
 ## Pré-requisitos
