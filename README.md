@@ -20,7 +20,7 @@ controle-gastos/            (raiz do repositório)
 
 - **`controle-gastos/`** — aplicação de linha de comando (menu interativo) para cadastrar e consultar gastos e orçamentos diretamente no PostgreSQL, sem depender da API.
 - **`controle-gastos-api/`** — API REST (Java 17 + Spring Boot) com autenticação JWT, usada pelo frontend Angular.
-- **`controle-gastos-web/`** — SPA em Angular que consome a API para oferecer telas de Login/Cadastro, Dashboard, Gastos, Orçamentos, Categorias e Recorrentes, responsiva em mobile. A navegação entre as seções é por abas no topo em desktop e por uma barra fixa no rodapé (bottom navigation, estilo apps nativos) em telas até 600px.
+- **`controle-gastos-web/`** — SPA em Angular que consome a API para oferecer telas de Login/Cadastro, Dashboard, Gastos, Orçamentos, Categorias e Recorrentes, responsiva em mobile. A navegação entre as seções é por abas no topo em desktop e por uma barra fixa no rodapé (bottom navigation, estilo apps nativos) em telas até 600px, onde também dá pra trocar de seção deslizando o dedo pra esquerda/direita (mesma ordem da bottom nav) — o gesto é ignorado perto das bordas da tela (evita brigar com o "voltar" nativo do navegador/sistema) e nunca interrompe a rolagem vertical normal da página.
 
 ## Funcionalidades
 

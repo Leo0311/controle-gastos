@@ -46,6 +46,14 @@
   padding: 24px 16px;
 }
 
+/* Feedback visual do swipe entre seções (ver app.component.ts): durante o
+   arraste o deslocamento acompanha o dedo sem transição (instantâneo); só ao
+   soltar (com-transicao) é que anima suavemente de volta ao centro - tanto ao
+   confirmar a troca de seção quanto ao cancelar um arraste curto demais. */
+.conteudo.com-transicao {
+  transition: transform 0.25s ease;
+}
+
 /* Barra de navegação fixa no rodapé (mobile) - estilo apps nativos (Instagram,
    WhatsApp): ícone + texto curto por seção, sempre visível mesmo rolando a
    página. Escondida por padrão (desktop usa as abas no topo); aparece só na

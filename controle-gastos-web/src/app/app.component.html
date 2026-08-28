@@ -34,7 +34,14 @@
 }
 
 <mat-tab-nav-panel #painel>
-  <main class="conteudo">
+  <!-- #conteudo: alvo do gesto de swipe (ver app.component.ts) - a mesma área
+       navega tanto pela bottom nav/abas quanto por deslizar o dedo. -->
+  <main
+    class="conteudo"
+    #conteudo
+    [class.com-transicao]="comTransicao"
+    [style.transform]="'translateX(' + deslocamentoAtual + 'px)'"
+  >
     <router-outlet></router-outlet>
   </main>
 </mat-tab-nav-panel>
