@@ -12,7 +12,9 @@
 </mat-toolbar>
 
 @if (usuario$ | async) {
-  <nav mat-tab-nav-bar [tabPanel]="painel">
+  <!-- Desktop: abas no topo (mat-tab-nav-bar). Some em telas <=600px, onde a
+       navegação passa a ser pela barra fixa no rodapé (nav-mobile abaixo). -->
+  <nav mat-tab-nav-bar [tabPanel]="painel" class="nav-desktop">
     <a mat-tab-link routerLink="/dashboard" routerLinkActive #dashboardLink="routerLinkActive" [active]="dashboardLink.isActive">
       Dashboard
     </a>
@@ -36,3 +38,30 @@
     <router-outlet></router-outlet>
   </main>
 </mat-tab-nav-panel>
+
+@if (usuario$ | async) {
+  <!-- Mobile (<=600px): barra fixa no rodapé, estilo apps nativos. Some em
+       telas maiores, onde a navegação é pelas abas no topo (nav-desktop acima). -->
+  <nav class="nav-mobile">
+    <a routerLink="/dashboard" routerLinkActive="ativo">
+      <mat-icon>dashboard</mat-icon>
+      <span>Dashboard</span>
+    </a>
+    <a routerLink="/gastos" routerLinkActive="ativo">
+      <mat-icon>receipt_long</mat-icon>
+      <span>Gastos</span>
+    </a>
+    <a routerLink="/orcamentos" routerLinkActive="ativo">
+      <mat-icon>savings</mat-icon>
+      <span>Orçamentos</span>
+    </a>
+    <a routerLink="/categorias" routerLinkActive="ativo">
+      <mat-icon>category</mat-icon>
+      <span>Categorias</span>
+    </a>
+    <a routerLink="/gastos-recorrentes" routerLinkActive="ativo">
+      <mat-icon>autorenew</mat-icon>
+      <span>Recorrentes</span>
+    </a>
+  </nav>
+}
