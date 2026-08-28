@@ -5,6 +5,7 @@ import { DashboardComponent } from './features/dashboard/dashboard/dashboard.com
 import { GastosComponent } from './features/gastos/gastos/gastos.component';
 import { OrcamentosComponent } from './features/orcamentos/orcamentos/orcamentos.component';
 import { CategoriasComponent } from './features/categorias/categorias/categorias.component';
+import { GastosRecorrentesComponent } from './features/gastos-recorrentes/gastos-recorrentes/gastos-recorrentes.component';
 import { LoginComponent } from './features/auth/login/login.component';
 import { CadastroComponent } from './features/auth/cadastro/cadastro.component';
 import { EsqueciSenhaComponent } from './features/auth/esqueci-senha/esqueci-senha.component';
@@ -19,5 +20,6 @@ export const routes: Routes = [
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'gastos', component: GastosComponent, canActivate: [authGuard] },
   { path: 'orcamentos', component: OrcamentosComponent, canActivate: [authGuard] },
-  { path: 'categorias', component: CategoriasComponent, canActivate: [authGuard] }
+  { path: 'categorias', component: CategoriasComponent, canActivate: [authGuard] },
+  { path: 'gastos-recorrentes', component: GastosRecorrentesComponent, canActivate: [authGuard] }
 ];

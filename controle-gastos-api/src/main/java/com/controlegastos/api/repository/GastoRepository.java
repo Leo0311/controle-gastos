@@ -24,6 +24,10 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
 
     boolean existsBySubcategoriaId(Integer subcategoriaId);
 
+    // Usado pra checar se uma recorrência já foi lançada no mês/ano atual antes de
+    // criar um novo gasto a partir dela - ver GastoRecorrenteService.lancarPendentes.
+    boolean existsByGastoRecorrenteIdAndDataBetween(Integer gastoRecorrenteId, LocalDate inicio, LocalDate fim);
+
     // Agrupa por categoriaId quando presente (fonte de verdade); GROUP BY também por
     // LOWER(categoria) porque categoriaId nulo (gastos legados, sem categoria gerenciada
     // vinculada) não separa grupos no SQL - todo NULL cai no mesmo grupo por padrão.

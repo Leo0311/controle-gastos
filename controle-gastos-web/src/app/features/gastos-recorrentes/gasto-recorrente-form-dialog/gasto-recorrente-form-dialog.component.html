@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>{{ editando ? 'Editar gasto' : 'Novo gasto' }}</h2>
+<h2 mat-dialog-title>{{ editando ? 'Editar gasto recorrente' : 'Novo gasto recorrente' }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="salvar()">
   <mat-dialog-content class="form-content">
@@ -57,57 +57,30 @@
       }
     </mat-form-field>
 
-    @if (editando || !form.controls.recorrente.value) {
-      <mat-form-field appearance="outline">
-        <mat-label>Data</mat-label>
-        <input matInput [matDatepicker]="picker" formControlName="data">
-        <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-        <mat-datepicker #picker [touchUi]="(telaPequena$ | async) ?? false"></mat-datepicker>
-        @if (form.controls.data.hasError('required')) {
-          <mat-error>Data é obrigatória.</mat-error>
-        }
-      </mat-form-field>
-    }
-
-    @if (!editando) {
-      <mat-checkbox formControlName="recorrente">Tornar recorrente (todo mês)</mat-checkbox>
-    }
-
-    @if (!editando && form.controls.recorrente.value) {
-      <mat-form-field appearance="outline">
-        <mat-label>Dia do mês</mat-label>
-        <input matInput type="number" min="1" max="31" formControlName="diaDoMes">
-        <mat-hint>Em meses mais curtos, lança no último dia válido (ex: dia 31 em fevereiro).</mat-hint>
-        @if (form.controls.diaDoMes.hasError('required')) {
-          <mat-error>Dia do mês é obrigatório.</mat-error>
-        }
-        @if (form.controls.diaDoMes.hasError('min') || form.controls.diaDoMes.hasError('max')) {
-          <mat-error>Dia do mês deve estar entre 1 e 31.</mat-error>
-        }
-      </mat-form-field>
-    }
+    <mat-form-field appearance="outline">
+      <mat-label>Dia do mês</mat-label>
+      <input matInput type="number" min="1" max="31" formControlName="diaDoMes">
+      <mat-hint>Em meses mais curtos, lança no último dia válido (ex: dia 31 em fevereiro).</mat-hint>
+      @if (form.controls.diaDoMes.hasError('required')) {
+        <mat-error>Dia do mês é obrigatório.</mat-error>
+      }
+      @if (form.controls.diaDoMes.hasError('min') || form.controls.diaDoMes.hasError('max')) {
+        <mat-error>Dia do mês deve estar entre 1 e 31.</mat-error>
+      }
+    </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>
-        Orçamento (opcional)
-        <mat-icon
-          class="icone-ajuda"
-          aria-label="Ajuda sobre o campo Orçamento"
-          matTooltip="Campo opcional. Se não informado, o gasto não desconta de nenhum orçamento. Selecione um orçamento existente para descontar o valor dele, ou crie um novo orçamento primeiro."
-          matTooltipPosition="above"
-        >help_outline</mat-icon>
-      </mat-label>
-      <mat-select formControlName="orcamentoId" (selectionChange)="onOrcamentoSelecionadoManualmente($event)">
+      <mat-label>Orçamento (opcional)</mat-label>
+      <mat-select formControlName="orcamentoId" [disabled]="!form.controls.categoriaId.value">
         <mat-option [value]="null">Nenhum</mat-option>
         @for (o of opcoesOrcamento; track o.id) {
           <mat-option [value]="o.id">
-            {{ o.categoria }}{{ o.subcategoria ? ' / ' + o.subcategoria : '' }} (limite {{ o.valorLimite | currency:'BRL' }})
+            {{ o.mes }}/{{ o.ano }} - {{ o.categoria }}{{ o.subcategoria ? ' / ' + o.subcategoria : '' }}
+            (limite {{ o.valorLimite | currency:'BRL' }})
           </mat-option>
         }
       </mat-select>
-      @if (opcoesOrcamento.length === 0) {
-        <mat-hint>Nenhum orçamento cadastrado para o mês/ano selecionado.</mat-hint>
-      }
+      <mat-hint>Vale só para o orçamento do mês escolhido - não se ajusta automaticamente todo mês.</mat-hint>
     </mat-form-field>
   </mat-dialog-content>
 

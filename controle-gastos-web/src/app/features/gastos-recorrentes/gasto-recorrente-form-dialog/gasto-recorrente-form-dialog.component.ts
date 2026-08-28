@@ -1,19 +1,13 @@
-import { AsyncPipe, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { Component, Inject, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatSelectModule, MatSelectChange } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
-import { map } from 'rxjs';
 
-import { Gasto } from '../../../models/gasto.model';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
@@ -29,62 +23,41 @@ import {
   SubcategoriaFormDialogData
 } from '../../../shared/subcategoria-form-dialog/subcategoria-form-dialog.component';
 
-export interface GastoFormDialogData {
-  gasto: Gasto | null;
+export interface GastoRecorrenteFormDialogData {
+  recorrente: GastoRecorrente | null;
 }
 
-// Quando "Tornar recorrente" está marcado, o formulário cria uma recorrência (que a
-// própria API lança automaticamente todo mês) em vez de um gasto avulso - por isso
-// o resultado do diálogo é uma dessas duas formas, nunca as duas juntas.
-export type GastoFormResultado =
-  | { tipo: 'gasto'; gasto: Gasto }
-  | { tipo: 'recorrente'; recorrente: GastoRecorrente };
-
-// Valor sentinela para a opção "+ Nova categoria/subcategoria..." no fim do
-// dropdown - nunca corresponde a um ID real (IDs reais são sempre positivos).
 const NOVA_CATEGORIA = -1;
 const NOVA_SUBCATEGORIA = -1;
 
 @Component({
-  selector: 'app-gasto-form-dialog',
+  selector: 'app-gasto-recorrente-form-dialog',
   standalone: true,
   imports: [
-    AsyncPipe,
     CurrencyPipe,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
-    MatDatepickerModule,
     MatSelectModule,
     MatButtonModule,
-    MatCheckboxModule,
     MatIconModule,
-    MatTooltipModule,
     MascaraMoedaDirective
   ],
-  templateUrl: './gasto-form-dialog.component.html',
-  styleUrl: './gasto-form-dialog.component.css'
+  templateUrl: './gasto-recorrente-form-dialog.component.html',
+  styleUrl: './gasto-recorrente-form-dialog.component.css'
 })
-export class GastoFormDialogComponent implements OnInit {
+export class GastoRecorrenteFormDialogComponent implements OnInit {
 
   private readonly fb = inject(FormBuilder);
   private readonly orcamentoService = inject(OrcamentoService);
   private readonly categoriaService = inject(CategoriaService);
   private readonly dialog = inject(MatDialog);
-  private readonly breakpointObserver = inject(BreakpointObserver);
-
-  // Em telas pequenas, o datepicker abre em modo touch (calendário em tela cheia,
-  // mais fácil de usar com o dedo) em vez do pequeno popup ancorado no input.
-  readonly telaPequena$ = this.breakpointObserver.observe(Breakpoints.Handset)
-    .pipe(map((resultado) => resultado.matches));
 
   readonly editando: boolean;
   readonly NOVA_CATEGORIA = NOVA_CATEGORIA;
   readonly NOVA_SUBCATEGORIA = NOVA_SUBCATEGORIA;
 
-  /** Enquanto false, o orçamento selecionado é recalculado automaticamente conforme categoria/data mudam. */
-  private escolhaManualOrcamento: boolean;
   private categoriaAnterior: number | null;
   private subcategoriaAnterior: number | null;
 
@@ -101,31 +74,26 @@ export class GastoFormDialogComponent implements OnInit {
     valor: [null as number | null, [Validators.required, Validators.min(0.01)]],
     categoriaId: [null as number | null, [Validators.required]],
     subcategoriaId: [null as number | null],
-    data: [new Date(), [Validators.required]],
-    orcamentoId: [null as number | null],
-    recorrente: [false],
-    diaDoMes: [new Date().getDate() as number | null]
+    diaDoMes: [null as number | null, [Validators.required, Validators.min(1), Validators.max(31)]],
+    orcamentoId: [null as number | null]
   });
 
   constructor(
-    private readonly dialogRef: MatDialogRef<GastoFormDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) data: GastoFormDialogData
+    private readonly dialogRef: MatDialogRef<GastoRecorrenteFormDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) data: GastoRecorrenteFormDialogData
   ) {
-    this.editando = !!data.gasto;
-    // Editando um gasto existente: respeita o vínculo já salvo (inclusive se estiver em branco)
-    // em vez de forçar uma nova sugestão automática.
-    this.escolhaManualOrcamento = this.editando;
-    this.categoriaAnterior = data.gasto?.categoriaId ?? null;
-    this.subcategoriaAnterior = data.gasto?.subcategoriaId ?? null;
+    this.editando = !!data.recorrente;
+    this.categoriaAnterior = data.recorrente?.categoriaId ?? null;
+    this.subcategoriaAnterior = data.recorrente?.subcategoriaId ?? null;
 
-    if (data.gasto) {
+    if (data.recorrente) {
       this.form.patchValue({
-        descricao: data.gasto.descricao,
-        valor: data.gasto.valor,
-        categoriaId: data.gasto.categoriaId,
-        subcategoriaId: data.gasto.subcategoriaId ?? null,
-        data: this.parseDataLocal(data.gasto.data),
-        orcamentoId: data.gasto.orcamentoId ?? null
+        descricao: data.recorrente.descricao,
+        valor: data.recorrente.valor,
+        categoriaId: data.recorrente.categoriaId,
+        subcategoriaId: data.recorrente.subcategoriaId ?? null,
+        diaDoMes: data.recorrente.diaDoMes,
+        orcamentoId: data.recorrente.orcamentoId ?? null
       });
     }
   }
@@ -152,20 +120,10 @@ export class GastoFormDialogComponent implements OnInit {
       },
       error: () => { /* lista auxiliar */ }
     });
-
-    this.form.controls.data.valueChanges.subscribe(() => this.atualizarOpcoesOrcamento());
-
-    this.form.controls.recorrente.valueChanges.subscribe((ativo) => {
-      const diaDoMes = this.form.controls.diaDoMes;
-      diaDoMes.setValidators(ativo ? [Validators.required, Validators.min(1), Validators.max(31)] : []);
-      diaDoMes.updateValueAndValidity();
-    });
   }
 
   onCategoriaChange(evento: MatSelectChange): void {
     if (evento.value === NOVA_CATEGORIA) {
-      // Volta pro valor anterior enquanto o mini-diálogo está aberto, sem disparar
-      // valueChanges de novo (senão reentraria aqui).
       this.form.controls.categoriaId.setValue(this.categoriaAnterior, { emitEvent: false });
       this.abrirNovaCategoria();
       return;
@@ -185,10 +143,6 @@ export class GastoFormDialogComponent implements OnInit {
     this.atualizarOpcoesOrcamento();
   }
 
-  onOrcamentoSelecionadoManualmente(_evento: MatSelectChange): void {
-    this.escolhaManualOrcamento = true;
-  }
-
   cancelar(): void {
     this.dialogRef.close();
   }
@@ -198,31 +152,16 @@ export class GastoFormDialogComponent implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-
     const valores = this.form.getRawValue();
-
-    if (valores.recorrente) {
-      const recorrente: GastoRecorrente = {
-        descricao: valores.descricao!.trim(),
-        valor: valores.valor!,
-        categoriaId: valores.categoriaId!,
-        subcategoriaId: valores.subcategoriaId ?? null,
-        diaDoMes: valores.diaDoMes!,
-        orcamentoId: valores.orcamentoId ?? null
-      };
-      this.dialogRef.close({ tipo: 'recorrente', recorrente } satisfies GastoFormResultado);
-      return;
-    }
-
-    const gasto: Gasto = {
+    const recorrente: GastoRecorrente = {
       descricao: valores.descricao!.trim(),
       valor: valores.valor!,
       categoriaId: valores.categoriaId!,
       subcategoriaId: valores.subcategoriaId ?? null,
-      data: this.formatarDataIso(valores.data!),
+      diaDoMes: valores.diaDoMes!,
       orcamentoId: valores.orcamentoId ?? null
     };
-    this.dialogRef.close({ tipo: 'gasto', gasto } satisfies GastoFormResultado);
+    this.dialogRef.close(recorrente);
   }
 
   private abrirNovaCategoria(): void {
@@ -288,55 +227,26 @@ export class GastoFormDialogComponent implements OnInit {
     }
   }
 
+  // Diferente do formulário de gasto avulso, aqui não há uma data específica pra
+  // filtrar mes/ano do orçamento (a recorrência se repete todo mês) - lista todos os
+  // orçamentos da categoria/subcategoria escolhida, mais recentes primeiro, e deixa
+  // a escolha manual. O vínculo vale como está: se o orçamento escolhido for de um
+  // mês específico, os lançamentos de outros meses continuam usando o mesmo vínculo.
   private atualizarOpcoesOrcamento(): void {
-    const data = this.form.controls.data.value;
-    if (!data) {
-      this.opcoesOrcamento = [];
-      return;
-    }
-
-    const mes = data.getMonth() + 1;
-    const ano = data.getFullYear();
-    this.opcoesOrcamento = this.todosOrcamentos
-      .filter((o) => o.mes === mes && o.ano === ano)
-      // Orçamentos gerais (sem subcategoria) aparecem antes dos específicos da
-      // mesma categoria, para ficar visualmente claro qual é o "guarda-chuva".
-      .sort((a, b) =>
-        (a.categoria ?? '').localeCompare(b.categoria ?? '')
-        || Number(!!a.subcategoriaId) - Number(!!b.subcategoriaId)
-        || (a.subcategoria ?? '').localeCompare(b.subcategoria ?? ''));
-
-    if (this.escolhaManualOrcamento) {
-      return;
-    }
-
     const categoriaId = this.form.controls.categoriaId.value;
     if (!categoriaId) {
+      this.opcoesOrcamento = [];
       this.form.controls.orcamentoId.setValue(null);
       return;
     }
     const subcategoriaId = this.form.controls.subcategoriaId.value;
+    this.opcoesOrcamento = this.todosOrcamentos
+      .filter((o) => o.categoriaId === categoriaId && (!subcategoriaId || o.subcategoriaId === subcategoriaId))
+      .sort((a, b) => (b.ano - a.ano) || (b.mes - a.mes));
 
-    // Se o gasto já tem subcategoria escolhida, prioriza o orçamento específico
-    // dela; só cai para o orçamento geral da categoria (sem subcategoria) se não
-    // houver um específico correspondente.
-    const especifico = subcategoriaId
-      ? this.opcoesOrcamento.find((o) => o.categoriaId === categoriaId && o.subcategoriaId === subcategoriaId)
-      : undefined;
-    const geral = this.opcoesOrcamento.find((o) => o.categoriaId === categoriaId && !o.subcategoriaId);
-
-    this.form.controls.orcamentoId.setValue((especifico ?? geral)?.id ?? null);
-  }
-
-  private parseDataLocal(iso: string): Date {
-    const [ano, mes, dia] = iso.split('-').map(Number);
-    return new Date(ano, mes - 1, dia);
-  }
-
-  private formatarDataIso(data: Date): string {
-    const ano = data.getFullYear();
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const dia = String(data.getDate()).padStart(2, '0');
-    return `${ano}-${mes}-${dia}`;
+    const orcamentoAtual = this.form.controls.orcamentoId.value;
+    if (orcamentoAtual && !this.opcoesOrcamento.some((o) => o.id === orcamentoAtual)) {
+      this.form.controls.orcamentoId.setValue(null);
+    }
   }
 }

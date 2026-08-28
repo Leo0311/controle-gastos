@@ -3,6 +3,7 @@ package com.controlegastos.api.service;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.repository.CategoriaRepository;
+import com.controlegastos.api.repository.GastoRecorrenteRepository;
 import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
@@ -22,6 +23,7 @@ public class CategoriaService {
     private final SubcategoriaRepository subcategoriaRepository;
     private final GastoRepository gastoRepository;
     private final OrcamentoRepository orcamentoRepository;
+    private final GastoRecorrenteRepository gastoRecorrenteRepository;
 
     public List<Categoria> listarVisiveis(Integer usuarioId) {
         return repository.findVisiveis(usuarioId);
@@ -60,10 +62,11 @@ public class CategoriaService {
     public void excluir(Integer id, Integer usuarioId) {
         Categoria existente = buscarPropria(id, usuarioId);
 
-        boolean emUso = gastoRepository.existsByCategoriaId(id) || orcamentoRepository.existsByCategoriaId(id);
+        boolean emUso = gastoRepository.existsByCategoriaId(id) || orcamentoRepository.existsByCategoriaId(id)
+                || gastoRecorrenteRepository.existsByCategoriaId(id);
         if (emUso) {
             throw new IllegalArgumentException(
-                    "Essa categoria está em uso em gastos ou orçamentos e não pode ser excluída.");
+                    "Essa categoria está em uso em gastos, orçamentos ou gastos recorrentes e não pode ser excluída.");
         }
 
         // Nenhuma subcategoria dela pode estar em uso sem a categoria também estar

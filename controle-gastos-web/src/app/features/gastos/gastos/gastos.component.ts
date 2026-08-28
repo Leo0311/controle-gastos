@@ -13,10 +13,15 @@ import { firstValueFrom } from 'rxjs';
 import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
+import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { Gasto } from '../../../models/gasto.model';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
-import { GastoFormDialogComponent, GastoFormDialogData } from '../gasto-form-dialog/gasto-form-dialog.component';
+import {
+  GastoFormDialogComponent,
+  GastoFormDialogData,
+  GastoFormResultado
+} from '../gasto-form-dialog/gasto-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { baixarModeloImportacaoGastos, exportarGastosXlsx } from '../../../core/xlsx-exporter';
@@ -85,6 +90,7 @@ export class GastosComponent implements OnInit {
     private readonly gastoService: GastoService,
     private readonly orcamentoService: OrcamentoService,
     private readonly categoriaService: CategoriaService,
+    private readonly gastoRecorrenteService: GastoRecorrenteService,
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar,
     private readonly route: ActivatedRoute,
@@ -111,6 +117,17 @@ export class GastosComponent implements OnInit {
       this.filtroAno = Number.isInteger(ano) && ano > 0 ? ano : null;
       this.filtroCategoria = params.get('categoria');
       this.carregar();
+    });
+
+    // Verifica e lança gastos recorrentes pendentes do mês, de forma transparente
+    // (sem aviso algum) - só recarrega a lista se algo novo foi lançado.
+    this.gastoRecorrenteService.lancarPendentes().subscribe({
+      next: (lancados) => {
+        if (lancados.length > 0) {
+          this.carregar();
+        }
+      },
+      error: () => { /* verificação transparente; falha aqui não deve incomodar o usuário */ }
     });
   }
 
@@ -168,17 +185,26 @@ export class GastosComponent implements OnInit {
   }
 
   novoGasto(): void {
-    const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, Gasto>(GastoFormDialogComponent, {
-      data: { gasto: null },
-      width: '480px',
-      maxWidth: '95vw'
-    });
+    const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, GastoFormResultado>(
+      GastoFormDialogComponent,
+      { data: { gasto: null }, width: '480px', maxWidth: '95vw' }
+    );
 
     ref.afterClosed().subscribe((resultado) => {
       if (!resultado) {
         return;
       }
-      this.gastoService.cadastrar(resultado).subscribe({
+      if (resultado.tipo === 'recorrente') {
+        this.gastoRecorrenteService.cadastrar(resultado.recorrente).subscribe({
+          next: () => {
+            this.mostrarSucesso('Gasto recorrente cadastrado com sucesso!');
+            this.carregar();
+          },
+          error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        });
+        return;
+      }
+      this.gastoService.cadastrar(resultado.gasto).subscribe({
         next: (gastoCriado) => {
           this.mostrarSucesso('Gasto cadastrado com sucesso!');
           this.carregar();
@@ -225,17 +251,18 @@ export class GastosComponent implements OnInit {
   }
 
   editar(gasto: Gasto): void {
-    const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, Gasto>(GastoFormDialogComponent, {
-      data: { gasto },
-      width: '480px',
-      maxWidth: '95vw'
-    });
+    const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, GastoFormResultado>(
+      GastoFormDialogComponent,
+      { data: { gasto }, width: '480px', maxWidth: '95vw' }
+    );
 
     ref.afterClosed().subscribe((resultado) => {
-      if (!resultado) {
+      // Editando um gasto existente o diálogo nunca oferece "tornar recorrente",
+      // então o resultado é sempre do tipo 'gasto'.
+      if (!resultado || resultado.tipo !== 'gasto') {
         return;
       }
-      this.gastoService.atualizar(gasto.id!, resultado).subscribe({
+      this.gastoService.atualizar(gasto.id!, resultado.gasto).subscribe({
         next: (gastoAtualizado) => {
           this.mostrarSucesso('Gasto atualizado com sucesso!');
           this.carregar();

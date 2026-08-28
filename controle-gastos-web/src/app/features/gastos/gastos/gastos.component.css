@@ -125,3 +125,9 @@
   min-height: 200px;
   align-items: center;
 }
+
+.icone-recorrente {
+  margin-left: 4px;
+  font-size: 13px;
+  vertical-align: middle;
+}

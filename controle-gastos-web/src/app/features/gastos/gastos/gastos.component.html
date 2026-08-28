@@ -57,7 +57,12 @@
 
       <ng-container matColumnDef="descricao">
         <th mat-header-cell *matHeaderCellDef>Descrição</th>
-        <td mat-cell *matCellDef="let gasto">{{ gasto.descricao }}</td>
+        <td mat-cell *matCellDef="let gasto">
+          {{ gasto.descricao }}
+          @if (gasto.gastoRecorrenteId) {
+            <span class="icone-recorrente" title="Gerado automaticamente por recorrência">🔁</span>
+          }
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="valor">

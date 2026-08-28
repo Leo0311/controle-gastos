@@ -4,6 +4,7 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaRepository;
+import com.controlegastos.api.repository.GastoRecorrenteRepository;
 import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
@@ -22,6 +23,7 @@ public class SubcategoriaService {
     private final CategoriaRepository categoriaRepository;
     private final GastoRepository gastoRepository;
     private final OrcamentoRepository orcamentoRepository;
+    private final GastoRecorrenteRepository gastoRecorrenteRepository;
 
     public List<Subcategoria> listarPorCategoria(Integer categoriaId, Integer usuarioId) {
         buscarCategoriaVisivel(categoriaId, usuarioId);
@@ -69,10 +71,11 @@ public class SubcategoriaService {
         Subcategoria existente = repository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Subcategoria não encontrada com ID " + id));
 
-        boolean emUso = gastoRepository.existsBySubcategoriaId(id) || orcamentoRepository.existsBySubcategoriaId(id);
+        boolean emUso = gastoRepository.existsBySubcategoriaId(id) || orcamentoRepository.existsBySubcategoriaId(id)
+                || gastoRecorrenteRepository.existsBySubcategoriaId(id);
         if (emUso) {
             throw new IllegalArgumentException(
-                    "Essa subcategoria está em uso em gastos ou orçamentos e não pode ser excluída.");
+                    "Essa subcategoria está em uso em gastos, orçamentos ou gastos recorrentes e não pode ser excluída.");
         }
 
         repository.delete(existente);

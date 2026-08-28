@@ -17,6 +17,7 @@ import { BaseChartDirective } from 'ng2-charts';
 import { GastoService } from '../../../services/gasto.service';
 import { MetaService } from '../../../services/meta.service';
 import { CategoriaService } from '../../../services/categoria.service';
+import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { TotalMensal } from '../../../models/gasto.model';
 import { MetaMes, MetaRequest } from '../../../models/meta.model';
 import { Categoria } from '../../../models/categoria.model';
@@ -116,6 +117,7 @@ export class DashboardComponent implements OnInit {
     private readonly gastoService: GastoService,
     private readonly metaService: MetaService,
     private readonly categoriaService: CategoriaService,
+    private readonly gastoRecorrenteService: GastoRecorrenteService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog
   ) {
@@ -129,6 +131,17 @@ export class DashboardComponent implements OnInit {
       error: () => { /* usado só pro emoji na legenda do gráfico de pizza */ }
     });
     this.carregar();
+
+    // Verifica e lança gastos recorrentes pendentes do mês, de forma transparente
+    // (sem aviso algum) - só recarrega os totais se algo novo foi lançado.
+    this.gastoRecorrenteService.lancarPendentes().subscribe({
+      next: (lancados) => {
+        if (lancados.length > 0) {
+          this.carregar();
+        }
+      },
+      error: () => { /* verificação transparente; falha aqui não deve incomodar o usuário */ }
+    });
   }
 
   onPeriodoChange(evento: MatButtonToggleChange): void {

@@ -12,6 +12,9 @@ export interface Gasto {
   subcategoria?: string | null;
   data: string; // formato ISO yyyy-MM-dd, igual ao retornado pela API
   orcamentoId?: number | null;
+  // Preenchido pela API só quando o gasto foi criado automaticamente a partir de uma
+  // recorrência (ver GastoRecorrente) - usado só para exibir o ícone 🔁 na listagem.
+  gastoRecorrenteId?: number | null;
 }
 
 export interface CategoriaTotal {

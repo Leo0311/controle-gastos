@@ -58,4 +58,10 @@ public class Gasto {
 
     @Column(name = "orcamento_id")
     private Integer orcamentoId;
+
+    // Preenchido só quando este gasto foi criado automaticamente por uma recorrência
+    // (ver GastoRecorrenteService.lancarPendentes) - null para gastos cadastrados
+    // manualmente. Nunca é alterado por uma edição manual do gasto depois de criado.
+    @Column(name = "gasto_recorrente_id")
+    private Integer gastoRecorrenteId;
 }

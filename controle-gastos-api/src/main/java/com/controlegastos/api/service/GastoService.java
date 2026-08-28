@@ -49,6 +49,20 @@ public class GastoService {
     }
 
     public Gasto cadastrar(Gasto gasto, Integer usuarioId) {
+        // gastoRecorrenteId só pode ser setado internamente por GastoRecorrenteService
+        // (ver cadastrarVinculadoARecorrente) - nunca por uma criação vinda da API pública,
+        // senão qualquer cliente poderia marcar um gasto como "gerado automaticamente".
+        gasto.setGastoRecorrenteId(null);
+        return salvar(gasto, usuarioId);
+    }
+
+    // Usado só por GastoRecorrenteService pra criar o gasto já vinculado à recorrência
+    // de origem (gasto.gastoRecorrenteId) - nunca exposto diretamente via endpoint público.
+    public Gasto cadastrarVinculadoARecorrente(Gasto gasto, Integer usuarioId) {
+        return salvar(gasto, usuarioId);
+    }
+
+    private Gasto salvar(Gasto gasto, Integer usuarioId) {
         validar(gasto);
         resolverCategoria(gasto, usuarioId);
         validarOrcamento(gasto.getOrcamentoId(), usuarioId);

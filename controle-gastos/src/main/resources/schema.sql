@@ -227,3 +227,38 @@ WHERE o.categoria_id IS NOT NULL AND o.subcategoria IS NOT NULL AND o.subcategor
 DROP INDEX IF EXISTS uq_orcamento_usuario_categoria_subcategoria_mes_ano;
 CREATE UNIQUE INDEX uq_orcamento_usuario_categoria_subcategoria_mes_ano
     ON orcamentos (usuario_id, categoria_id, COALESCE(subcategoria_id, 0), mes, ano);
+
+-- ============================================================================
+-- Gastos recorrentes: lançamento automático de um gasto fixo (aluguel,
+-- assinatura etc.) todo mês, no dia configurado, sem precisar cadastrar
+-- manualmente. Não existe cron job no Render free tier (o serviço "dorme"),
+-- então o lançamento dos pendentes é verificado sob demanda a partir do
+-- frontend (ao abrir Dashboard/Gastos) - ver GastoRecorrenteService.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS gastos_recorrentes (
+    id              SERIAL PRIMARY KEY,
+    usuario_id      INT NOT NULL REFERENCES usuarios(id),
+    descricao       VARCHAR(150) NOT NULL,
+    valor           NUMERIC(12,2) NOT NULL CHECK (valor > 0),
+    categoria_id    INT NOT NULL REFERENCES categorias(id),
+    subcategoria_id INT REFERENCES subcategorias(id),
+    -- Dia do mês em que o gasto deve ser lançado. Em meses com menos dias que o
+    -- configurado (ex: 31 em fevereiro), o lançamento cai no último dia válido do
+    -- mês - ver GastoRecorrenteService.dataDoLancamento.
+    dia_do_mes      INT NOT NULL CHECK (dia_do_mes BETWEEN 1 AND 31),
+    orcamento_id    INT REFERENCES orcamentos(id) ON DELETE SET NULL,
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    data_criacao    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_gastos_recorrentes_usuario ON gastos_recorrentes (usuario_id);
+
+-- Rastreia qual gasto foi lançado automaticamente a partir de qual recorrência -
+-- usado tanto pra evitar duplicar o lançamento do mesmo mês (checando se já existe
+-- um gasto com esse gasto_recorrente_id no mês atual) quanto pra indicar na tela de
+-- Gastos quais lançamentos são automáticos. ON DELETE SET NULL: excluir a
+-- recorrência nunca apaga nem desfigura gastos já lançados, só desvincula (perdem
+-- só a indicação visual de "gerado automaticamente").
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS gasto_recorrente_id INT REFERENCES gastos_recorrentes(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_gastos_gasto_recorrente ON gastos (gasto_recorrente_id);
