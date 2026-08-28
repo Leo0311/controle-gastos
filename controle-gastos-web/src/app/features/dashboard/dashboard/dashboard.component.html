@@ -136,13 +136,16 @@
           ></div>
         </div>
         <p class="texto-progresso-meta">
-          Você já gastou {{ meta.totalGasto | currency:'BRL' }} este mês.
-          @if (meta.economiaReal! >= 0) {
-            Se continuar assim, sobrarão {{ meta.economiaReal | currency:'BRL' }} ao final
+          @if (progresso.estourouRenda) {
+            Você já gastou {{ meta.totalGasto | currency:'BRL' }} este mês — mais do que sua renda de
+            {{ meta.rendaMensal | currency:'BRL' }}. Se continuar assim, faltarão
+            {{ -meta.economiaReal! | currency:'BRL' }} ao final, bem longe da meta de
+            {{ meta.valorMeta | currency:'BRL' }} de sobra.
           } @else {
-            Se continuar assim, faltarão {{ -meta.economiaReal! | currency:'BRL' }} ao final
+            Você já gastou {{ meta.totalGasto | currency:'BRL' }} este mês.
+            Se continuar assim, sobrarão {{ meta.economiaReal | currency:'BRL' }} ao final
+            — sua meta é {{ meta.valorMeta | currency:'BRL' }} de sobra ({{ progresso.percentualExibido }}% atingido).
           }
-          — sua meta é {{ meta.valorMeta | currency:'BRL' }} de sobra ({{ progresso.percentualExibido }}% atingido).
         </p>
       }
 

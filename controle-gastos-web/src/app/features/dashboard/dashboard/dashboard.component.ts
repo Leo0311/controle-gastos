@@ -253,7 +253,9 @@ export class DashboardComponent implements OnInit {
     );
   }
 
-  get progressoMeta(): { percentualBarra: number; percentualExibido: number; cor: 'verde' | 'amarelo' | 'vermelho' } | null {
+  get progressoMeta():
+    { percentualBarra: number; percentualExibido: number; cor: 'verde' | 'amarelo' | 'vermelho'; estourouRenda: boolean }
+    | null {
     const meta = this.metaMes;
     if (!meta || meta.rendaMensal == null || meta.valorMeta == null || meta.economiaReal == null) {
       return null;
@@ -276,9 +278,15 @@ export class DashboardComponent implements OnInit {
     }
 
     const percentualExibido = meta.percentualMeta ?? 0;
-    const percentualBarra = Math.min(100, Math.max(0, percentualExibido));
+    // Percentual negativo significa economia real negativa (gastou mais do que a
+    // renda inteira, não só não bateu a meta de sobra) - visualmente é "pior que
+    // 0%", então a barra deve aparecer cheia (100%, sempre vermelha) para deixar
+    // claro que a situação é crítica, em vez de colapsar pra vazia como um
+    // Math.max(0, ...) simples faria (parecendo que nada foi gasto).
+    const estourouRenda = meta.economiaReal < 0;
+    const percentualBarra = estourouRenda ? 100 : Math.min(100, Math.max(0, percentualExibido));
 
-    return { percentualBarra, percentualExibido, cor };
+    return { percentualBarra, percentualExibido, cor, estourouRenda };
   }
 
   abrirDialogoRenda(): void {
