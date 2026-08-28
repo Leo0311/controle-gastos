@@ -24,10 +24,16 @@ services:
         source: /*
         destination: /index.html
     # O Render infere o Content-Type pela extensão do arquivo e não reconhece
-    # ".webmanifest" (cai em binary/octet-stream) - o Chrome recusa o manifest
-    # nesse content-type e não considera o site instalável como PWA. Força o
-    # tipo correto explicitamente.
+    # ".webmanifest" (cai em binary/octet-stream, e o Chrome recusa o manifest
+    # nesse content-type - o site nunca fica instalável como PWA). Por isso o
+    # manifest é servido como manifest.json (extensão que o Render já mapeia
+    # nativamente para application/json). Esta regra é só reforço extra para
+    # o tipo mais específico (application/manifest+json) - na prática não
+    # surtiu efeito quando testada isoladamente (o Content-Type da origem não
+    # mudou mesmo após o Blueprint sincronizar via deploy), possivelmente por
+    # limitação do Render em sobrescrever Content-Type via header customizado;
+    # o .json já resolve o problema de instalabilidade por conta própria.
     headers:
-      - path: /manifest.webmanifest
+      - path: /manifest.json
         name: Content-Type
         value: application/manifest+json
