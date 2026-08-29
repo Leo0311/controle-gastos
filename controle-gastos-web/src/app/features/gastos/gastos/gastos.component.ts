@@ -518,7 +518,8 @@ export class GastosComponent implements OnInit {
         let subcategoria = subcategorias.find((s) =>
           s.categoriaId === categoria!.id && s.nome.toLowerCase() === nomeSub.toLowerCase());
         if (!subcategoria) {
-          subcategoria = await firstValueFrom(this.categoriaService.criarSubcategoria(categoria.id!, { nome: nomeSub }));
+          subcategoria = await firstValueFrom(
+            this.categoriaService.criarSubcategoria(categoria.id!, { nome: nomeSub, emoji: '📁' }));
           subcategorias = [...subcategorias, subcategoria];
         }
         subcategoriaId = subcategoria.id!;

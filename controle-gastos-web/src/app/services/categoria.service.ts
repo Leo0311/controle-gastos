@@ -44,11 +44,11 @@ export class CategoriaService {
     return this.http.get<Subcategoria[]>(`${this.baseUrl}/${categoriaId}/subcategorias`);
   }
 
-  criarSubcategoria(categoriaId: number, subcategoria: Pick<Subcategoria, 'nome'>): Observable<Subcategoria> {
+  criarSubcategoria(categoriaId: number, subcategoria: Pick<Subcategoria, 'nome' | 'emoji'>): Observable<Subcategoria> {
     return this.http.post<Subcategoria>(`${this.baseUrl}/${categoriaId}/subcategorias`, subcategoria);
   }
 
-  atualizarSubcategoria(id: number, subcategoria: Pick<Subcategoria, 'nome'>): Observable<Subcategoria> {
+  atualizarSubcategoria(id: number, subcategoria: Pick<Subcategoria, 'nome' | 'emoji'>): Observable<Subcategoria> {
     return this.http.put<Subcategoria>(`${API_BASE_URL}/subcategorias/${id}`, subcategoria);
   }
 

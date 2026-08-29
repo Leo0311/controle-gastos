@@ -11,6 +11,26 @@
         <mat-error>Nome é obrigatório.</mat-error>
       }
     </mat-form-field>
+
+    <mat-form-field appearance="outline" class="campo-emoji">
+      <mat-label>Emoji</mat-label>
+      <input matInput formControlName="emoji" maxlength="16">
+      @if (form.controls.emoji.hasError('required')) {
+        <mat-error>Escolha um emoji.</mat-error>
+      }
+    </mat-form-field>
+
+    <p class="rotulo-paleta">Ou escolha um da lista:</p>
+    <div class="paleta">
+      @for (emoji of paletaEmoji; track emoji) {
+        <button
+          type="button"
+          class="botao-emoji"
+          [class.selecionado]="form.controls.emoji.value === emoji"
+          (click)="escolherEmoji(emoji)"
+        >{{ emoji }}</button>
+      }
+    </div>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">

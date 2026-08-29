@@ -20,7 +20,8 @@ import {
 } from '../../../shared/categoria-form-dialog/categoria-form-dialog.component';
 import {
   SubcategoriaFormDialogComponent,
-  SubcategoriaFormDialogData
+  SubcategoriaFormDialogData,
+  SubcategoriaFormResultado
 } from '../../../shared/subcategoria-form-dialog/subcategoria-form-dialog.component';
 
 export interface GastoRecorrenteFormDialogData {
@@ -200,15 +201,15 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
       return;
     }
     const categoriaNome = this.todasCategorias.find((c) => c.id === categoriaId)?.nome ?? '';
-    const ref = this.dialog.open<SubcategoriaFormDialogComponent, SubcategoriaFormDialogData, string>(
+    const ref = this.dialog.open<SubcategoriaFormDialogComponent, SubcategoriaFormDialogData, SubcategoriaFormResultado>(
       SubcategoriaFormDialogComponent,
       { data: { categoriaNome, subcategoria: null }, width: '420px', maxWidth: '95vw' }
     );
-    ref.afterClosed().subscribe((nome) => {
-      if (!nome) {
+    ref.afterClosed().subscribe((resultado) => {
+      if (!resultado) {
         return;
       }
-      this.categoriaService.criarSubcategoria(categoriaId, { nome }).subscribe({
+      this.categoriaService.criarSubcategoria(categoriaId, resultado).subscribe({
         next: (subcategoria) => {
           this.todasSubcategorias = [...this.todasSubcategorias, subcategoria];
           this.subcategoriaAnterior = subcategoria.id!;

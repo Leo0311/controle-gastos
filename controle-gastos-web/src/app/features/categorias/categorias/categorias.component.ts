@@ -16,7 +16,8 @@ import {
 } from '../../../shared/categoria-form-dialog/categoria-form-dialog.component';
 import {
   SubcategoriaFormDialogComponent,
-  SubcategoriaFormDialogData
+  SubcategoriaFormDialogData,
+  SubcategoriaFormResultado
 } from '../../../shared/subcategoria-form-dialog/subcategoria-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
@@ -139,15 +140,15 @@ export class CategoriasComponent implements OnInit {
   }
 
   novaSubcategoria(categoria: Categoria): void {
-    const ref = this.dialog.open<SubcategoriaFormDialogComponent, SubcategoriaFormDialogData, string>(
+    const ref = this.dialog.open<SubcategoriaFormDialogComponent, SubcategoriaFormDialogData, SubcategoriaFormResultado>(
       SubcategoriaFormDialogComponent,
       { data: { categoriaNome: categoria.nome, subcategoria: null }, width: '420px', maxWidth: '95vw' }
     );
-    ref.afterClosed().subscribe((nome) => {
-      if (!nome) {
+    ref.afterClosed().subscribe((resultado) => {
+      if (!resultado) {
         return;
       }
-      this.categoriaService.criarSubcategoria(categoria.id!, { nome }).subscribe({
+      this.categoriaService.criarSubcategoria(categoria.id!, resultado).subscribe({
         next: () => {
           this.mostrarSucesso('Subcategoria criada com sucesso!');
           this.carregar();
@@ -158,15 +159,15 @@ export class CategoriasComponent implements OnInit {
   }
 
   editarSubcategoria(categoria: Categoria, subcategoria: Subcategoria): void {
-    const ref = this.dialog.open<SubcategoriaFormDialogComponent, SubcategoriaFormDialogData, string>(
+    const ref = this.dialog.open<SubcategoriaFormDialogComponent, SubcategoriaFormDialogData, SubcategoriaFormResultado>(
       SubcategoriaFormDialogComponent,
       { data: { categoriaNome: categoria.nome, subcategoria }, width: '420px', maxWidth: '95vw' }
     );
-    ref.afterClosed().subscribe((nome) => {
-      if (!nome) {
+    ref.afterClosed().subscribe((resultado) => {
+      if (!resultado) {
         return;
       }
-      this.categoriaService.atualizarSubcategoria(subcategoria.id!, { nome }).subscribe({
+      this.categoriaService.atualizarSubcategoria(subcategoria.id!, resultado).subscribe({
         next: () => {
           this.mostrarSucesso('Subcategoria atualizada com sucesso!');
           this.carregar();
