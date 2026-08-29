@@ -19,7 +19,6 @@ import { MetaService } from '../../../services/meta.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { TemaService } from '../../../services/tema.service';
-import { TotalMensal } from '../../../models/gasto.model';
 import { MetaMes, MetaRequest } from '../../../models/meta.model';
 import { Categoria } from '../../../models/categoria.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
@@ -90,7 +89,6 @@ export class DashboardComponent implements OnInit {
 
   metaMes: MetaMes | null = null;
 
-  private totaisMensaisAtuais: TotalMensal[] = [];
   private categoriasPorId = new Map<number, Categoria>();
   // Nomes puros (sem emoji) na mesma ordem de pizzaData.labels - usado pro clique na
   // fatia, já que o rótulo exibido tem o emoji prefixado e não bate mais com
@@ -162,10 +160,9 @@ export class DashboardComponent implements OnInit {
       gastosMes: this.gastoService.listarPorPeriodo(inicioMes, fimMes),
       gastosAno: this.gastoService.listarPorPeriodo(inicioAno, fimAno),
       resumo: this.gastoService.resumo(inicioResumo, fimResumo),
-      totaisMensais: this.gastoService.totaisMensais(6),
       metaMes: this.metaService.metaDoMes(this.mes, this.ano)
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, totaisMensais, metaMes }) => {
+      next: ({ gastosMes, gastosAno, resumo, metaMes }) => {
         this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
@@ -182,15 +179,22 @@ export class DashboardComponent implements OnInit {
           }]
         };
 
+        // Os 12 meses (Jan-Dez) do ano selecionado, não mais "últimos 6 meses" a
+        // partir de hoje - reaproveita gastosAno (já buscado pro card "Total gasto
+        // em {{ ano }}"), agregando por mês no cliente em vez de mais uma chamada.
+        const totalPorMes = new Array(12).fill(0);
+        gastosAno.forEach((g) => {
+          const mes = Number(g.data.split('-')[1]);
+          totalPorMes[mes - 1] += g.valor;
+        });
         this.barrasData = {
-          labels: totaisMensais.map(t => `${NOMES_MESES[t.mes - 1]}/${t.ano}`),
+          labels: NOMES_MESES,
           datasets: [{
             label: 'Total gasto',
-            data: totaisMensais.map(t => t.total),
+            data: totalPorMes,
             backgroundColor: '#3f51b5'
           }]
         };
-        this.totaisMensaisAtuais = totaisMensais;
         this.metaMes = metaMes;
 
         this.carregando = false;
@@ -231,11 +235,9 @@ export class DashboardComponent implements OnInit {
     if (indice === undefined) {
       return;
     }
-    const total = this.totaisMensaisAtuais[indice];
-    if (!total) {
-      return;
-    }
-    this.abrirDetalhe({ mes: total.mes, ano: total.ano, categoria: null });
+    // Índice 0-11 corresponde diretamente a Jan-Dez do ano selecionado (ver
+    // barrasData em carregar()).
+    this.abrirDetalhe({ mes: indice + 1, ano: this.ano, categoria: null });
   }
 
   private abrirDetalhe(data: DashboardDetalheDialogData): void {

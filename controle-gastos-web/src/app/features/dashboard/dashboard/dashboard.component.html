@@ -84,10 +84,12 @@
     </mat-card>
 
     <mat-card class="grafico-card">
-      <mat-card-subtitle>Total gasto nos últimos 6 meses</mat-card-subtitle>
+      <mat-card-subtitle>Total gasto em {{ ano }}</mat-card-subtitle>
       <p class="dica-clique">Clique em um mês para ver os detalhes.</p>
-      <div class="grafico-canvas">
-        <canvas baseChart [data]="barrasData" [options]="barrasOptions" type="bar" (chartClick)="onBarraClick($event)"></canvas>
+      <div class="grafico-canvas-scroll">
+        <div class="grafico-canvas grafico-canvas-anual">
+          <canvas baseChart [data]="barrasData" [options]="barrasOptions" type="bar" (chartClick)="onBarraClick($event)"></canvas>
+        </div>
       </div>
     </mat-card>
   </div>
@@ -105,7 +107,10 @@
       } @else if (meta.valorMeta == null) {
         <div class="aviso-meta">
           <mat-icon>info</mat-icon>
-          <span>Você ainda não definiu uma meta de economia para {{ nomeMesSelecionado }}/{{ ano }}.</span>
+          <span>
+            Sua renda mensal já está definida ({{ meta.rendaMensal | currency:'BRL' }}). Falta só definir a meta de
+            economia para {{ nomeMesSelecionado }}/{{ ano }}.
+          </span>
           <button mat-button (click)="abrirDialogoRenda()">Editar renda</button>
           <button mat-stroked-button color="primary" (click)="abrirDialogoMeta()">Definir meta deste mês</button>
         </div>

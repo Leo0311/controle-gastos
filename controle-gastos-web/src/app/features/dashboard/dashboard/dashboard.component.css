@@ -68,6 +68,18 @@
   margin-top: 12px;
 }
 
+/* Gráfico anual (12 meses) precisa de mais largura do que a maioria das telas
+   (especialmente mobile) comporta pra cada barra ficar legível - o wrapper externo
+   rola horizontalmente; o wrapper interno tem uma largura mínima fixa (o Chart.js
+   redimensiona pra preencher esse espaço) em vez de espremer as 12 barras. */
+.grafico-canvas-scroll {
+  overflow-x: auto;
+}
+
+.grafico-canvas-anual {
+  min-width: 640px;
+}
+
 .card-meta {
   margin-top: 16px;
   padding-bottom: 16px;
