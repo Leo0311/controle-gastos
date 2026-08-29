@@ -7,6 +7,18 @@
   gap: 12px;
 }
 
+.cabecalho-aba {
+  display: flex;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.dica-aba {
+  margin: 0;
+  font-size: 13px;
+  color: var(--texto-secundario);
+}
+
 .carregando {
   display: flex;
   justify-content: center;
@@ -54,11 +66,16 @@
   font-weight: 500;
 }
 
+/* Fundo pastel fixo (não muda com o tema) - por isso o texto por cima também precisa
+   ficar fixo em escuro, senão no modo escuro herda a cor clara padrão do chip e fica
+   ilegível sobre o fundo claro (mesmo problema já corrigido no badge de alerta de
+   renda da tela de Análises). */
 .chip-ativo {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
   background-color: #c8e6c9;
+  color: rgba(0, 0, 0, 0.87);
 }
 
 .chip-pausado {
@@ -66,6 +83,7 @@
   min-height: 22px;
   padding: 0 8px;
   background-color: #e0e0e0;
+  color: rgba(0, 0, 0, 0.87);
 }
 
 .linha-detalhes {

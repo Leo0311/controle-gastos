@@ -64,4 +64,10 @@ public class Gasto {
     // manualmente. Nunca é alterado por uma edição manual do gasto depois de criado.
     @Column(name = "gasto_recorrente_id")
     private Integer gastoRecorrenteId;
+
+    // Preenchido só quando este gasto é uma parcela gerada automaticamente por uma
+    // compra parcelada (ver CompraParceladaService.gerarParcelas) - null para gastos
+    // avulsos e para gastos gerados por recorrência.
+    @Column(name = "compra_parcelada_id")
+    private Integer compraParceladaId;
 }

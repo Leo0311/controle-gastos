@@ -1,0 +1,140 @@
+package com.controlegastos.api.service;
+
+import com.controlegastos.api.exception.OrcamentoInvalidoException;
+import com.controlegastos.api.exception.RecursoNaoEncontradoException;
+import com.controlegastos.api.model.Categoria;
+import com.controlegastos.api.model.CompraParcelada;
+import com.controlegastos.api.model.Gasto;
+import com.controlegastos.api.model.Subcategoria;
+import com.controlegastos.api.repository.CategoriaRepository;
+import com.controlegastos.api.repository.CompraParceladaRepository;
+import com.controlegastos.api.repository.GastoRepository;
+import com.controlegastos.api.repository.OrcamentoRepository;
+import com.controlegastos.api.repository.SubcategoriaRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CompraParceladaService {
+
+    private final CompraParceladaRepository repository;
+    private final GastoRepository gastoRepository;
+    private final GastoService gastoService;
+    private final CategoriaRepository categoriaRepository;
+    private final SubcategoriaRepository subcategoriaRepository;
+    private final OrcamentoRepository orcamentoRepository;
+
+    public List<CompraParcelada> listarTodos(Integer usuarioId) {
+        return repository.findAllByUsuarioIdOrderByDataCriacaoDesc(usuarioId);
+    }
+
+    public CompraParcelada cadastrar(CompraParcelada dados, Integer usuarioId) {
+        validar(dados);
+        validarCategoria(dados, usuarioId);
+        validarOrcamento(dados.getOrcamentoId(), usuarioId);
+        dados.setId(null);
+        dados.setUsuarioId(usuarioId);
+        dados.setAtiva(true);
+        dados.setDataCriacao(LocalDateTime.now());
+        CompraParcelada salva = repository.save(dados);
+        gerarParcelas(salva, usuarioId);
+        return salva;
+    }
+
+    // Cancela a compra parcelada: marca como inativa (ação definitiva, sem reativar -
+    // diferente do pausar/reativar de gastos recorrentes) e remove os gastos das
+    // parcelas com data futura (ainda não vencidas). Parcelas cuja data já passou (ou
+    // é hoje) continuam intactas, como histórico do que já foi pago.
+    public void excluir(Integer id, Integer usuarioId) {
+        CompraParcelada existente = buscarPorId(id, usuarioId);
+        existente.setAtiva(false);
+        repository.save(existente);
+
+        List<Gasto> parcelasFuturas = gastoRepository.findByCompraParceladaIdAndDataAfter(id, LocalDate.now());
+        gastoRepository.deleteAll(parcelasFuturas);
+    }
+
+    // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir do
+    // mês atual (a compra parcelada é lançada de uma vez, diferente da recorrência,
+    // que só lança o gasto do mês quando o dia configurado chega). Divide valorTotal
+    // em centavos (evita erro de arredondamento de ponto flutuante) e ajusta a ÚLTIMA
+    // parcela pra soma bater exatamente com valorTotal, sem perder nem sobrar centavo.
+    private void gerarParcelas(CompraParcelada compra, Integer usuarioId) {
+        long totalCentavos = compra.getValorTotal().movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact();
+        int numeroParcelas = compra.getNumeroParcelas();
+        long parcelaBaseCentavos = totalCentavos / numeroParcelas;
+
+        LocalDate referencia = LocalDate.now();
+        for (int i = 0; i < numeroParcelas; i++) {
+            YearMonth mesParcela = YearMonth.from(referencia).plusMonths(i);
+            int dia = Math.min(compra.getDiaDoMes(), mesParcela.lengthOfMonth());
+            LocalDate data = mesParcela.atDay(dia);
+
+            boolean ultimaParcela = i == numeroParcelas - 1;
+            long valorCentavos = ultimaParcela ? (totalCentavos - parcelaBaseCentavos * (numeroParcelas - 1)) : parcelaBaseCentavos;
+
+            Gasto gasto = new Gasto();
+            gasto.setDescricao(compra.getDescricao() + " (" + (i + 1) + "/" + numeroParcelas + ")");
+            gasto.setValor(BigDecimal.valueOf(valorCentavos, 2));
+            gasto.setCategoriaId(compra.getCategoriaId());
+            gasto.setSubcategoriaId(compra.getSubcategoriaId());
+            gasto.setOrcamentoId(compra.getOrcamentoId());
+            gasto.setData(data);
+            gasto.setCompraParceladaId(compra.getId());
+            gastoService.cadastrarVinculadoAParcelada(gasto, usuarioId);
+        }
+    }
+
+    private CompraParcelada buscarPorId(Integer id, Integer usuarioId) {
+        return repository.findByIdAndUsuarioId(id, usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Compra parcelada não encontrada com ID " + id));
+    }
+
+    private void validarCategoria(CompraParcelada dados, Integer usuarioId) {
+        Categoria categoria = categoriaRepository.findByIdVisivel(dados.getCategoriaId(), usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Categoria inválida ou não pertence ao usuário."));
+        if (dados.getSubcategoriaId() == null) {
+            return;
+        }
+        Subcategoria subcategoria = subcategoriaRepository
+                .findByIdAndUsuarioId(dados.getSubcategoriaId(), usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Subcategoria inválida ou não pertence ao usuário."));
+        if (!subcategoria.getCategoriaId().equals(categoria.getId())) {
+            throw new IllegalArgumentException("Subcategoria não pertence à categoria selecionada.");
+        }
+    }
+
+    private void validarOrcamento(Integer orcamentoId, Integer usuarioId) {
+        if (orcamentoId == null) {
+            return;
+        }
+        orcamentoRepository.findByIdAndUsuarioId(orcamentoId, usuarioId)
+                .orElseThrow(() -> new OrcamentoInvalidoException("Orçamento não encontrado ou não pertence ao usuário."));
+    }
+
+    private void validar(CompraParcelada dados) {
+        if (dados.getDescricao() == null || dados.getDescricao().isBlank()) {
+            throw new IllegalArgumentException("Descrição não pode ser vazia.");
+        }
+        if (dados.getValorTotal() == null || dados.getValorTotal().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Valor total deve ser maior que zero.");
+        }
+        if (dados.getCategoriaId() == null) {
+            throw new IllegalArgumentException("Categoria não pode ser vazia.");
+        }
+        if (dados.getNumeroParcelas() == null || dados.getNumeroParcelas() < 2 || dados.getNumeroParcelas() > 60) {
+            throw new IllegalArgumentException("Número de parcelas deve estar entre 2 e 60.");
+        }
+        if (dados.getDiaDoMes() == null || dados.getDiaDoMes() < 1 || dados.getDiaDoMes() > 31) {
+            throw new IllegalArgumentException("Dia do mês deve estar entre 1 e 31.");
+        }
+    }
+}

@@ -6,9 +6,12 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { AuthService } from './services/auth.service';
 import { TemaService } from './services/tema.service';
+import { PwaInstalacaoService } from './services/pwa-instalacao.service';
+import { InfoDialogComponent } from './shared/info-dialog/info-dialog.component';
 
 const NOMES_MESES = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
@@ -50,7 +53,7 @@ const AMORTECIMENTO_VISUAL = 0.4;
   standalone: true,
   imports: [
     AsyncPipe, RouterOutlet, RouterLink, RouterLinkActive,
-    MatToolbarModule, MatTabsModule, MatIconModule, MatButtonModule, MatMenuModule
+    MatToolbarModule, MatTabsModule, MatIconModule, MatButtonModule, MatMenuModule, MatDialogModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
@@ -60,10 +63,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   private readonly authService = inject(AuthService);
   private readonly temaService = inject(TemaService);
+  private readonly pwaInstalacaoService = inject(PwaInstalacaoService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
   readonly usuario$ = this.authService.usuario$;
   readonly temaEscuro$ = this.temaService.escuro$;
+  readonly podeInstalarApp$ = this.pwaInstalacaoService.podeInstalar$;
   readonly mesAnoAtual: string;
 
   @ViewChild('conteudo') private conteudoRef?: ElementRef<HTMLElement>;
@@ -120,6 +126,27 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   alternarTema(): void {
     this.temaService.alternar();
+  }
+
+  async instalarApp(): Promise<void> {
+    const disparouPromptNativo = await this.pwaInstalacaoService.solicitarInstalacao();
+    if (disparouPromptNativo) {
+      return;
+    }
+    // Sem prompt nativo disponível: só resta mostrar instruções manuais, e só faz
+    // sentido no iOS Safari (nos demais casos o botão nem aparece sem prompt nativo -
+    // ver PwaInstalacaoService.podeInstalar$).
+    if (this.pwaInstalacaoService.ehIOS) {
+      this.dialog.open(InfoDialogComponent, {
+        data: {
+          titulo: 'Instalar o app',
+          mensagem: 'No Safari, toque no ícone de Compartilhar (o quadrado com uma seta '
+            + 'para cima) e depois em "Adicionar à Tela de Início".'
+        },
+        width: '360px',
+        maxWidth: '95vw'
+      });
+    }
   }
 
   // Getter (não uma propriedade fixada uma vez) porque o Router não expõe algo como

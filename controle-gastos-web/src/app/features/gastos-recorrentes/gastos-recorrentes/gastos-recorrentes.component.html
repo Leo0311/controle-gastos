@@ -1,60 +1,114 @@
-<div class="cabecalho">
-  <h2>Gastos recorrentes</h2>
-  <button mat-raised-button color="primary" (click)="novoRecorrente()">
-    <mat-icon>add</mat-icon>
-    Novo gasto recorrente
-  </button>
-</div>
+<h2>Recorrentes e Parceladas</h2>
 
-@if (carregando) {
-  <div class="carregando">
-    <mat-spinner diameter="40"></mat-spinner>
-  </div>
-} @else if (recorrentes.length === 0) {
-  <app-empty-state icon="autorenew" mensagem="Nenhum gasto recorrente cadastrado."></app-empty-state>
-} @else {
-  <div class="lista-recorrentes">
-    @for (recorrente of recorrentes; track recorrente.id) {
-      <div class="item-recorrente" [class.pausado]="!recorrente.ativo">
-        <div class="info-recorrente">
-          <div class="linha-titulo">
-            <span class="descricao">{{ recorrente.descricao }}</span>
-            @if (recorrente.ativo) {
-              <mat-chip class="chip-ativo">Ativo</mat-chip>
-            } @else {
-              <mat-chip class="chip-pausado">Pausado</mat-chip>
-            }
-          </div>
-          <div class="linha-detalhes">
-            <span>{{ categoriaLabel(recorrente.categoriaId) }}</span>
-            @if (recorrente.subcategoriaId) {
-              <span> / {{ subcategoriaLabel(recorrente.subcategoriaId) }}</span>
-            }
-            <span class="separador">·</span>
-            <span>{{ recorrente.valor | currency:'BRL' }}</span>
-            <span class="separador">·</span>
-            <span>Todo dia {{ recorrente.diaDoMes }}</span>
-          </div>
-        </div>
+<mat-tab-group>
+  <mat-tab label="Recorrentes">
+    <div class="cabecalho-aba">
+      <button mat-raised-button color="primary" (click)="novoRecorrente()">
+        <mat-icon>add</mat-icon>
+        Novo gasto recorrente
+      </button>
+    </div>
 
-        <button mat-icon-button [matMenuTriggerFor]="menuAcoes" aria-label="Mais ações">
-          <mat-icon>more_vert</mat-icon>
-        </button>
-        <mat-menu #menuAcoes="matMenu">
-          <button mat-menu-item (click)="editar(recorrente)">
-            <mat-icon>edit</mat-icon>
-            <span>Editar</span>
-          </button>
-          <button mat-menu-item (click)="alternarAtivo(recorrente)">
-            <mat-icon>{{ recorrente.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
-            <span>{{ recorrente.ativo ? 'Pausar' : 'Reativar' }}</span>
-          </button>
-          <button mat-menu-item (click)="excluir(recorrente)">
-            <mat-icon color="warn">delete</mat-icon>
-            <span>Excluir</span>
-          </button>
-        </mat-menu>
+    @if (carregando) {
+      <div class="carregando">
+        <mat-spinner diameter="40"></mat-spinner>
+      </div>
+    } @else if (recorrentes.length === 0) {
+      <app-empty-state icon="autorenew" mensagem="Nenhum gasto recorrente cadastrado."></app-empty-state>
+    } @else {
+      <div class="lista-recorrentes">
+        @for (recorrente of recorrentes; track recorrente.id) {
+          <div class="item-recorrente" [class.pausado]="!recorrente.ativo">
+            <div class="info-recorrente">
+              <div class="linha-titulo">
+                <span class="descricao">{{ recorrente.descricao }}</span>
+                @if (recorrente.ativo) {
+                  <mat-chip class="chip-ativo">Ativo</mat-chip>
+                } @else {
+                  <mat-chip class="chip-pausado">Pausado</mat-chip>
+                }
+              </div>
+              <div class="linha-detalhes">
+                <span>{{ categoriaLabel(recorrente.categoriaId) }}</span>
+                @if (recorrente.subcategoriaId) {
+                  <span> / {{ subcategoriaLabel(recorrente.subcategoriaId) }}</span>
+                }
+                <span class="separador">·</span>
+                <span>{{ recorrente.valor | currency:'BRL' }}</span>
+                <span class="separador">·</span>
+                <span>Todo dia {{ recorrente.diaDoMes }}</span>
+              </div>
+            </div>
+
+            <button mat-icon-button [matMenuTriggerFor]="menuAcoes" aria-label="Mais ações">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menuAcoes="matMenu">
+              <button mat-menu-item (click)="editar(recorrente)">
+                <mat-icon>edit</mat-icon>
+                <span>Editar</span>
+              </button>
+              <button mat-menu-item (click)="alternarAtivo(recorrente)">
+                <mat-icon>{{ recorrente.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
+                <span>{{ recorrente.ativo ? 'Pausar' : 'Reativar' }}</span>
+              </button>
+              <button mat-menu-item (click)="excluir(recorrente)">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>Excluir</span>
+              </button>
+            </mat-menu>
+          </div>
+        }
       </div>
     }
-  </div>
-}
+  </mat-tab>
+
+  <mat-tab label="Parceladas">
+    <div class="cabecalho-aba">
+      <p class="dica-aba">
+        Compras parceladas são cadastradas pelo formulário de novo gasto, na opção "Parcelar compra".
+      </p>
+    </div>
+
+    @if (carregandoParceladas) {
+      <div class="carregando">
+        <mat-spinner diameter="40"></mat-spinner>
+      </div>
+    } @else if (parceladas.length === 0) {
+      <app-empty-state icon="credit_card" mensagem="Nenhuma compra parcelada cadastrada."></app-empty-state>
+    } @else {
+      <div class="lista-recorrentes">
+        @for (parcelada of parceladas; track parcelada.id) {
+          <div class="item-recorrente" [class.pausado]="!parcelada.ativa">
+            <div class="info-recorrente">
+              <div class="linha-titulo">
+                <span class="descricao">{{ parcelada.descricao }}</span>
+                @if (parcelada.ativa) {
+                  <mat-chip class="chip-ativo">Ativa</mat-chip>
+                } @else {
+                  <mat-chip class="chip-pausado">Cancelada</mat-chip>
+                }
+              </div>
+              <div class="linha-detalhes">
+                <span>{{ categoriaLabel(parcelada.categoriaId) }}</span>
+                @if (parcelada.subcategoriaId) {
+                  <span> / {{ subcategoriaLabel(parcelada.subcategoriaId) }}</span>
+                }
+                <span class="separador">·</span>
+                <span>{{ parcelada.valorTotal | currency:'BRL' }} em {{ parcelada.numeroParcelas }}x</span>
+                <span class="separador">·</span>
+                <span>Todo dia {{ parcelada.diaDoMes }}</span>
+              </div>
+            </div>
+
+            @if (parcelada.ativa) {
+              <button mat-icon-button (click)="cancelarParcelada(parcelada)" aria-label="Cancelar compra parcelada" title="Cancelar">
+                <mat-icon color="warn">cancel</mat-icon>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </mat-tab>
+</mat-tab-group>

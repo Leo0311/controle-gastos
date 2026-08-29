@@ -57,7 +57,7 @@
       }
     </mat-form-field>
 
-    @if (editando || !form.controls.recorrente.value) {
+    @if (editando || (!form.controls.recorrente.value && !form.controls.parcelado.value)) {
       <mat-form-field appearance="outline">
         <mat-label>Data</mat-label>
         <input matInput [matDatepicker]="picker" formControlName="data">
@@ -70,10 +70,17 @@
     }
 
     @if (!editando) {
-      <mat-checkbox formControlName="recorrente">Tornar recorrente (todo mês)</mat-checkbox>
+      <div class="opcoes-especiais">
+        <mat-checkbox formControlName="recorrente" [disabled]="!!form.controls.parcelado.value">
+          Tornar recorrente (todo mês)
+        </mat-checkbox>
+        <mat-checkbox formControlName="parcelado" [disabled]="!!form.controls.recorrente.value">
+          Parcelar compra
+        </mat-checkbox>
+      </div>
     }
 
-    @if (!editando && form.controls.recorrente.value) {
+    @if (!editando && (form.controls.recorrente.value || form.controls.parcelado.value)) {
       <mat-form-field appearance="outline">
         <mat-label>Dia do mês</mat-label>
         <input matInput type="number" min="1" max="31" formControlName="diaDoMes">
@@ -83,6 +90,20 @@
         }
         @if (form.controls.diaDoMes.hasError('min') || form.controls.diaDoMes.hasError('max')) {
           <mat-error>Dia do mês deve estar entre 1 e 31.</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    @if (!editando && form.controls.parcelado.value) {
+      <mat-form-field appearance="outline">
+        <mat-label>Número de parcelas</mat-label>
+        <input matInput type="number" min="2" max="60" formControlName="numeroParcelas">
+        <mat-hint>O valor é dividido em partes iguais; a última parcela é ajustada para a soma bater certinho.</mat-hint>
+        @if (form.controls.numeroParcelas.hasError('required')) {
+          <mat-error>Número de parcelas é obrigatório.</mat-error>
+        }
+        @if (form.controls.numeroParcelas.hasError('min') || form.controls.numeroParcelas.hasError('max')) {
+          <mat-error>Número de parcelas deve estar entre 2 e 60.</mat-error>
         }
       </mat-form-field>
     }

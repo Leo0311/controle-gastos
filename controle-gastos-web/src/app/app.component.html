@@ -5,6 +5,11 @@
   @if (usuario$ | async; as usuario) {
     <span class="mes-ano-atual">{{ mesAnoAtual }}</span>
     <span class="usuario-nome">{{ usuario.nome }}</span>
+    @if (podeInstalarApp$ | async) {
+      <button class="botao-instalar" mat-icon-button (click)="instalarApp()" aria-label="Instalar app" title="Instalar app">
+        <mat-icon>install_mobile</mat-icon>
+      </button>
+    }
     <button
       class="botao-tema"
       mat-icon-button
@@ -95,5 +100,11 @@
       <mat-icon>autorenew</mat-icon>
       <span>Recorrentes</span>
     </a>
+    @if (podeInstalarApp$ | async) {
+      <button mat-menu-item (click)="instalarApp()">
+        <mat-icon>install_mobile</mat-icon>
+        <span>Instalar app</span>
+      </button>
+    }
   </mat-menu>
 }

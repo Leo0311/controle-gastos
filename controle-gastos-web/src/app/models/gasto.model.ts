@@ -15,6 +15,9 @@ export interface Gasto {
   // Preenchido pela API só quando o gasto foi criado automaticamente a partir de uma
   // recorrência (ver GastoRecorrente) - usado só para exibir o ícone 🔁 na listagem.
   gastoRecorrenteId?: number | null;
+  // Preenchido pela API só quando o gasto é uma parcela de uma compra parcelada (ver
+  // CompraParcelada) - usado só para exibir o ícone 💳 na listagem.
+  compraParceladaId?: number | null;
 }
 
 export interface CategoriaTotal {

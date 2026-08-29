@@ -262,3 +262,36 @@ CREATE INDEX IF NOT EXISTS idx_gastos_recorrentes_usuario ON gastos_recorrentes 
 -- só a indicação visual de "gerado automaticamente").
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS gasto_recorrente_id INT REFERENCES gastos_recorrentes(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_gastos_gasto_recorrente ON gastos (gasto_recorrente_id);
+
+-- ============================================================================
+-- Compras parceladas: ao cadastrar, gera IMEDIATAMENTE todas as parcelas como
+-- gastos individuais, uma por mês consecutivo a partir do mês atual, no dia
+-- configurado (mesmo clamping de dia inválido em meses curtos usado nos gastos
+-- recorrentes). Diferente de gastos recorrentes: não há lançamento sob demanda -
+-- tudo é gerado de uma vez no cadastro. Cancelar marca a compra como inativa
+-- (histórico preservado, nunca reativa) e remove só as parcelas com data futura
+-- (ainda não vencidas) - ver CompraParceladaService.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS compras_parceladas (
+    id              SERIAL PRIMARY KEY,
+    usuario_id      INT NOT NULL REFERENCES usuarios(id),
+    descricao       VARCHAR(150) NOT NULL,
+    valor_total     NUMERIC(12,2) NOT NULL CHECK (valor_total > 0),
+    numero_parcelas INT NOT NULL CHECK (numero_parcelas BETWEEN 2 AND 60),
+    categoria_id    INT NOT NULL REFERENCES categorias(id),
+    subcategoria_id INT REFERENCES subcategorias(id),
+    orcamento_id    INT REFERENCES orcamentos(id) ON DELETE SET NULL,
+    -- Mesmo significado/clamping de gastos_recorrentes.dia_do_mes.
+    dia_do_mes      INT NOT NULL CHECK (dia_do_mes BETWEEN 1 AND 31),
+    ativa           BOOLEAN NOT NULL DEFAULT TRUE,
+    data_criacao    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_compras_parceladas_usuario ON compras_parceladas (usuario_id);
+
+-- Rastreia qual gasto é a parcela de qual compra parcelada - usado pra indicar na
+-- tela de Gastos quais lançamentos são parcelas (badge "i/N") e pra excluir só as
+-- parcelas futuras ao cancelar a compra (ver CompraParceladaService.excluir).
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS compra_parcelada_id INT REFERENCES compras_parceladas(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_gastos_compra_parcelada ON gastos (compra_parcelada_id);

@@ -60,16 +60,24 @@ public class GastoService {
     }
 
     public Gasto cadastrar(Gasto gasto, Integer usuarioId) {
-        // gastoRecorrenteId só pode ser setado internamente por GastoRecorrenteService
-        // (ver cadastrarVinculadoARecorrente) - nunca por uma criação vinda da API pública,
-        // senão qualquer cliente poderia marcar um gasto como "gerado automaticamente".
+        // gastoRecorrenteId/compraParceladaId só podem ser setados internamente por
+        // GastoRecorrenteService/CompraParceladaService (ver cadastrarVinculadoA*) -
+        // nunca por uma criação vinda da API pública, senão qualquer cliente poderia
+        // marcar um gasto como "gerado automaticamente".
         gasto.setGastoRecorrenteId(null);
+        gasto.setCompraParceladaId(null);
         return salvar(gasto, usuarioId);
     }
 
     // Usado só por GastoRecorrenteService pra criar o gasto já vinculado à recorrência
     // de origem (gasto.gastoRecorrenteId) - nunca exposto diretamente via endpoint público.
     public Gasto cadastrarVinculadoARecorrente(Gasto gasto, Integer usuarioId) {
+        return salvar(gasto, usuarioId);
+    }
+
+    // Usado só por CompraParceladaService pra criar cada parcela já vinculada à compra
+    // de origem (gasto.compraParceladaId) - nunca exposto diretamente via endpoint público.
+    public Gasto cadastrarVinculadoAParcelada(Gasto gasto, Integer usuarioId) {
         return salvar(gasto, usuarioId);
     }
 

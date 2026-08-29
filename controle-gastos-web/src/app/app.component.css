@@ -36,6 +36,7 @@
   max-width: 140px;
 }
 
+.botao-instalar,
 .botao-tema,
 .botao-sair {
   flex-shrink: 0;

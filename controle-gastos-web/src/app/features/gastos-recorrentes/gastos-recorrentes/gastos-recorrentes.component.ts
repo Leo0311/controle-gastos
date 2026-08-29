@@ -4,13 +4,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
+import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
+import { CompraParcelada } from '../../../models/compra-parcelada.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import {
   GastoRecorrenteFormDialogComponent,
@@ -28,6 +31,7 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
     MatIconModule,
     MatChipsModule,
     MatMenuModule,
+    MatTabsModule,
     MatDialogModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
@@ -39,12 +43,15 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
 export class GastosRecorrentesComponent implements OnInit {
 
   private readonly service = inject(GastoRecorrenteService);
+  private readonly parceladaService = inject(CompraParceladaService);
   private readonly categoriaService = inject(CategoriaService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   recorrentes: GastoRecorrente[] = [];
+  parceladas: CompraParcelada[] = [];
   carregando = false;
+  carregandoParceladas = false;
 
   private categoriasPorId = new Map<number, Categoria>();
   private subcategoriasPorId = new Map<number, Subcategoria>();
@@ -59,6 +66,7 @@ export class GastosRecorrentesComponent implements OnInit {
       error: () => { /* usado só pro nome na listagem */ }
     });
     this.carregar();
+    this.carregarParceladas();
   }
 
   carregar(): void {
@@ -72,6 +80,42 @@ export class GastosRecorrentesComponent implements OnInit {
         this.carregando = false;
         this.mostrarErro('Não foi possível carregar os gastos recorrentes. Verifique se a API está no ar.');
       }
+    });
+  }
+
+  carregarParceladas(): void {
+    this.carregandoParceladas = true;
+    this.parceladaService.listarTodos().subscribe({
+      next: (parceladas) => {
+        this.parceladas = parceladas;
+        this.carregandoParceladas = false;
+      },
+      error: () => {
+        this.carregandoParceladas = false;
+        this.mostrarErro('Não foi possível carregar as compras parceladas. Verifique se a API está no ar.');
+      }
+    });
+  }
+
+  cancelarParcelada(parcelada: CompraParcelada): void {
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'Cancelar compra parcelada',
+        mensagem: `Tem certeza que deseja cancelar "${parcelada.descricao}"? `
+          + 'As parcelas já vencidas (data igual ou anterior a hoje) não são afetadas - só as parcelas futuras são removidas.'
+      }
+    });
+    ref.afterClosed().subscribe((confirmado) => {
+      if (!confirmado) {
+        return;
+      }
+      this.parceladaService.excluir(parcelada.id!).subscribe({
+        next: () => {
+          this.mostrarSucesso('Compra parcelada cancelada com sucesso!');
+          this.carregarParceladas();
+        },
+        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+      });
     });
   }
 

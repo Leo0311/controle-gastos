@@ -15,6 +15,7 @@ import { map } from 'rxjs';
 
 import { Gasto } from '../../../models/gasto.model';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
+import { CompraParcelada } from '../../../models/compra-parcelada.model';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { OrcamentoService } from '../../../services/orcamento.service';
@@ -33,12 +34,14 @@ export interface GastoFormDialogData {
   gasto: Gasto | null;
 }
 
-// Quando "Tornar recorrente" está marcado, o formulário cria uma recorrência (que a
-// própria API lança automaticamente todo mês) em vez de um gasto avulso - por isso
-// o resultado do diálogo é uma dessas duas formas, nunca as duas juntas.
+// Quando "Tornar recorrente" ou "Parcelar compra" está marcado (mutuamente
+// exclusivos - ver [disabled] no template), o formulário cria uma recorrência ou uma
+// compra parcelada em vez de um gasto avulso - por isso o resultado do diálogo é uma
+// dessas três formas, nunca mais de uma ao mesmo tempo.
 export type GastoFormResultado =
   | { tipo: 'gasto'; gasto: Gasto }
-  | { tipo: 'recorrente'; recorrente: GastoRecorrente };
+  | { tipo: 'recorrente'; recorrente: GastoRecorrente }
+  | { tipo: 'parcelada'; parcelada: CompraParcelada };
 
 // Valor sentinela para a opção "+ Nova categoria/subcategoria..." no fim do
 // dropdown - nunca corresponde a um ID real (IDs reais são sempre positivos).
@@ -104,7 +107,9 @@ export class GastoFormDialogComponent implements OnInit {
     data: [new Date(), [Validators.required]],
     orcamentoId: [null as number | null],
     recorrente: [false],
-    diaDoMes: [new Date().getDate() as number | null]
+    parcelado: [false],
+    diaDoMes: [new Date().getDate() as number | null],
+    numeroParcelas: [null as number | null]
   });
 
   constructor(
@@ -155,11 +160,23 @@ export class GastoFormDialogComponent implements OnInit {
 
     this.form.controls.data.valueChanges.subscribe(() => this.atualizarOpcoesOrcamento());
 
-    this.form.controls.recorrente.valueChanges.subscribe((ativo) => {
-      const diaDoMes = this.form.controls.diaDoMes;
-      diaDoMes.setValidators(ativo ? [Validators.required, Validators.min(1), Validators.max(31)] : []);
-      diaDoMes.updateValueAndValidity();
+    // "Tornar recorrente" e "Parcelar compra" são mutuamente exclusivos (ver
+    // [disabled] no template, que impede marcar os dois pela UI) - cada um só precisa
+    // reagir à própria mudança pra atualizar os validators dos campos que controla.
+    this.form.controls.recorrente.valueChanges.subscribe((ativo) =>
+      this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.parcelado.value));
+    this.form.controls.parcelado.valueChanges.subscribe((ativo) => {
+      this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.recorrente.value);
+      const numeroParcelas = this.form.controls.numeroParcelas;
+      numeroParcelas.setValidators(ativo ? [Validators.required, Validators.min(2), Validators.max(60)] : []);
+      numeroParcelas.updateValueAndValidity();
     });
+  }
+
+  private atualizarValidadoresDiaDoMes(ativo: boolean): void {
+    const diaDoMes = this.form.controls.diaDoMes;
+    diaDoMes.setValidators(ativo ? [Validators.required, Validators.min(1), Validators.max(31)] : []);
+    diaDoMes.updateValueAndValidity();
   }
 
   onCategoriaChange(evento: MatSelectChange): void {
@@ -211,6 +228,20 @@ export class GastoFormDialogComponent implements OnInit {
         orcamentoId: valores.orcamentoId ?? null
       };
       this.dialogRef.close({ tipo: 'recorrente', recorrente } satisfies GastoFormResultado);
+      return;
+    }
+
+    if (valores.parcelado) {
+      const parcelada: CompraParcelada = {
+        descricao: valores.descricao!.trim(),
+        valorTotal: valores.valor!,
+        numeroParcelas: valores.numeroParcelas!,
+        categoriaId: valores.categoriaId!,
+        subcategoriaId: valores.subcategoriaId ?? null,
+        diaDoMes: valores.diaDoMes!,
+        orcamentoId: valores.orcamentoId ?? null
+      };
+      this.dialogRef.close({ tipo: 'parcelada', parcelada } satisfies GastoFormResultado);
       return;
     }
 

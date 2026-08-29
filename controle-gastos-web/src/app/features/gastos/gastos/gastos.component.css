@@ -34,6 +34,14 @@
   display: none;
 }
 
+.filtros-periodo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .campo-busca {
   display: block;
   max-width: 360px;

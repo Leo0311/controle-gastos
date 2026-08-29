@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -18,6 +19,7 @@ import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
+import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { Gasto } from '../../../models/gasto.model';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
@@ -59,6 +61,7 @@ const NOMES_MESES_COMPLETO = [
   imports: [
     CurrencyPipe,
     DatePipe,
+    FormsModule,
     ReactiveFormsModule,
     MatTableModule,
     MatButtonModule,
@@ -66,6 +69,7 @@ const NOMES_MESES_COMPLETO = [
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatMenuModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
@@ -82,9 +86,23 @@ export class GastosComponent implements OnInit {
   gastos: Gasto[] = [];
   carregando = false;
 
+  readonly meses = NOMES_MESES_COMPLETO.map((nome, i) => ({ valor: i + 1, nome }));
+  readonly anos: number[];
+
   filtroMes: number | null = null;
   filtroAno: number | null = null;
   filtroCategoria: string | null = null;
+
+  // Refletem sempre filtroMes/filtroAno pra exibição nos <mat-select> - quando o
+  // filtro de período está limpo ("ver todos os meses"), continuam mostrando o
+  // mês/ano atual, pronto pra caso o usuário volte a filtrar por período.
+  mesSelecionado = new Date().getMonth() + 1;
+  anoSelecionado = new Date().getFullYear();
+
+  // true só na primeiríssima leitura dos query params (ver ngOnInit) - depois disso,
+  // a ausência de mes/ano na URL significa "usuário limpou o filtro de propósito"
+  // (verTodosOsMeses), não "aplique o padrão do mês atual" de novo.
+  private primeiraCarga = true;
 
   // Busca por descrição, client-side, em cima da lista já carregada/filtrada por
   // mês/ano/categoria (não dispara chamada nova à API) - ver ngOnInit e gastosExibidos.
@@ -103,11 +121,15 @@ export class GastosComponent implements OnInit {
     private readonly orcamentoService: OrcamentoService,
     private readonly categoriaService: CategoriaService,
     private readonly gastoRecorrenteService: GastoRecorrenteService,
+    private readonly compraParceladaService: CompraParceladaService,
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar,
     private readonly route: ActivatedRoute,
     private readonly router: Router
-  ) { }
+  ) {
+    const anoAtual = new Date().getFullYear();
+    this.anos = Array.from({ length: 6 }, (_, i) => anoAtual - 2 + i);
+  }
 
   ngOnInit(): void {
     this.categoriaService.listarVisiveis().subscribe({
@@ -125,8 +147,22 @@ export class GastosComponent implements OnInit {
     this.route.queryParamMap.subscribe((params) => {
       const mes = Number(params.get('mes'));
       const ano = Number(params.get('ano'));
-      this.filtroMes = Number.isInteger(mes) && mes >= 1 && mes <= 12 ? mes : null;
-      this.filtroAno = Number.isInteger(ano) && ano > 0 ? ano : null;
+      const mesValido = Number.isInteger(mes) && mes >= 1 && mes <= 12 ? mes : null;
+      const anoValido = Number.isInteger(ano) && ano > 0 ? ano : null;
+
+      if (this.primeiraCarga && mesValido === null && anoValido === null) {
+        // Acesso direto à tela (sem vir de um clique no Dashboard) - começa já
+        // filtrado no mês atual, em vez de mostrar todo o histórico de uma vez.
+        this.filtroMes = new Date().getMonth() + 1;
+        this.filtroAno = new Date().getFullYear();
+      } else {
+        this.filtroMes = mesValido;
+        this.filtroAno = anoValido;
+      }
+      this.primeiraCarga = false;
+
+      this.mesSelecionado = this.filtroMes ?? new Date().getMonth() + 1;
+      this.anoSelecionado = this.filtroAno ?? new Date().getFullYear();
       this.filtroCategoria = params.get('categoria');
       this.carregar();
     });
@@ -164,16 +200,68 @@ export class GastosComponent implements OnInit {
     return this.gastos.filter((g) => g.descricao.toLowerCase().includes(this.termoBusca));
   }
 
+  // Só reflete a categoria agora: o período (mês/ano) já fica sempre visível nos
+  // <mat-select> no topo da tela, então repeti-lo aqui na faixa "Mostrando gastos
+  // de..." seria redundante - essa faixa só aparece pra deixar claro que veio de um
+  // clique de categoria no Dashboard (ver limparFiltro).
   get descricaoFiltro(): string {
-    if (!this.filtroAno) {
-      return '';
-    }
-    const periodo = this.filtroMes ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`;
-    return this.filtroCategoria ? `${periodo} · ${this.filtroCategoria}` : periodo;
+    return this.filtroCategoria ?? '';
   }
 
+  // Mensagem do empty-state quando não há nenhum gasto no período/categoria
+  // selecionado - combina os dois, diferente de descricaoFiltro (só categoria).
+  get mensagemVazio(): string {
+    const periodo = this.filtroAno
+      ? (this.filtroMes ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`)
+      : '';
+    const partes = [periodo, this.filtroCategoria].filter((p): p is string => !!p);
+    return partes.length > 0
+      ? `Nenhum gasto encontrado para ${partes.join(' · ')}.`
+      : 'Nenhum gasto cadastrado ainda.';
+  }
+
+  // Reset completo (categoria E período) - usado pelo botão "Ver todos os gastos" da
+  // faixa de filtro de categoria. Como não é mais a primeira carga, cair sem mes/ano
+  // na URL mostra literalmente tudo, sem reaplicar o padrão do mês atual.
   limparFiltro(): void {
     this.router.navigate(['/gastos']);
+  }
+
+  // Limpa só o período, preservando a categoria (se houver) - diferente de
+  // limparFiltro(), que reseta tudo.
+  verTodosOsMeses(): void {
+    this.aplicarFiltro(null, null, this.filtroCategoria);
+  }
+
+  onMesAnoChange(): void {
+    this.aplicarFiltro(this.mesSelecionado, this.anoSelecionado, this.filtroCategoria);
+  }
+
+  // Atualiza o estado (e recarrega) diretamente, em vez de só navegar e confiar na
+  // assinatura de queryParamMap pra reagir - se a URL de destino for igual à atual
+  // (ex: "ver todos os meses" quando a tela já tinha aberto sem mes/ano na URL, com o
+  // padrão do mês atual aplicado só internamente), o Router não dispara uma nova
+  // navegação, e a assinatura nunca reagiria. A chamada a router.navigate() abaixo só
+  // mantém a URL compartilhável/refletindo o filtro atual, sem ser a fonte da verdade.
+  private aplicarFiltro(mes: number | null, ano: number | null, categoria: string | null): void {
+    this.filtroMes = mes;
+    this.filtroAno = ano;
+    this.filtroCategoria = categoria;
+    this.mesSelecionado = mes ?? new Date().getMonth() + 1;
+    this.anoSelecionado = ano ?? new Date().getFullYear();
+    this.carregar();
+
+    const queryParams: Record<string, string | number> = {};
+    if (mes) {
+      queryParams['mes'] = mes;
+    }
+    if (ano) {
+      queryParams['ano'] = ano;
+    }
+    if (categoria) {
+      queryParams['categoria'] = categoria;
+    }
+    this.router.navigate(['/gastos'], { queryParams, replaceUrl: true });
   }
 
   carregar(): void {
@@ -227,6 +315,16 @@ export class GastosComponent implements OnInit {
         this.gastoRecorrenteService.cadastrar(resultado.recorrente).subscribe({
           next: () => {
             this.mostrarSucesso('Gasto recorrente cadastrado com sucesso!');
+            this.carregar();
+          },
+          error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        });
+        return;
+      }
+      if (resultado.tipo === 'parcelada') {
+        this.compraParceladaService.cadastrar(resultado.parcelada).subscribe({
+          next: (compra) => {
+            this.mostrarSucesso(`Compra parcelada cadastrada com sucesso! ${compra.numeroParcelas} parcelas lançadas.`);
             this.carregar();
           },
           error: (erro) => this.mostrarErro(this.mensagemErro(erro))

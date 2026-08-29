@@ -34,6 +34,28 @@
   </div>
 </div>
 
+<div class="filtros-periodo">
+  <mat-form-field appearance="outline">
+    <mat-label>Mês</mat-label>
+    <mat-select [(ngModel)]="mesSelecionado" (selectionChange)="onMesAnoChange()">
+      @for (m of meses; track m.valor) {
+        <mat-option [value]="m.valor">{{ m.nome }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Ano</mat-label>
+    <mat-select [(ngModel)]="anoSelecionado" (selectionChange)="onMesAnoChange()">
+      @for (a of anos; track a) {
+        <mat-option [value]="a">{{ a }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <button mat-button (click)="verTodosOsMeses()" [disabled]="!filtroMes && !filtroAno">Ver todos os meses</button>
+</div>
+
 @if (descricaoFiltro) {
   <div class="filtro-ativo">
     <mat-icon>filter_alt</mat-icon>
@@ -62,7 +84,7 @@
 } @else if (gastos.length === 0) {
   <app-empty-state
     icon="receipt_long"
-    [mensagem]="descricaoFiltro ? 'Nenhum gasto encontrado para ' + descricaoFiltro + '.' : 'Nenhum gasto cadastrado ainda.'"
+    [mensagem]="mensagemVazio"
   ></app-empty-state>
 } @else if (gastosExibidos.length === 0) {
   <app-empty-state
@@ -79,6 +101,9 @@
           {{ gasto.descricao }}
           @if (gasto.gastoRecorrenteId) {
             <span class="icone-recorrente" title="Gerado automaticamente por recorrência">🔁</span>
+          }
+          @if (gasto.compraParceladaId) {
+            <span class="icone-recorrente" title="Parcela de uma compra parcelada">💳</span>
           }
         </td>
       </ng-container>
