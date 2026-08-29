@@ -22,6 +22,13 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
 
     boolean existsByCategoriaId(Integer categoriaId);
 
+    // IDs das categorias com pelo menos um gasto cadastrado pelo usuário (qualquer
+    // período) - usado pra filtrar o dropdown de categoria em Gastos, mostrando só
+    // categorias realmente em uso. Gastos legados sem categoriaId (nunca migrados)
+    // ficam de fora, já que não correspondem a nenhuma categoria gerida específica.
+    @Query("SELECT DISTINCT g.categoriaId FROM Gasto g WHERE g.usuarioId = :usuarioId AND g.categoriaId IS NOT NULL")
+    List<Integer> categoriaIdsComGasto(@Param("usuarioId") Integer usuarioId);
+
     boolean existsBySubcategoriaId(Integer subcategoriaId);
 
     // Usado pra checar se uma recorrência já foi lançada no mês/ano atual antes de

@@ -18,6 +18,12 @@ export class CategoriaService {
     return this.http.get<Categoria[]>(this.baseUrl);
   }
 
+  // Só categorias com pelo menos um gasto cadastrado - usado pelo filtro de
+  // categoria na tela de Gastos, pra não listar categorias nunca usadas.
+  listarComGastos(): Observable<Categoria[]> {
+    return this.http.get<Categoria[]>(`${this.baseUrl}/com-gastos`);
+  }
+
   criar(categoria: Categoria): Observable<Categoria> {
     return this.http.post<Categoria>(this.baseUrl, categoria);
   }

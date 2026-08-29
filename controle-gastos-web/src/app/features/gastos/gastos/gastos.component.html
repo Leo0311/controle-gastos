@@ -59,6 +59,18 @@
   </mat-form-field>
 
   <button mat-button (click)="verTodosOsMeses()" [disabled]="!filtroMes && !filtroAno">Ver todos os meses</button>
+
+  @if (opcoesCategoriaFiltro.length > 0) {
+    <mat-form-field appearance="outline" class="campo-filtro-categoria">
+      <mat-label>Categoria</mat-label>
+      <mat-select [(ngModel)]="filtroCategoria" (selectionChange)="onCategoriaFiltroChange()">
+        <mat-option [value]="null">Todas</mat-option>
+        @for (c of opcoesCategoriaFiltro; track c.id) {
+          <mat-option [value]="c.nome">{{ c.emoji }} {{ c.nome }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
 </div>
 
 @if (descricaoFiltro) {

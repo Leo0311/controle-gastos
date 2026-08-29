@@ -113,6 +113,11 @@ export class GastosComponent implements OnInit {
   readonly buscaControl = new FormControl('', { nonNullable: true });
   private termoBusca = '';
 
+  // Opções do <mat-select> de filtro por categoria - só categorias com pelo menos
+  // um gasto cadastrado (ver ngOnInit), diferente de todasCategorias (usada na
+  // importação/emoji da tabela, que precisa de todas, mesmo sem gasto ainda).
+  opcoesCategoriaFiltro: Categoria[] = [];
+
   private todasCategorias: Categoria[] = [];
   private todasSubcategorias: Subcategoria[] = [];
   private categoriasPorId = new Map<number, Categoria>();
@@ -142,6 +147,10 @@ export class GastosComponent implements OnInit {
         this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c]));
       },
       error: () => { /* usado só pro emoji na tabela e na importação; sem ela ainda funciona sem emoji */ }
+    });
+    this.categoriaService.listarComGastos().subscribe({
+      next: (categorias) => { this.opcoesCategoriaFiltro = categorias; },
+      error: () => { /* filtro auxiliar; sem ela o dropdown só fica vazio */ }
     });
     this.categoriaService.listarTodasSubcategorias().subscribe({
       next: (subcategorias) => { this.todasSubcategorias = subcategorias; },
@@ -239,6 +248,13 @@ export class GastosComponent implements OnInit {
 
   onMesAnoChange(): void {
     this.aplicarFiltro(this.mesSelecionado, this.anoSelecionado, this.filtroCategoria);
+  }
+
+  // filtroCategoria já foi atualizado pelo [(ngModel)] do <mat-select> antes desse
+  // handler rodar - preserva o período (mês/ano) atual, incluindo "ver todos os
+  // meses" (null), em vez de reaplicar o padrão do mês corrente.
+  onCategoriaFiltroChange(): void {
+    this.aplicarFiltro(this.filtroMes, this.filtroAno, this.filtroCategoria);
   }
 
   // Atualiza o estado (e recarrega) diretamente, em vez de só navegar e confiar na

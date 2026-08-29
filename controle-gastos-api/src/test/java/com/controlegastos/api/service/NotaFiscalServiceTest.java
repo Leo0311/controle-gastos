@@ -47,6 +47,33 @@ class NotaFiscalServiceTest {
                 erro.getMessage());
     }
 
+    // Bug real reportado pelo usuário: comportamento inconsistente onde a extração
+    // "funcionava" (sem lançar exceção), mas Valor e Estabelecimento ficavam vazios no
+    // formulário - a SEFAZ-SC às vezes devolve a estrutura HTML esperada com os campos
+    // ainda não preenchidos do lado do servidor ("&nbsp;" em vez do texto real), que o
+    // null-check original não pegava (o texto não é null, só visualmente vazio).
+    @Test
+    void extrairDados_deveFalharQuandoCamposSaoApenasPlaceholderVazio() throws IOException {
+        String html = lerFixture("nfce-sefaz-sc-placeholder-vazio.html");
+
+        NotaFiscalIndisponivelException erro = assertThrows(
+                NotaFiscalIndisponivelException.class, () -> service.extrairDados(html));
+        assertEquals("Não consegui identificar os dados dessa nota fiscal. O formato da página pode ter mudado.",
+                erro.getMessage());
+    }
+
+    // Mesma classe de bug: valor "0,00" nunca é uma nota real (o formulário ficaria
+    // com Valor vazio/inválido) - deve cair no fallback igual a qualquer outra falha.
+    @Test
+    void extrairDados_deveFalharQuandoValorEZero() throws IOException {
+        String html = lerFixture("nfce-sefaz-sc-valor-zero.html");
+
+        NotaFiscalIndisponivelException erro = assertThrows(
+                NotaFiscalIndisponivelException.class, () -> service.extrairDados(html));
+        assertEquals("Não consegui identificar os dados dessa nota fiscal. O formato da página pode ter mudado.",
+                erro.getMessage());
+    }
+
     @Test
     void extrairDados_deveFalharComMensagemClaraParaHtmlComFormatoInesperado() {
         NotaFiscalIndisponivelException erro = assertThrows(

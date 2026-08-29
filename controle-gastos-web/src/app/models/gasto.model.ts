@@ -36,3 +36,8 @@ export interface TotalMensal {
   ano: number;
   total: number;
 }
+
+export interface TotalDiario {
+  dia: number;
+  total: number;
+}

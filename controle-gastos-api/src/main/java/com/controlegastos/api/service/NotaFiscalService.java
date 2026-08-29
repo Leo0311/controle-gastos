@@ -150,7 +150,20 @@ public class NotaFiscalService {
                     "Não consegui identificar os dados dessa nota fiscal. O formato da página pode ter mudado.");
         }
 
-        return new NotaFiscalDTO(estabelecimento, converterValor(valorTexto), converterData(dataTexto));
+        BigDecimal valor = converterValor(valorTexto);
+        // Bug real observado: às vezes a SEFAZ-SC devolve a página com os campos
+        // presentes na estrutura HTML, mas ainda vazios de conteúdo real (ex: o rótulo
+        // do valor renderizado como "0,00", sem o total de fato ter sido preenchido do
+        // lado do servidor) - isso passava pelo null-check acima (o texto não é null)
+        // e virava uma extração "bem-sucedida" com formulário parcialmente vazio, sem
+        // cair no fallback de abrir a nota numa aba. Um valor zero ou negativo nunca é
+        // uma nota real, então trata como falha de extração igual a qualquer outra.
+        if (valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new NotaFiscalIndisponivelException(
+                    "Não consegui identificar os dados dessa nota fiscal. O formato da página pode ter mudado.");
+        }
+
+        return new NotaFiscalDTO(estabelecimento, valor, converterData(dataTexto));
     }
 
     private boolean indicaValidacaoDeSeguranca(Document doc) {
@@ -173,7 +186,13 @@ public class NotaFiscalService {
         if (elemento == null) {
             return null;
         }
-        String texto = elemento.text().trim();
+        // Jsoup converte "&nbsp;" em espaço não separável (U+00A0), que passa
+        // despercebido por String.isBlank()/trim() (que só reconhecem espaços comuns,
+        // até U+0020) - sem essa normalização, um campo visualmente vazio da página
+        // (ex: um placeholder "&nbsp;" onde o valor real ainda não foi preenchido do
+        // lado do servidor) seria tratado como "texto encontrado" em vez de ausente,
+        // um dos jeitos como o bug de formulário parcialmente vazio acontecia.
+        String texto = elemento.text().replace('\u00A0', ' ').trim();
         return texto.isBlank() ? null : texto;
     }
 

@@ -10,7 +10,10 @@ import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +30,16 @@ public class CategoriaService {
 
     public List<Categoria> listarVisiveis(Integer usuarioId) {
         return repository.findVisiveis(usuarioId);
+    }
+
+    // Só as categorias visíveis para o usuário que têm pelo menos um gasto cadastrado
+    // (qualquer período, não só o mês filtrado no momento, pra manter simples) - usado
+    // pelo filtro de categoria em Gastos, pra não listar categorias nunca usadas.
+    public List<Categoria> listarComGastos(Integer usuarioId) {
+        Set<Integer> idsComGasto = new HashSet<>(gastoRepository.categoriaIdsComGasto(usuarioId));
+        return repository.findVisiveis(usuarioId).stream()
+                .filter(c -> idsComGasto.contains(c.getId()))
+                .collect(Collectors.toList());
     }
 
     public Categoria criar(Categoria dados, Integer usuarioId) {

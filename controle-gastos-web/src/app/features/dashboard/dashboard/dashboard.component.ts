@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
@@ -20,6 +20,7 @@ import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { TemaService } from '../../../services/tema.service';
 import { MetaMes, MetaRequest } from '../../../models/meta.model';
+import { Gasto, TotalDiario } from '../../../models/gasto.model';
 import { Categoria } from '../../../models/categoria.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import {
@@ -151,18 +152,21 @@ export class DashboardComponent implements OnInit {
     const inicioAno = `${this.ano}-01-01`;
     const fimAno = `${this.ano}-12-31`;
 
-    // A "Distribuição por categoria" acompanha o período em destaque (mês ou ano
-    // selecionado acima), em vez de somar gastos de todos os tempos.
-    const inicioResumo = this.periodoDestaque === 'mes' ? inicioMes : inicioAno;
-    const fimResumo = this.periodoDestaque === 'mes' ? fimMes : fimAno;
-
     forkJoin({
       gastosMes: this.gastoService.listarPorPeriodo(inicioMes, fimMes),
       gastosAno: this.gastoService.listarPorPeriodo(inicioAno, fimAno),
-      resumo: this.gastoService.resumo(inicioResumo, fimResumo),
+      // "Distribuição por categoria" sempre reflete o mês/ano selecionado no topo,
+      // independente do toggle "Destacar mês"/"Destacar ano" (que só afeta o gráfico
+      // de barras abaixo) - resumo do mês, nunca do ano inteiro.
+      resumo: this.gastoService.resumo(inicioMes, fimMes),
+      // Só busca os totais diários quando realmente vão ser exibidos (toggle "Destacar
+      // mês") - evita uma chamada à API sem uso quando o gráfico anual está ativo.
+      totaisDiarios: this.periodoDestaque === 'mes'
+        ? this.gastoService.totaisDiarios(this.mes, this.ano)
+        : of<TotalDiario[]>([]),
       metaMes: this.metaService.metaDoMes(this.mes, this.ano)
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, metaMes }) => {
+      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes }) => {
         this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
@@ -179,22 +183,9 @@ export class DashboardComponent implements OnInit {
           }]
         };
 
-        // Os 12 meses (Jan-Dez) do ano selecionado, não mais "últimos 6 meses" a
-        // partir de hoje - reaproveita gastosAno (já buscado pro card "Total gasto
-        // em {{ ano }}"), agregando por mês no cliente em vez de mais uma chamada.
-        const totalPorMes = new Array(12).fill(0);
-        gastosAno.forEach((g) => {
-          const mes = Number(g.data.split('-')[1]);
-          totalPorMes[mes - 1] += g.valor;
-        });
-        this.barrasData = {
-          labels: NOMES_MESES,
-          datasets: [{
-            label: 'Total gasto',
-            data: totalPorMes,
-            backgroundColor: '#3f51b5'
-          }]
-        };
+        this.barrasData = this.periodoDestaque === 'mes'
+          ? this.construirBarrasDiarias(totaisDiarios)
+          : this.construirBarrasAnuais(gastosAno);
         this.metaMes = metaMes;
 
         this.carregando = false;
@@ -204,6 +195,33 @@ export class DashboardComponent implements OnInit {
         this.snackBar.open('Não foi possível carregar o dashboard. Verifique se a API está no ar.', 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  // Um dia (1 até o último dia do mês selecionado) por barra - usado quando
+  // "Destacar mês" está ativo. dia=1 corresponde ao índice 0 (ver onBarraClick).
+  private construirBarrasDiarias(totaisDiarios: TotalDiario[]): ChartData<'bar', number[], string> {
+    const diasNoMes = new Date(this.ano, this.mes, 0).getDate();
+    const totalPorDia = new Array(diasNoMes).fill(0);
+    totaisDiarios.forEach((t) => { totalPorDia[t.dia - 1] = t.total; });
+    return {
+      labels: Array.from({ length: diasNoMes }, (_, i) => String(i + 1)),
+      datasets: [{ label: 'Total gasto', data: totalPorDia, backgroundColor: '#3f51b5' }]
+    };
+  }
+
+  // Os 12 meses (Jan-Dez) do ano selecionado - usado quando "Destacar ano" está
+  // ativo. Reaproveita gastosAno (já buscado pro card "Total gasto em {{ ano }}"),
+  // agregando por mês no cliente em vez de mais uma chamada.
+  private construirBarrasAnuais(gastosAno: Gasto[]): ChartData<'bar', number[], string> {
+    const totalPorMes = new Array(12).fill(0);
+    gastosAno.forEach((g) => {
+      const mes = Number(g.data.split('-')[1]);
+      totalPorMes[mes - 1] += g.valor;
+    });
+    return {
+      labels: NOMES_MESES,
+      datasets: [{ label: 'Total gasto', data: totalPorMes, backgroundColor: '#3f51b5' }]
+    };
   }
 
   abrirDetalheMes(): void {
@@ -223,11 +241,9 @@ export class DashboardComponent implements OnInit {
     if (!categoria) {
       return;
     }
-    this.abrirDetalhe(
-      this.periodoDestaque === 'mes'
-        ? { mes: this.mes, ano: this.ano, categoria }
-        : { mes: null, ano: this.ano, categoria }
-    );
+    // A pizza sempre reflete o mês/ano selecionado (ver carregar()), independente do
+    // toggle "Destacar mês"/"Destacar ano" - o detalhamento acompanha o mesmo período.
+    this.abrirDetalhe({ mes: this.mes, ano: this.ano, categoria });
   }
 
   onBarraClick(evento: { active?: object[] }): void {
@@ -235,9 +251,14 @@ export class DashboardComponent implements OnInit {
     if (indice === undefined) {
       return;
     }
-    // Índice 0-11 corresponde diretamente a Jan-Dez do ano selecionado (ver
-    // barrasData em carregar()).
-    this.abrirDetalhe({ mes: indice + 1, ano: this.ano, categoria: null });
+    if (this.periodoDestaque === 'mes') {
+      // Índice 0 corresponde ao dia 1 do mês selecionado (ver construirBarrasDiarias).
+      this.abrirDetalhe({ mes: this.mes, ano: this.ano, dia: indice + 1, categoria: null });
+    } else {
+      // Índice 0-11 corresponde diretamente a Jan-Dez do ano selecionado (ver
+      // construirBarrasAnuais).
+      this.abrirDetalhe({ mes: indice + 1, ano: this.ano, categoria: null });
+    }
   }
 
   private abrirDetalhe(data: DashboardDetalheDialogData): void {

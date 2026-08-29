@@ -71,7 +71,7 @@
   <div class="graficos">
     <mat-card class="grafico-card">
       <mat-card-subtitle>
-        Distribuição por categoria ({{ periodoDestaque === 'mes' ? (nomeMesSelecionado + '/' + ano) : ano }})
+        Distribuição por categoria ({{ nomeMesSelecionado }}/{{ ano }})
       </mat-card-subtitle>
       @if (pizzaData.labels && pizzaData.labels.length > 0) {
         <p class="dica-clique">Clique em uma categoria para ver os detalhes.</p>
@@ -84,10 +84,14 @@
     </mat-card>
 
     <mat-card class="grafico-card">
-      <mat-card-subtitle>Total gasto em {{ ano }}</mat-card-subtitle>
-      <p class="dica-clique">Clique em um mês para ver os detalhes.</p>
+      <mat-card-subtitle>
+        {{ periodoDestaque === 'mes' ? ('Total gasto por dia em ' + nomeMesSelecionado + '/' + ano) : ('Total gasto em ' + ano) }}
+      </mat-card-subtitle>
+      <p class="dica-clique">
+        {{ periodoDestaque === 'mes' ? 'Clique em um dia para ver os detalhes.' : 'Clique em um mês para ver os detalhes.' }}
+      </p>
       <div class="grafico-canvas-scroll">
-        <div class="grafico-canvas grafico-canvas-anual">
+        <div class="grafico-canvas" [class.grafico-canvas-anual]="periodoDestaque === 'ano'" [class.grafico-canvas-diario]="periodoDestaque === 'mes'">
           <canvas baseChart [data]="barrasData" [options]="barrasOptions" type="bar" (chartClick)="onBarraClick($event)"></canvas>
         </div>
       </div>

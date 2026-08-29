@@ -7,6 +7,7 @@ import com.controlegastos.api.dto.RankingCategoriaDTO;
 import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.RankingSubcategoriaDTO;
 import com.controlegastos.api.dto.ResumoDTO;
+import com.controlegastos.api.dto.TotalDiarioDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
 import com.controlegastos.api.exception.OrcamentoInvalidoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
@@ -152,6 +153,27 @@ public class GastoService {
             resultado.add(new TotalMensalDTO(mesAno.getMonthValue(), mesAno.getYear(), total));
         }
         return resultado;
+    }
+
+    // Total gasto em cada dia do mês/ano informado (dia 1 até o último dia do mês) -
+    // usado pelo gráfico de barras "diário" do Dashboard quando "Destacar mês" está
+    // ativo. Uma única consulta ao período inteiro, agregada em memória por dia, em
+    // vez de uma query por dia (até 31 idas ao banco por carregamento).
+    public List<TotalDiarioDTO> totaisDiarios(int mes, int ano, Integer usuarioId) {
+        validarMesAno(mes, ano);
+        LocalDate inicio = LocalDate.of(ano, mes, 1);
+        LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
+
+        Map<Integer, BigDecimal> totalPorDia = new LinkedHashMap<>();
+        for (int dia = 1; dia <= fim.getDayOfMonth(); dia++) {
+            totalPorDia.put(dia, BigDecimal.ZERO);
+        }
+        repository.findByUsuarioIdAndDataBetweenOrderByDataDescIdDesc(usuarioId, inicio, fim)
+                .forEach(g -> totalPorDia.merge(g.getData().getDayOfMonth(), g.getValor(), BigDecimal::add));
+
+        return totalPorDia.entrySet().stream()
+                .map(e -> new TotalDiarioDTO(e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
     }
 
     // Chave de agrupamento por categoria usada no ranking e na comparação mensal - a

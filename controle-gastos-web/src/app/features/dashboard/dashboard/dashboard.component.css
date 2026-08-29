@@ -80,6 +80,12 @@
   min-width: 640px;
 }
 
+/* Até 31 barras (dias do mês) - largura mínima maior que a anual (12 barras) pra
+   cada barra continuar com espaço legível, com rolagem horizontal em telas menores. */
+.grafico-canvas-diario {
+  min-width: 900px;
+}
+
 .card-meta {
   margin-top: 16px;
   padding-bottom: 16px;

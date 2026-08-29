@@ -18,6 +18,10 @@ const NOMES_MESES_COMPLETO = [
 export interface DashboardDetalheDialogData {
   mes: number | null;
   ano: number;
+  // Dia específico do mês (1-31) - preenchido só quando aberto a partir de uma
+  // barra do gráfico diário do Dashboard (ver DashboardComponent.onBarraClick com
+  // "Destacar mês" ativo). Sempre acompanhado de mes preenchido.
+  dia?: number | null;
   categoria: string | null;
 }
 
@@ -65,7 +69,11 @@ export class DashboardDetalheDialogComponent implements OnInit {
   }
 
   get titulo(): string {
-    const periodo = this.data.mes ? `${NOMES_MESES_COMPLETO[this.data.mes - 1]}/${this.data.ano}` : `${this.data.ano}`;
+    const periodo = this.data.dia
+      ? `${String(this.data.dia).padStart(2, '0')}/${String(this.data.mes).padStart(2, '0')}/${this.data.ano}`
+      : this.data.mes
+        ? `${NOMES_MESES_COMPLETO[this.data.mes - 1]}/${this.data.ano}`
+        : `${this.data.ano}`;
     return this.data.categoria ? `${periodo} · ${this.data.categoria}` : periodo;
   }
 
@@ -90,6 +98,10 @@ export class DashboardDetalheDialogComponent implements OnInit {
   }
 
   private intervalo(): [string, string] {
+    if (this.data.dia && this.data.mes) {
+      const data = this.formatarData(new Date(this.data.ano, this.data.mes - 1, this.data.dia));
+      return [data, data];
+    }
     if (this.data.mes) {
       const inicio = new Date(this.data.ano, this.data.mes - 1, 1);
       const fim = new Date(this.data.ano, this.data.mes, 0);

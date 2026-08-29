@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../core/api.constants';
-import { Gasto, Resumo, TotalMensal } from '../models/gasto.model';
+import { Gasto, Resumo, TotalDiario, TotalMensal } from '../models/gasto.model';
 import { ComparacaoMensal, RankingCategorias } from '../models/analise.model';
 
 @Injectable({
@@ -52,6 +52,11 @@ export class GastoService {
   totaisMensais(meses = 6): Observable<TotalMensal[]> {
     const params = new HttpParams().set('meses', meses);
     return this.http.get<TotalMensal[]>(`${this.baseUrl}/totais-mensais`, { params });
+  }
+
+  totaisDiarios(mes: number, ano: number): Observable<TotalDiario[]> {
+    const params = new HttpParams().set('mes', mes).set('ano', ano);
+    return this.http.get<TotalDiario[]>(`${this.baseUrl}/totais-diarios`, { params });
   }
 
   rankingCategorias(mes: number, ano: number): Observable<RankingCategorias> {

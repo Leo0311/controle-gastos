@@ -3,6 +3,7 @@ package com.controlegastos.api.controller;
 import com.controlegastos.api.dto.ComparacaoMensalDTO;
 import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.ResumoDTO;
+import com.controlegastos.api.dto.TotalDiarioDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.security.UsuarioPrincipal;
@@ -87,6 +88,12 @@ public class GastoController {
     public List<TotalMensalDTO> totaisMensais(
             @RequestParam(defaultValue = "6") int meses, @AuthenticationPrincipal UsuarioPrincipal usuario) {
         return service.totaisMensais(meses, usuario.usuarioId());
+    }
+
+    @GetMapping("/totais-diarios")
+    public List<TotalDiarioDTO> totaisDiarios(
+            @RequestParam int mes, @RequestParam int ano, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.totaisDiarios(mes, ano, usuario.usuarioId());
     }
 
     @GetMapping("/ranking-categorias")

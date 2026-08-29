@@ -31,6 +31,11 @@ public class CategoriaController {
         return service.listarVisiveis(usuario.usuarioId());
     }
 
+    @GetMapping("/com-gastos")
+    public List<Categoria> listarComGastos(@AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.listarComGastos(usuario.usuarioId());
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Categoria criar(@RequestBody Categoria categoria, @AuthenticationPrincipal UsuarioPrincipal usuario) {
