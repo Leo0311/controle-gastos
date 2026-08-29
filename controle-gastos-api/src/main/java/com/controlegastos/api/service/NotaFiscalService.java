@@ -57,25 +57,48 @@ public class NotaFiscalService {
         return extrairDados(html);
     }
 
-    private URI validarUrl(String urlNota) {
+    // Visibilidade de pacote (não private) só pra ser testável diretamente (ver
+    // NotaFiscalServiceTest) sem precisar de rede.
+    URI validarUrl(String urlNota) {
         if (urlNota == null || urlNota.isBlank()) {
             throw new IllegalArgumentException("Informe a URL da nota fiscal.");
         }
-        URI uri;
+        String bruta = urlNota.trim();
+
+        // O parâmetro "p" do QR Code de NFC-e real traz a chave de acesso e outros
+        // campos separados por "|" (ex: "chave|versaoQR|tpAmb|hash") - um caractere
+        // não permitido em URI, então essa string bruta nunca é uma URI válida por
+        // si só: o construtor de um único argumento de URI é estrito e lança
+        // URISyntaxException pra ela (confirmado contra uma nota fiscal real).
+        // Por isso a query é separada do resto da URL aqui e recombinada com o
+        // construtor de 5 argumentos, que ESCAPA automaticamente qualquer caractere
+        // fora do permitido (em vez de exigir que a entrada já venha escapada) -
+        // "|" vira "%7C", que a SEFAZ decodifica de volta corretamente do outro lado.
+        int indiceQuery = bruta.indexOf('?');
+        String semQuery = indiceQuery >= 0 ? bruta.substring(0, indiceQuery) : bruta;
+        String query = indiceQuery >= 0 ? bruta.substring(indiceQuery + 1) : null;
+
+        URI base;
         try {
-            uri = new URI(urlNota.trim());
+            base = new URI(semQuery);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException("URL da nota fiscal inválida.");
         }
-        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+
+        if (!"https".equalsIgnoreCase(base.getScheme())) {
             throw new IllegalArgumentException("A URL da nota fiscal deve usar HTTPS.");
         }
-        String host = uri.getHost();
+        String host = base.getHost();
         if (host == null || !DOMINIOS_PERMITIDOS.contains(host.toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException(
                     "Essa URL não pertence à SEFAZ-SC. Por enquanto só é possível ler notas fiscais catarinenses (NFC-e).");
         }
-        return uri;
+
+        try {
+            return new URI(base.getScheme(), base.getAuthority(), base.getPath(), query, null);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("URL da nota fiscal inválida.");
+        }
     }
 
     private String buscarHtml(URI uri) {
@@ -102,15 +125,13 @@ public class NotaFiscalService {
     // Extrai os três campos usados pelo formulário de gasto (estabelecimento, valor,
     // data de emissão) a partir do HTML da página de consulta. Os seletores
     // (div.txtTopo, span.totalNumb.txtMax, "Emissão:" dentro das informações gerais)
-    // foram confirmados contra uma nota real da SEFAZ-SC - mas a página pública de
-    // consulta (a mesma URL do QR Code) frequentemente exige uma validação de
-    // segurança (captcha) antes de mostrar a nota de verdade, que este serviço não
-    // tenta resolver; nesse caso (e em qualquer formato inesperado) a extração falha
-    // de forma clara em vez de devolver dado incompleto ou incorreto.
+    // foram confirmados contra notas reais da SEFAZ-SC - mas a página pública de
+    // consulta (a mesma URL do QR Code) às vezes exige uma validação de segurança
+    // (captcha) antes de mostrar a nota de verdade, que este serviço não tenta
+    // resolver; nesse caso (e em qualquer formato inesperado) a extração falha de
+    // forma clara em vez de devolver dado incompleto ou incorreto.
     // Visibilidade de pacote (não private) só pra ser testável diretamente com um
-    // HTML de exemplo (ver NotaFiscalServiceTest), sem precisar de rede - a URL
-    // pública real do QR Code exige uma validação de segurança que bloqueia
-    // qualquer acesso automatizado, então não dá pra testar via HTTP de verdade.
+    // HTML de exemplo (ver NotaFiscalServiceTest), sem precisar de rede.
     NotaFiscalDTO extrairDados(String html) {
         Document doc = Jsoup.parse(html);
 

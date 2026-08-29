@@ -7,11 +7,14 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NotaFiscalServiceTest {
 
@@ -63,6 +66,36 @@ class NotaFiscalServiceTest {
         IllegalArgumentException erro = assertThrows(
                 IllegalArgumentException.class,
                 () -> service.consultar("https://exemplo-malicioso.com.br/nfce/consulta?p=123"));
+        assertEquals("Essa URL não pertence à SEFAZ-SC. Por enquanto só é possível ler notas fiscais catarinenses (NFC-e).",
+                erro.getMessage());
+    }
+
+    // Bug real reportado pelo usuário: o QR Code de uma NFC-e de verdade da SEFAZ-SC
+    // traz o parâmetro "p" com a chave de acesso e outros campos separados por "|"
+    // (ex: "chave|2|1|1|hash") - um caractere não permitido em URI, que fazia
+    // new URI(String) (versão anterior) lançar URISyntaxException pra QUALQUER nota
+    // real lida pela câmera, mesmo sendo da SEFAZ-SC de verdade. A URL abaixo é a
+    // mesma estrutura de uma nota real, com a chave trocada por uma fictícia.
+    @Test
+    void validarUrl_deveAceitarUrlRealComPipeNoParametroP() {
+        URI uri = service.validarUrl(
+                "https://sat.sef.sc.gov.br/nfce/consulta?p=42260883646984001939652140001512711479156230|2|1|1|5B061661AFD057DBDE040903B22FB73A19061C13");
+
+        assertEquals("sat.sef.sc.gov.br", uri.getHost());
+        assertEquals("/nfce/consulta", uri.getPath());
+        // O "|" precisa estar escapado ("%7C") na URI final enviada pra rede - não
+        // rejeitado, e não solto sem escapar (o que quebraria HttpRequest.newBuilder).
+        assertTrue(uri.getRawQuery().contains("%7C"));
+        assertFalse(uri.getRawQuery().contains("|"));
+    }
+
+    // Garante que o conserto do bug do "|" não abriu uma brecha na validação de
+    // domínio - um domínio malicioso continua rejeitado mesmo com "|" na query.
+    @Test
+    void consultar_deveRejeitarDominioDiferenteMesmoComPipeNaQuery() {
+        IllegalArgumentException erro = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.consultar("https://exemplo-malicioso.com.br/nfce/consulta?p=123|456|789"));
         assertEquals("Essa URL não pertence à SEFAZ-SC. Por enquanto só é possível ler notas fiscais catarinenses (NFC-e).",
                 erro.getMessage());
     }
