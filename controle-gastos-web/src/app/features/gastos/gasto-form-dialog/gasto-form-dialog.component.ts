@@ -32,12 +32,6 @@ import {
 
 export interface GastoFormDialogData {
   gasto: Gasto | null;
-  // Pré-preenche um gasto NOVO (editando continua false, "Salvar" ainda cria em vez
-  // de atualizar) com valores parciais - usado pelo fluxo de leitura de nota fiscal
-  // (ver GastosComponent.escanearNotaFiscal), que só tem descrição/valor/data;
-  // categoria/subcategoria/orçamento ficam em branco pro usuário escolher. Ignorado
-  // quando `gasto` está presente (edição sempre usa os valores do gasto existente).
-  valoresIniciais?: Pick<Gasto, 'descricao' | 'valor' | 'data'>;
 }
 
 // Quando "Tornar recorrente" ou "Parcelar compra" está marcado (mutuamente
@@ -137,12 +131,6 @@ export class GastoFormDialogComponent implements OnInit {
         subcategoriaId: data.gasto.subcategoriaId ?? null,
         data: this.parseDataLocal(data.gasto.data),
         orcamentoId: data.gasto.orcamentoId ?? null
-      });
-    } else if (data.valoresIniciais) {
-      this.form.patchValue({
-        descricao: data.valoresIniciais.descricao,
-        valor: data.valoresIniciais.valor,
-        data: this.parseDataLocal(data.valoresIniciais.data)
       });
     }
   }

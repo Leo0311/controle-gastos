@@ -27,11 +27,6 @@
     </button>
     <input #inputArquivo type="file" accept=".xlsx" class="input-arquivo-oculto" (change)="onArquivoSelecionado($event)">
 
-    <button mat-stroked-button (click)="escanearNotaFiscal($event)">
-      <mat-icon>qr_code_scanner</mat-icon>
-      Escanear nota fiscal
-    </button>
-
     <button mat-raised-button color="primary" (click)="novoGasto()">
       <mat-icon>add</mat-icon>
       Novo gasto

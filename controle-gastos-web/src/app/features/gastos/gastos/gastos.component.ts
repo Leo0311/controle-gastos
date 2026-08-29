@@ -18,10 +18,6 @@ import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { Gasto } from '../../../models/gasto.model';
-import {
-  EscanearNotaDialogComponent,
-  EscanearNotaResultado
-} from '../escanear-nota-dialog/escanear-nota-dialog.component';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import {
@@ -310,82 +306,13 @@ export class GastosComponent implements OnInit {
     this.abrirFormularioGasto();
   }
 
-  // Abre o diálogo de leitura de QR Code; ao fechar, ou abre "Novo gasto" já
-  // pré-preenchido com os dados extraídos da nota (sucesso), ou em branco (usuário
-  // optou por preencher manualmente após uma falha na leitura/consulta) - nunca
-  // salva nada sozinho, o usuário sempre revisa e confirma no formulário depois.
-  escanearNotaFiscal(evento: MouseEvent): void {
-    // No mobile, o botão fica com aparência de "selecionado/focado" presa depois de
-    // fechar o diálogo (o MatDialog devolve o foco a quem abriu ele, e o estado de
-    // foco do Material - pensado pra navegação por teclado - não se desfaz sozinho
-    // num toque de tela) - guardamos o botão aqui pra tirar o foco dele
-    // explicitamente quando o diálogo fechar, abaixo.
-    const botao = evento.currentTarget as HTMLElement;
-    const ref = this.dialog.open<EscanearNotaDialogComponent, undefined, EscanearNotaResultado>(
-      EscanearNotaDialogComponent,
-      { width: '400px', maxWidth: '95vw' }
-    );
-
-    ref.afterClosed().subscribe((resultado) => {
-      botao.blur();
-      if (!resultado) {
-        return;
-      }
-      if (resultado.tipo === 'sucesso') {
-        this.abrirFormularioGasto({
-          descricao: resultado.nota.estabelecimento,
-          valor: resultado.nota.valor,
-          data: resultado.nota.dataEmissao
-        });
-      } else if (resultado.tipo === 'abrirNota') {
-        this.abrirNotaFiscalEFormulario(resultado.url);
-      } else {
-        this.abrirFormularioGasto();
-      }
-    });
-  }
-
-  // QR Code lido, mas não deu pra extrair os dados automaticamente (o mais comum na
-  // prática - a SEFAZ-SC costuma exigir uma validação de segurança antes de mostrar
-  // os dados da nota, que não dá pra resolver do lado do servidor). Em vez de deixar
-  // o usuário sem nada, mostra um botão "Ver nota fiscal" - que abre a nota oficial
-  // numa aba nova só quando o usuário realmente toca nele - junto com o formulário em
-  // branco, pra preencher rapidinho com o que viu na nota.
-  //
-  // Não tenta abrir a aba automaticamente (window.open direto, sem um clique): essa
-  // chamada acontece de forma assíncrona, depois de aguardar a resposta do backend, e
-  // não fica vinculada a um toque do usuário no momento exato - navegadores mobile
-  // bloqueiam quase sempre nesse caso, resultando numa tentativa fadada ao fracasso
-  // seguida de uma mensagem de erro confusa ("navegador bloqueou a aba"). O clique no
-  // botão do snackbar abaixo É um clique real do usuário, então window.open() sempre
-  // funciona ali, em qualquer navegador (desktop ou mobile).
-  private abrirNotaFiscalEFormulario(url: string): void {
-    const ref = this.snackBar.open(
-      'Não conseguimos preencher os dados automaticamente — confira a nota fiscal e preencha aqui.',
-      'Ver nota fiscal',
-      { duration: 15000 }
-    );
-    // "noopener,noreferrer": a aba nova não recebe referência de volta a esta janela
-    // nem informação de origem - prática padrão de segurança pra window.open com uma
-    // URL de terceiros. Não afeta nenhuma aba/janela já aberta do usuário - "_blank"
-    // sempre cria uma aba nova, nunca navega uma existente.
-    ref.onAction().subscribe(() => window.open(url, '_blank', 'noopener,noreferrer'));
-
-    this.abrirFormularioGasto();
-  }
-
-  private abrirFormularioGasto(valoresIniciais?: Pick<Gasto, 'descricao' | 'valor' | 'data'>): void {
+  private abrirFormularioGasto(): void {
     const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, GastoFormResultado>(
       GastoFormDialogComponent,
-      { data: { gasto: null, valoresIniciais }, width: '480px', maxWidth: '95vw' }
+      { data: { gasto: null }, width: '480px', maxWidth: '95vw' }
     );
 
     ref.afterClosed().subscribe((resultado) => {
-      // Fecha junto qualquer snackbar que ainda estivesse na tela (ex: o aviso "Ver
-      // nota fiscal" de abrirNotaFiscalEFormulario, que fica até 15s aberto) - nunca
-      // deve sobreviver sozinho depois que o modal em si já fechou. Não faz nada se
-      // não houver snackbar aberto.
-      this.snackBar.dismiss();
       if (!resultado) {
         return;
       }

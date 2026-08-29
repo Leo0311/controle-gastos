@@ -65,17 +65,18 @@ public class CompraParceladaService {
         repository.delete(existente);
     }
 
-    // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir do
-    // mês atual (a compra parcelada é lançada de uma vez, diferente da recorrência,
-    // que só lança o gasto do mês quando o dia configurado chega). Divide valorTotal
-    // em centavos (evita erro de arredondamento de ponto flutuante) e ajusta a ÚLTIMA
-    // parcela pra soma bater exatamente com valorTotal, sem perder nem sobrar centavo.
+    // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir da
+    // PRÓXIMA ocorrência futura do dia escolhido (ver mesDaPrimeiraParcela) - a compra
+    // parcelada é lançada de uma vez, diferente da recorrência, que só lança o gasto
+    // do mês quando o dia configurado chega. Divide valorTotal em centavos (evita erro
+    // de arredondamento de ponto flutuante) e ajusta a ÚLTIMA parcela pra soma bater
+    // exatamente com valorTotal, sem perder nem sobrar centavo.
     private void gerarParcelas(CompraParcelada compra, Integer usuarioId) {
         long totalCentavos = compra.getValorTotal().movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact();
         int numeroParcelas = compra.getNumeroParcelas();
         long parcelaBaseCentavos = totalCentavos / numeroParcelas;
 
-        LocalDate referencia = LocalDate.now();
+        LocalDate referencia = mesDaPrimeiraParcela(compra.getDiaDoMes());
         for (int i = 0; i < numeroParcelas; i++) {
             YearMonth mesParcela = YearMonth.from(referencia).plusMonths(i);
             int dia = Math.min(compra.getDiaDoMes(), mesParcela.lengthOfMonth());
@@ -94,6 +95,20 @@ public class CompraParceladaService {
             gasto.setCompraParceladaId(compra.getId());
             gastoService.cadastrarVinculadoAParcelada(gasto, usuarioId);
         }
+    }
+
+    // Bug real corrigido: antes, a primeira parcela sempre caía no mês atual mesmo
+    // quando o dia escolhido já tinha passado (ex: hoje dia 29, dia escolhido 10 -
+    // lançava uma parcela "retroativa" no dia 10 deste mês, que já ficou no passado).
+    // Agora a primeira parcela sempre começa na PRÓXIMA ocorrência futura do dia
+    // escolhido: se esse dia (já ajustado pro último dia válido do mês atual, mesmo
+    // clamping usado no loop de gerarParcelas) ainda não chegou este mês, a primeira
+    // parcela continua no mês atual; se já passou (ou é hoje), pula pro mês seguinte.
+    // Só o mês importa aqui - o dia exato de cada parcela é recalculado no loop acima.
+    private LocalDate mesDaPrimeiraParcela(int diaDoMes) {
+        LocalDate hoje = LocalDate.now();
+        LocalDate primeiraOcorrenciaNoMesAtual = hoje.withDayOfMonth(Math.min(diaDoMes, hoje.lengthOfMonth()));
+        return primeiraOcorrenciaNoMesAtual.isAfter(hoje) ? hoje : hoje.plusMonths(1);
     }
 
     private CompraParcelada buscarPorId(Integer id, Integer usuarioId) {

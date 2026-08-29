@@ -98,13 +98,4 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> tratarOrcamentoInvalido(OrcamentoInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("erro", e.getMessage()));
     }
-
-    // 422 (não 400): a requisição em si é válida (URL bem formada, domínio correto) -
-    // só não foi possível ler o conteúdo da nota agora (página fora do ar, captcha da
-    // SEFAZ, formato inesperado). Diferente de IllegalArgumentException, que aqui é
-    // reservada pra erro do cliente (URL de domínio não autorizado, por exemplo).
-    @ExceptionHandler(NotaFiscalIndisponivelException.class)
-    public ResponseEntity<Map<String, String>> tratarNotaFiscalIndisponivel(NotaFiscalIndisponivelException e) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of("erro", e.getMessage()));
-    }
 }
