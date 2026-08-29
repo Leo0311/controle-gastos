@@ -295,3 +295,11 @@ CREATE INDEX IF NOT EXISTS idx_compras_parceladas_usuario ON compras_parceladas 
 -- parcelas futuras ao cancelar a compra (ver CompraParceladaService.excluir).
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS compra_parcelada_id INT REFERENCES compras_parceladas(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_gastos_compra_parcelada ON gastos (compra_parcelada_id);
+
+-- Migração: excluir já foi corrigido para remover a compra parcelada de verdade em
+-- vez de só marcar "ativa = FALSE" (que deixava um estado "cancelada" fantasma pra
+-- sempre na listagem) - limpa qualquer registro já cancelado dessa forma antes da
+-- correção. A FK acima (ON DELETE SET NULL) preserva as parcelas passadas já
+-- lançadas, só desvinculando-as. Idempotente: não há mais nada a apagar depois da
+-- primeira execução, já que excluir() nunca mais grava ativa = FALSE.
+DELETE FROM compras_parceladas WHERE ativa = FALSE;

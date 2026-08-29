@@ -34,6 +34,15 @@
   display: none;
 }
 
+.titulo-filtros {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-secundario);
+}
+
 .filtros-periodo {
   display: flex;
   align-items: baseline;
@@ -44,22 +53,6 @@
 
 .campo-filtro-categoria {
   min-width: 180px;
-}
-
-.campo-busca {
-  display: block;
-  max-width: 360px;
-  margin-bottom: 8px;
-}
-
-.campo-busca .mat-icon {
-  color: var(--texto-terciario);
-}
-
-@media (max-width: 599px) {
-  .campo-busca {
-    max-width: none;
-  }
 }
 
 .filtro-ativo {

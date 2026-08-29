@@ -49,17 +49,20 @@ public class CompraParceladaService {
         return salva;
     }
 
-    // Cancela a compra parcelada: marca como inativa (ação definitiva, sem reativar -
-    // diferente do pausar/reativar de gastos recorrentes) e remove os gastos das
-    // parcelas com data futura (ainda não vencidas). Parcelas cuja data já passou (ou
-    // é hoje) continuam intactas, como histórico do que já foi pago.
+    // Exclui a compra parcelada de verdade (ação definitiva, sem reativar - diferente
+    // do pausar/reativar de gastos recorrentes): remove o registro por completo (nunca
+    // fica como um estado "cancelada" fantasma na listagem) e os gastos das parcelas
+    // com data futura (ainda não vencidas). Parcelas cuja data já passou (ou é hoje)
+    // continuam intactas como histórico do que já foi pago - a FK
+    // gastos.compra_parcelada_id é ON DELETE SET NULL (ver schema.sql), então excluir
+    // a compra automaticamente desvincula (sem apagar) essas parcelas passadas.
     public void excluir(Integer id, Integer usuarioId) {
         CompraParcelada existente = buscarPorId(id, usuarioId);
-        existente.setAtiva(false);
-        repository.save(existente);
 
         List<Gasto> parcelasFuturas = gastoRepository.findByCompraParceladaIdAndDataAfter(id, LocalDate.now());
         gastoRepository.deleteAll(parcelasFuturas);
+
+        repository.delete(existente);
     }
 
     // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir do

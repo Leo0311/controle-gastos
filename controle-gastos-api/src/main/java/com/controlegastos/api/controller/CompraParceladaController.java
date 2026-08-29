@@ -37,9 +37,8 @@ public class CompraParceladaController {
         return service.cadastrar(dados, usuario.usuarioId());
     }
 
-    // Cancela a compra parcelada (marca como inativa e remove as parcelas futuras) -
-    // ver CompraParceladaService.excluir. Usa DELETE por ser a ação destrutiva mais
-    // próxima do ponto de vista do usuário, embora o registro em si não seja apagado.
+    // Exclui a compra parcelada por completo (e as parcelas futuras) - ver
+    // CompraParceladaService.excluir.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
         service.excluir(id, usuario.usuarioId());

@@ -1,20 +1,17 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-
 import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
@@ -66,13 +63,11 @@ const NOMES_MESES_COMPLETO = [
     CurrencyPipe,
     DatePipe,
     FormsModule,
-    ReactiveFormsModule,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
     MatDialogModule,
     MatFormFieldModule,
-    MatInputModule,
     MatSelectModule,
     MatMenuModule,
     MatSnackBarModule,
@@ -107,11 +102,6 @@ export class GastosComponent implements OnInit {
   // a ausência de mes/ano na URL significa "usuário limpou o filtro de propósito"
   // (verTodosOsMeses), não "aplique o padrão do mês atual" de novo.
   private primeiraCarga = true;
-
-  // Busca por descrição, client-side, em cima da lista já carregada/filtrada por
-  // mês/ano/categoria (não dispara chamada nova à API) - ver ngOnInit e gastosExibidos.
-  readonly buscaControl = new FormControl('', { nonNullable: true });
-  private termoBusca = '';
 
   // Opções do <mat-select> de filtro por categoria - só categorias com pelo menos
   // um gasto cadastrado (ver ngOnInit), diferente de todasCategorias (usada na
@@ -180,13 +170,6 @@ export class GastosComponent implements OnInit {
       this.carregar();
     });
 
-    this.buscaControl.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged()
-    ).subscribe((valor) => {
-      this.termoBusca = valor.trim().toLowerCase();
-    });
-
     // Verifica e lança gastos recorrentes pendentes do mês, de forma transparente
     // (sem aviso algum) - só recarrega a lista se algo novo foi lançado.
     this.gastoRecorrenteService.lancarPendentes().subscribe({
@@ -201,16 +184,6 @@ export class GastosComponent implements OnInit {
 
   categoriaEmoji(categoriaId: number | null | undefined): string {
     return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
-  }
-
-  // Aplica a busca por descrição em cima de "gastos" (já carregado e filtrado por
-  // mês/ano/categoria) - a tabela e o empty-state usam esse getter, nunca "gastos"
-  // diretamente, pra busca e filtros funcionarem juntos.
-  get gastosExibidos(): Gasto[] {
-    if (!this.termoBusca) {
-      return this.gastos;
-    }
-    return this.gastos.filter((g) => g.descricao.toLowerCase().includes(this.termoBusca));
   }
 
   // Só reflete a categoria agora: o período (mês/ano) já fica sempre visível nos
@@ -240,10 +213,22 @@ export class GastosComponent implements OnInit {
     this.router.navigate(['/gastos']);
   }
 
-  // Limpa só o período, preservando a categoria (se houver) - diferente de
-  // limparFiltro(), que reseta tudo.
-  verTodosOsMeses(): void {
-    this.aplicarFiltro(null, null, this.filtroCategoria);
+  // Alterna entre "ver todos os meses" (sem filtro de período) e "ver mês atual"
+  // (filtrado no mês corrente) - preservando a categoria (se houver) nos dois casos,
+  // diferente de limparFiltro(), que reseta tudo. Antes era um botão que só limpava o
+  // período e ficava desabilitado depois (sem jeito de voltar a filtrar por mês sem
+  // mexer nos <mat-select> de Mês/Ano); agora sempre alterna pro estado oposto.
+  get rotuloToggleMes(): string {
+    return this.filtroMes || this.filtroAno ? 'Ver todos os meses' : 'Ver mês atual';
+  }
+
+  alternarFiltroMes(): void {
+    if (this.filtroMes || this.filtroAno) {
+      this.aplicarFiltro(null, null, this.filtroCategoria);
+    } else {
+      const hoje = new Date();
+      this.aplicarFiltro(hoje.getMonth() + 1, hoje.getFullYear(), this.filtroCategoria);
+    }
   }
 
   onMesAnoChange(): void {
@@ -356,33 +341,28 @@ export class GastosComponent implements OnInit {
   // QR Code lido, mas não deu pra extrair os dados automaticamente (o mais comum na
   // prática - a SEFAZ-SC costuma exigir uma validação de segurança antes de mostrar
   // os dados da nota, que não dá pra resolver do lado do servidor). Em vez de deixar
-  // o usuário sem nada, abre a própria nota fiscal oficial numa aba nova - pra ele
-  // conferir os dados lá - junto com o formulário em branco, pra preencher rapidinho
-  // com o que viu na nota.
+  // o usuário sem nada, mostra um botão "Ver nota fiscal" - que abre a nota oficial
+  // numa aba nova só quando o usuário realmente toca nele - junto com o formulário em
+  // branco, pra preencher rapidinho com o que viu na nota.
+  //
+  // Não tenta abrir a aba automaticamente (window.open direto, sem um clique): essa
+  // chamada acontece de forma assíncrona, depois de aguardar a resposta do backend, e
+  // não fica vinculada a um toque do usuário no momento exato - navegadores mobile
+  // bloqueiam quase sempre nesse caso, resultando numa tentativa fadada ao fracasso
+  // seguida de uma mensagem de erro confusa ("navegador bloqueou a aba"). O clique no
+  // botão do snackbar abaixo É um clique real do usuário, então window.open() sempre
+  // funciona ali, em qualquer navegador (desktop ou mobile).
   private abrirNotaFiscalEFormulario(url: string): void {
-    // "noopener,noreferrer": a aba nova não recebe referência de volta a esta
-    // janela nem informação de origem - prática padrão de segurança pra window.open
-    // com uma URL de terceiros. Não afeta nenhuma aba/janela já aberta do usuário -
-    // "_blank" sempre cria uma aba nova, nunca navega uma existente.
-    const aba = window.open(url, '_blank', 'noopener,noreferrer');
-
-    if (aba) {
-      this.snackBar.open(
-        'Abrimos a nota fiscal numa nova aba — confira os dados lá e preencha aqui.',
-        'Fechar',
-        { duration: 6000 }
-      );
-    } else {
-      // Alguns navegadores bloqueiam window.open() fora de um clique direto do
-      // usuário - a ação do snackbar É um clique direto, então tentar de novo
-      // dentro dela funciona mesmo quando a primeira tentativa foi bloqueada.
-      const refAviso = this.snackBar.open(
-        'Não conseguimos abrir a nota automaticamente (o navegador bloqueou a aba).',
-        'Ver nota fiscal',
-        { duration: 15000 }
-      );
-      refAviso.onAction().subscribe(() => window.open(url, '_blank', 'noopener,noreferrer'));
-    }
+    const ref = this.snackBar.open(
+      'Não conseguimos preencher os dados automaticamente — confira a nota fiscal e preencha aqui.',
+      'Ver nota fiscal',
+      { duration: 15000 }
+    );
+    // "noopener,noreferrer": a aba nova não recebe referência de volta a esta janela
+    // nem informação de origem - prática padrão de segurança pra window.open com uma
+    // URL de terceiros. Não afeta nenhuma aba/janela já aberta do usuário - "_blank"
+    // sempre cria uma aba nova, nunca navega uma existente.
+    ref.onAction().subscribe(() => window.open(url, '_blank', 'noopener,noreferrer'));
 
     this.abrirFormularioGasto();
   }
@@ -522,11 +502,11 @@ export class GastosComponent implements OnInit {
   }
 
   exportarExibidos(): void {
-    if (this.gastosExibidos.length === 0) {
+    if (this.gastos.length === 0) {
       this.mostrarErro('Nenhum gasto para exportar.');
       return;
     }
-    exportarGastosXlsx(this.gastosExibidos);
+    exportarGastosXlsx(this.gastos);
   }
 
   baixarModeloImportacao(): void {

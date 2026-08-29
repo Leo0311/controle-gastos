@@ -97,12 +97,13 @@ export class GastosRecorrentesComponent implements OnInit {
     });
   }
 
-  cancelarParcelada(parcelada: CompraParcelada): void {
+  excluirParcelada(parcelada: CompraParcelada): void {
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
-        titulo: 'Cancelar compra parcelada',
-        mensagem: `Tem certeza que deseja cancelar "${parcelada.descricao}"? `
-          + 'As parcelas já vencidas (data igual ou anterior a hoje) não são afetadas - só as parcelas futuras são removidas.'
+        titulo: 'Excluir compra parcelada',
+        mensagem: `Tem certeza que deseja excluir "${parcelada.descricao}"? A compra é removida por completo (ação `
+          + 'definitiva, sem reativar) - as parcelas já vencidas (data igual ou anterior a hoje) continuam na '
+          + 'listagem de Gastos como histórico, só as parcelas futuras são removidas.'
       }
     });
     ref.afterClosed().subscribe((confirmado) => {
@@ -111,7 +112,7 @@ export class GastosRecorrentesComponent implements OnInit {
       }
       this.parceladaService.excluir(parcelada.id!).subscribe({
         next: () => {
-          this.mostrarSucesso('Compra parcelada cancelada com sucesso!');
+          this.mostrarSucesso('Compra parcelada excluída com sucesso!');
           this.carregarParceladas();
         },
         error: (erro) => this.mostrarErro(this.mensagemErro(erro))

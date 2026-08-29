@@ -79,15 +79,10 @@
     } @else {
       <div class="lista-recorrentes">
         @for (parcelada of parceladas; track parcelada.id) {
-          <div class="item-recorrente" [class.pausado]="!parcelada.ativa">
+          <div class="item-recorrente">
             <div class="info-recorrente">
               <div class="linha-titulo">
                 <span class="descricao">{{ parcelada.descricao }}</span>
-                @if (parcelada.ativa) {
-                  <mat-chip class="chip-ativo">Ativa</mat-chip>
-                } @else {
-                  <mat-chip class="chip-pausado">Cancelada</mat-chip>
-                }
               </div>
               <div class="linha-detalhes">
                 <span>{{ categoriaLabel(parcelada.categoriaId) }}</span>
@@ -101,11 +96,9 @@
               </div>
             </div>
 
-            @if (parcelada.ativa) {
-              <button mat-icon-button (click)="cancelarParcelada(parcelada)" aria-label="Cancelar compra parcelada" title="Cancelar">
-                <mat-icon color="warn">cancel</mat-icon>
-              </button>
-            }
+            <button mat-icon-button (click)="excluirParcelada(parcelada)" aria-label="Excluir compra parcelada" title="Excluir">
+              <mat-icon color="warn">delete</mat-icon>
+            </button>
           </div>
         }
       </div>
