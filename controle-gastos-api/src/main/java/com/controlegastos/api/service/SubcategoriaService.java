@@ -17,6 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SubcategoriaService {
 
+    private static final String EMOJI_PADRAO = "📁";
     private static final int SEM_ID = 0;
 
     private final SubcategoriaRepository repository;
@@ -25,13 +26,15 @@ public class SubcategoriaService {
     private final OrcamentoRepository orcamentoRepository;
     private final GastoRecorrenteRepository gastoRecorrenteRepository;
 
+    // Subcategorias visíveis da categoria: as padrão do sistema + as próprias do
+    // usuário - mesmo padrão de CategoriaService.listarVisiveis.
     public List<Subcategoria> listarPorCategoria(Integer categoriaId, Integer usuarioId) {
         buscarCategoriaVisivel(categoriaId, usuarioId);
-        return repository.findByUsuarioIdAndCategoriaIdOrderByNomeAsc(usuarioId, categoriaId);
+        return repository.findVisiveisPorCategoria(usuarioId, categoriaId);
     }
 
-    public List<Subcategoria> listarTodasDoUsuario(Integer usuarioId) {
-        return repository.findByUsuarioIdOrderByNomeAsc(usuarioId);
+    public List<Subcategoria> listarTodasVisiveis(Integer usuarioId) {
+        return repository.findVisiveis(usuarioId);
     }
 
     public Subcategoria criar(Integer categoriaId, Subcategoria dados, Integer usuarioId) {
@@ -39,7 +42,9 @@ public class SubcategoriaService {
         normalizar(dados);
         validar(dados);
 
-        boolean jaExiste = repository.findDuplicada(usuarioId, categoriaId, dados.getNome(), SEM_ID).isPresent();
+        // Contra visíveis (não só as próprias): evita criar uma subcategoria pessoal
+        // com o mesmo nome de uma já padrão do sistema na mesma categoria.
+        boolean jaExiste = repository.findDuplicadaVisivel(usuarioId, categoriaId, dados.getNome(), SEM_ID).isPresent();
         if (jaExiste) {
             throw new IllegalArgumentException("Já existe uma subcategoria com esse nome nessa categoria.");
         }
@@ -50,6 +55,9 @@ public class SubcategoriaService {
         return repository.save(dados);
     }
 
+    // Só permite editar subcategorias que o próprio usuário criou (findByIdAndUsuarioId
+    // é estrita, nunca encontra uma padrão do sistema - usuarioId nulo nunca bate com
+    // um usuarioId real) - subcategorias do sistema são fixas, igual às categorias.
     public Subcategoria atualizar(Integer id, Subcategoria dados, Integer usuarioId) {
         normalizar(dados);
         validar(dados);
@@ -58,15 +66,18 @@ public class SubcategoriaService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Subcategoria não encontrada com ID " + id));
 
         boolean jaExiste = repository
-                .findDuplicada(usuarioId, existente.getCategoriaId(), dados.getNome(), id).isPresent();
+                .findDuplicadaVisivel(usuarioId, existente.getCategoriaId(), dados.getNome(), id).isPresent();
         if (jaExiste) {
             throw new IllegalArgumentException("Já existe uma subcategoria com esse nome nessa categoria.");
         }
 
         existente.setNome(dados.getNome());
+        existente.setEmoji(dados.getEmoji());
         return repository.save(existente);
     }
 
+    // Mesma restrição de atualizar(): só a própria subcategoria do usuário, nunca
+    // uma padrão do sistema.
     public void excluir(Integer id, Integer usuarioId) {
         Subcategoria existente = repository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Subcategoria não encontrada com ID " + id));
@@ -89,6 +100,11 @@ public class SubcategoriaService {
     private void normalizar(Subcategoria subcategoria) {
         if (subcategoria.getNome() != null) {
             subcategoria.setNome(subcategoria.getNome().trim());
+        }
+        if (subcategoria.getEmoji() == null || subcategoria.getEmoji().isBlank()) {
+            subcategoria.setEmoji(EMOJI_PADRAO);
+        } else {
+            subcategoria.setEmoji(subcategoria.getEmoji().trim());
         }
     }
 

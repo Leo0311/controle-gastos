@@ -212,7 +212,7 @@ public class GastoRecorrenteService {
             return;
         }
         Subcategoria subcategoria = subcategoriaRepository
-                .findByIdAndUsuarioId(dados.getSubcategoriaId(), usuarioId)
+                .findByIdVisivel(dados.getSubcategoriaId(), usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Subcategoria inválida ou não pertence ao usuário."));
         if (!subcategoria.getCategoriaId().equals(categoria.getId())) {
             throw new IllegalArgumentException("Subcategoria não pertence à categoria selecionada.");

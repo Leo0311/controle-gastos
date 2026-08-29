@@ -303,3 +303,187 @@ CREATE INDEX IF NOT EXISTS idx_gastos_compra_parcelada ON gastos (compra_parcela
 -- lançadas, só desvinculando-as. Idempotente: não há mais nada a apagar depois da
 -- primeira execução, já que excluir() nunca mais grava ativa = FALSE.
 DELETE FROM compras_parceladas WHERE ativa = FALSE;
+
+-- ============================================================================
+-- Expansão das categorias/subcategorias padrão do sistema: além das
+-- subcategorias que o próprio usuário já criava (sempre pessoais, ligadas ao
+-- seu usuario_id), agora também existem subcategorias padrão do sistema
+-- (usuario_id NULL, visíveis a todos - mesmo padrão já usado em categorias) e
+-- cada subcategoria (padrão ou pessoal) ganha um emoji próprio, igual às
+-- categorias. Nenhuma subcategoria/categoria pessoal já existente é alterada
+-- ou removida por esta migração.
+-- ============================================================================
+
+-- DROP NOT NULL e ADD COLUMN são idempotentes (seguros de rodar de novo num
+-- banco já migrado). Subcategorias pessoais já existentes ganham o emoji
+-- padrão 📁 (mesmo default usado em categorias pessoais novas sem emoji
+-- escolhido) - continuam intactas e vinculadas do jeito que já estavam.
+ALTER TABLE subcategorias ALTER COLUMN usuario_id DROP NOT NULL;
+ALTER TABLE subcategorias ADD COLUMN IF NOT EXISTS emoji VARCHAR(16) NOT NULL DEFAULT '📁';
+
+-- O índice único original não tratava usuario_id NULL como um grupo único
+-- entre si (cada NULL é distinto pro Postgres por padrão) - sem esse ajuste,
+-- o ON CONFLICT dos INSERTs de subcategoria padrão abaixo nunca detectaria uma
+-- já existente, duplicando a cada vez que este script rodasse. Mesmo problema
+-- (e solução) já aplicado ao índice de categorias mais acima.
+DROP INDEX IF EXISTS uq_subcategorias_usuario_categoria_nome;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_subcategorias_usuario_categoria_nome
+    ON subcategorias (COALESCE(usuario_id, 0), categoria_id, LOWER(nome));
+
+-- Categorias novas do sistema (mesmo padrão idempotente do INSERT original de
+-- categorias, lá em cima) - "Contas e serviços" já existia, por isso não
+-- aparece aqui de novo, só ganha subcategorias novas abaixo.
+INSERT INTO categorias (usuario_id, nome, emoji) VALUES
+    (NULL, 'Trabalho', '💼'),
+    (NULL, 'Viagens', '✈️')
+ON CONFLICT (COALESCE(usuario_id, 0), LOWER(nome)) DO NOTHING;
+
+-- Subcategorias padrão do sistema, complementando as categorias já existentes
+-- e preenchendo as categorias novas acima - um INSERT por categoria alvo,
+-- localizada pelo nome (o id é um SERIAL, não é previsível). Idempotente via
+-- ON CONFLICT: rodar este script de novo nunca duplica nem falha.
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Cafés e lanches', '☕'),
+    ('Bebidas', '🥤')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Alimentação')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Móveis', '🪑'),
+    ('Eletrodomésticos', '📺'),
+    ('Produtos de limpeza', '🧹'),
+    ('IPTU', '🏠')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Moradia')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Pneus', '🛞'),
+    ('Seguro', '🛡️'),
+    ('IPVA', '📄'),
+    ('Licenciamento', '🚘'),
+    ('Lavagem', '🚿')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Transporte')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Dentista', '🦷'),
+    ('Óculos', '👓')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Saúde')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Faculdade', '🎓'),
+    ('Certificações', '📝'),
+    ('Idiomas', '🌎')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Educação')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Shows', '🎵'),
+    ('Hobbies', '🎨'),
+    ('Passeios', '🏖️'),
+    ('Bares', '🍻'),
+    ('Esportes', '⚽'),
+    ('Eventos', '🎟️')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Lazer')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Calçados', '👟'),
+    ('Casa', '🪑'),
+    ('Cosméticos', '💄')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Compras')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Internet', '🌐'),
+    ('Celular', '📱'),
+    ('TV', '📺'),
+    ('Streaming', '🎬'),
+    ('Serviços online', '☁️'),
+    ('Outros serviços', '🧾')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Contas e serviços')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Alimentação no trabalho', '🍽️'),
+    ('Transporte', '🚗'),
+    ('Roupas profissionais', '👔'),
+    ('Equipamentos', '💻'),
+    ('Cursos', '📚'),
+    ('Coworking', '🏢'),
+    ('Materiais', '💼')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Trabalho')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Passagens', '✈️'),
+    ('Hospedagem', '🏨'),
+    ('Alimentação', '🍽️'),
+    ('Transporte', '🚗'),
+    ('Passeios', '🎟️'),
+    ('Compras', '🛍️'),
+    ('Outros', '🧳')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Viagens')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+-- "Finanças"/"Financeiro" nunca foi uma categoria padrão do sistema - é uma
+-- categoria PESSOAL que o usuário já usa. Em vez de criar uma categoria de
+-- sistema redundante com esse nome (categoria de sistema e pessoal com o
+-- mesmo nome coexistiriam sem conflito - o índice único é por dono - só que
+-- apareceriam duplicadas na tela), esta migração complementa a categoria
+-- pessoal já existente (de qualquer usuário, localizada pelo nome) com as
+-- subcategorias que ainda faltam, preservando as que já existirem (ex:
+-- Investimentos, Taxas bancárias) - nunca duplica, nunca remove.
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, c.usuario_id, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Fatura do cartão', '💳'),
+    ('Empréstimos', '📉'),
+    ('Financiamentos', '💸'),
+    ('Transferências', '🔄'),
+    ('Saques', '💵')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NOT NULL AND LOWER(c.nome) IN ('finanças', 'financeiro')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;

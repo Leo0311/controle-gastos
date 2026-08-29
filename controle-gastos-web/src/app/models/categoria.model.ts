@@ -10,5 +10,7 @@ export interface Subcategoria {
   id?: number;
   categoriaId: number;
   nome: string;
-  usuarioId?: number;
+  emoji: string;
+  /** null = subcategoria padrão do sistema, visível para todos. */
+  usuarioId?: number | null;
 }

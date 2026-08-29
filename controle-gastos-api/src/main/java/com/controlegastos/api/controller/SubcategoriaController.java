@@ -27,7 +27,7 @@ public class SubcategoriaController {
 
     @GetMapping("/api/subcategorias")
     public List<Subcategoria> listarTodas(@AuthenticationPrincipal UsuarioPrincipal usuario) {
-        return service.listarTodasDoUsuario(usuario.usuarioId());
+        return service.listarTodasVisiveis(usuario.usuarioId());
     }
 
     @GetMapping("/api/categorias/{categoriaId}/subcategorias")

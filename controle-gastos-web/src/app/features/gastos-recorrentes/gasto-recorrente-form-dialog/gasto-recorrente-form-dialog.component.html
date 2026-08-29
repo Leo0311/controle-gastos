@@ -46,7 +46,7 @@
       >
         <mat-option [value]="null">Nenhuma</mat-option>
         @for (s of opcoesSubcategoria; track s.id) {
-          <mat-option [value]="s.id">{{ s.nome }}</mat-option>
+          <mat-option [value]="s.id">{{ s.emoji }} {{ s.nome }}</mat-option>
         }
         <mat-option [value]="NOVA_SUBCATEGORIA">
           <mat-icon inline>add</mat-icon> Nova subcategoria...

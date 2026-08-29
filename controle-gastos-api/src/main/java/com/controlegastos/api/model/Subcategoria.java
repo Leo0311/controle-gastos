@@ -11,9 +11,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Sempre pertence a um usuário (não existem subcategorias padrão do sistema) e a
- * uma categoria específica - o dropdown de subcategoria no formulário depende da
- * categoria escolhida primeiro.
+ * Sempre pertence a uma categoria específica - o dropdown de subcategoria no
+ * formulário depende da categoria escolhida primeiro. usuarioId nulo = subcategoria
+ * padrão do sistema, visível a todos (mesmo padrão de Categoria) - ver
+ * SubcategoriaRepository.findVisiveis.
  */
 @Entity
 @Table(name = "subcategorias")
@@ -29,9 +30,15 @@ public class Subcategoria {
     @Column(name = "categoria_id", nullable = false)
     private Integer categoriaId;
 
-    @Column(name = "usuario_id", nullable = false)
+    // NULL = subcategoria padrão do sistema (definida na migração do banco em
+    // schema.sql), visível a todos - nunca editável/excluível via API, só as
+    // pessoais (usuarioId preenchido) podem ser alteradas pelo próprio dono.
+    @Column(name = "usuario_id")
     private Integer usuarioId;
 
     @Column(nullable = false, length = 60)
     private String nome;
+
+    @Column(nullable = false, length = 16)
+    private String emoji;
 }

@@ -88,7 +88,7 @@ public class OrcamentoService {
             return;
         }
         Subcategoria subcategoria = subcategoriaRepository
-                .findByIdAndUsuarioId(orcamento.getSubcategoriaId(), usuarioId)
+                .findByIdVisivel(orcamento.getSubcategoriaId(), usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Subcategoria inválida ou não pertence ao usuário."));
         if (!subcategoria.getCategoriaId().equals(categoria.getId())) {
             throw new IllegalArgumentException("Subcategoria não pertence à categoria selecionada.");

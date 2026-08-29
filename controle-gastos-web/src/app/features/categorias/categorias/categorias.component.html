@@ -48,15 +48,25 @@
           <ul class="lista-subcategorias">
             @for (subcategoria of subcategoriasDe(categoria.id!); track subcategoria.id) {
               <li>
-                <span>{{ subcategoria.nome }}</span>
-                <span class="acoes-subcategoria">
-                  <button mat-icon-button (click)="editarSubcategoria(categoria, subcategoria)" aria-label="Editar subcategoria">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button mat-icon-button (click)="excluirSubcategoria(subcategoria)" aria-label="Excluir subcategoria">
-                    <mat-icon color="warn">delete</mat-icon>
-                  </button>
+                <span class="titulo-subcategoria">
+                  <span class="emoji-categoria">{{ subcategoria.emoji }}</span>
+                  <span>{{ subcategoria.nome }}</span>
+                  @if (!subcategoria.usuarioId) {
+                    <mat-chip class="chip-sistema">Sistema</mat-chip>
+                  }
                 </span>
+                @if (subcategoria.usuarioId) {
+                  <span class="acoes-subcategoria">
+                    <button mat-icon-button (click)="editarSubcategoria(categoria, subcategoria)" aria-label="Editar subcategoria">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="excluirSubcategoria(subcategoria)" aria-label="Excluir subcategoria">
+                      <mat-icon color="warn">delete</mat-icon>
+                    </button>
+                  </span>
+                } @else {
+                  <span class="aviso-sistema">Padrão do sistema</span>
+                }
               </li>
             }
           </ul>
