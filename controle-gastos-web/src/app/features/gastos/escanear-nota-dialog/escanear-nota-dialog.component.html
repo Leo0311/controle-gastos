@@ -4,16 +4,20 @@
   @if (estado === 'iniciando' || estado === 'lendo') {
     <div [id]="idElementoLeitor" #areaLeitor class="area-camera"></div>
     <p class="dica-leitura">Aponte a câmera para o QR Code da nota fiscal (NFC-e).</p>
+    <p class="dica-leitura dica-secundaria">
+      Vamos tentar preencher os dados automaticamente; se a SEFAZ não permitir, abrimos a nota numa aba pra você
+      conferir e preencher rapidinho.
+    </p>
   }
 
   @if (estado === 'consultando') {
     <div class="estado-centralizado">
       <mat-spinner diameter="40"></mat-spinner>
-      <p>Lendo os dados da nota...</p>
+      <p>Lendo o QR Code...</p>
     </div>
   }
 
-  @if (estado === 'erroCamera' || estado === 'erroConsulta') {
+  @if (estado === 'erroCamera') {
     <div class="estado-centralizado erro-leitura">
       <mat-icon>error_outline</mat-icon>
       <p>{{ mensagemErro }}</p>
@@ -25,8 +29,6 @@
   <button mat-button (click)="cancelar()">Cancelar</button>
   @if (estado === 'erroCamera') {
     <button mat-stroked-button (click)="tentarNovamente()">Tentar novamente</button>
-  }
-  @if (estado === 'erroCamera' || estado === 'erroConsulta') {
     <button mat-raised-button color="primary" (click)="preencherManualmente()">Preencher manualmente</button>
   }
 </mat-dialog-actions>

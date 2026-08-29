@@ -10,15 +10,23 @@ import { NotaFiscalService } from '../../../services/nota-fiscal.service';
 
 const ID_ELEMENTO_LEITOR = 'leitor-qr-nota-fiscal';
 
-// O diálogo fecha devolvendo um desses três resultados: sucesso (com os dados já
-// extraídos pela API), "manual" (usuário optou por preencher à mão depois de uma
-// falha na leitura/consulta), ou undefined (usuário simplesmente cancelou/fechou -
-// nesse caso a tela de Gastos não abre formulário nenhum).
+// O diálogo fecha devolvendo um desses três resultados, ou undefined (usuário
+// simplesmente cancelou/fechou - nesse caso a tela de Gastos não abre nada):
+// - "sucesso": a extração automática funcionou (tentada em segundo plano, sem
+//   nenhuma indicação visual diferente pro usuário - ver onQrDecodificado) - os
+//   dados já vêm prontos pra pré-preencher o formulário.
+// - "abrirNota": QR Code lido com sucesso, mas a extração automática falhou (o mais
+//   comum na prática, já que a SEFAZ-SC costuma exigir uma validação de segurança
+//   antes de mostrar os dados da nota, que não dá pra resolver automaticamente) -
+//   a tela de Gastos abre a URL da nota numa aba nova e o formulário em branco.
+// - "manual": falha na câmera em si (sem URL nenhuma pra abrir) - só abre o
+//   formulário em branco.
 export type EscanearNotaResultado =
   | { tipo: 'sucesso'; nota: NotaFiscal }
+  | { tipo: 'abrirNota'; url: string }
   | { tipo: 'manual' };
 
-type EstadoLeitura = 'iniciando' | 'lendo' | 'consultando' | 'erroCamera' | 'erroConsulta';
+type EstadoLeitura = 'iniciando' | 'lendo' | 'consultando' | 'erroCamera';
 
 @Component({
   selector: 'app-escanear-nota-dialog',
@@ -99,6 +107,12 @@ export class EscanearNotaDialogComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  // Tenta a extração automática como um fallback silencioso: se a SEFAZ-SC
+  // devolver os dados de primeira (não é raro - só não é garantido, por causa da
+  // validação de segurança que a página pública às vezes exige), o formulário já
+  // fecha pré-preenchido; se falhar por qualquer motivo, fecha pedindo pra tela de
+  // Gastos abrir a nota numa aba nova em vez de mostrar um erro aqui no diálogo -
+  // ver GastosComponent.abrirNotaFiscalEFormulario.
   private onQrDecodificado(url: string): void {
     if (this.jaProcessouLeitura) {
       return;
@@ -109,18 +123,8 @@ export class EscanearNotaDialogComponent implements AfterViewInit, OnDestroy {
 
     this.notaFiscalService.consultar(url).subscribe({
       next: (nota) => this.dialogRef.close({ tipo: 'sucesso', nota }),
-      error: (erro) => {
-        this.estado = 'erroConsulta';
-        this.mensagemErro = this.mensagemErroConsulta(erro);
-      }
+      error: () => this.dialogRef.close({ tipo: 'abrirNota', url })
     });
-  }
-
-  private mensagemErroConsulta(erro: unknown): string {
-    const erroHttp = erro as { error?: { erro?: string } };
-    const detalhe = erroHttp?.error?.erro;
-    const base = 'Não consegui ler os dados automaticamente, mas você pode preencher manualmente.';
-    return detalhe ? `${base} (${detalhe})` : base;
   }
 
   private pararCamera(): void {

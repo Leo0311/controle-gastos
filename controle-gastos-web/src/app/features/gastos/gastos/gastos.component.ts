@@ -329,10 +329,46 @@ export class GastosComponent implements OnInit {
           valor: resultado.nota.valor,
           data: resultado.nota.dataEmissao
         });
+      } else if (resultado.tipo === 'abrirNota') {
+        this.abrirNotaFiscalEFormulario(resultado.url);
       } else {
         this.abrirFormularioGasto();
       }
     });
+  }
+
+  // QR Code lido, mas não deu pra extrair os dados automaticamente (o mais comum na
+  // prática - a SEFAZ-SC costuma exigir uma validação de segurança antes de mostrar
+  // os dados da nota, que não dá pra resolver do lado do servidor). Em vez de deixar
+  // o usuário sem nada, abre a própria nota fiscal oficial numa aba nova - pra ele
+  // conferir os dados lá - junto com o formulário em branco, pra preencher rapidinho
+  // com o que viu na nota.
+  private abrirNotaFiscalEFormulario(url: string): void {
+    // "noopener,noreferrer": a aba nova não recebe referência de volta a esta
+    // janela nem informação de origem - prática padrão de segurança pra window.open
+    // com uma URL de terceiros. Não afeta nenhuma aba/janela já aberta do usuário -
+    // "_blank" sempre cria uma aba nova, nunca navega uma existente.
+    const aba = window.open(url, '_blank', 'noopener,noreferrer');
+
+    if (aba) {
+      this.snackBar.open(
+        'Abrimos a nota fiscal numa nova aba — confira os dados lá e preencha aqui.',
+        'Fechar',
+        { duration: 6000 }
+      );
+    } else {
+      // Alguns navegadores bloqueiam window.open() fora de um clique direto do
+      // usuário - a ação do snackbar É um clique direto, então tentar de novo
+      // dentro dela funciona mesmo quando a primeira tentativa foi bloqueada.
+      const refAviso = this.snackBar.open(
+        'Não conseguimos abrir a nota automaticamente (o navegador bloqueou a aba).',
+        'Ver nota fiscal',
+        { duration: 15000 }
+      );
+      refAviso.onAction().subscribe(() => window.open(url, '_blank', 'noopener,noreferrer'));
+    }
+
+    this.abrirFormularioGasto();
   }
 
   private abrirFormularioGasto(valoresIniciais?: Pick<Gasto, 'descricao' | 'valor' | 'data'>): void {

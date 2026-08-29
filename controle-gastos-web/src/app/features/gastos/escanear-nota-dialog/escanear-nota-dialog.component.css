@@ -28,6 +28,12 @@
   text-align: center;
 }
 
+.dica-secundaria {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--texto-terciario);
+}
+
 .estado-centralizado {
   display: flex;
   flex-direction: column;
