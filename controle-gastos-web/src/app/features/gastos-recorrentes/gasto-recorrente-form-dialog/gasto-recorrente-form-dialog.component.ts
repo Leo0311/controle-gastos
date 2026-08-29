@@ -75,7 +75,13 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
     categoriaId: [null as number | null, [Validators.required]],
     subcategoriaId: [null as number | null],
     diaDoMes: [null as number | null, [Validators.required, Validators.min(1), Validators.max(31)]],
-    orcamentoId: [null as number | null]
+    orcamentoId: [null as number | null],
+    // Quantos meses, a partir do atual, já lançar imediatamente ao salvar - em vez de
+    // esperar o lançamento sob demanda de cada mês quando ele chegar (ver
+    // GastoRecorrenteService.gerarProximosMeses). Padrão 12 tanto pra criar quanto
+    // pra editar - não reflete nenhum valor já persistido (a API não guarda esse
+    // campo, só usa como entrada), então não há um "horizonte atual" pra restaurar.
+    mesesGerar: [12, [Validators.required, Validators.min(1), Validators.max(12)]]
   });
 
   constructor(
@@ -159,7 +165,8 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
       categoriaId: valores.categoriaId!,
       subcategoriaId: valores.subcategoriaId ?? null,
       diaDoMes: valores.diaDoMes!,
-      orcamentoId: valores.orcamentoId ?? null
+      orcamentoId: valores.orcamentoId ?? null,
+      mesesGerar: valores.mesesGerar!
     };
     this.dialogRef.close(recorrente);
   }

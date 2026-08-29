@@ -40,6 +40,12 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
     // hoje (histórico do que já foi pago) - ver CompraParceladaService.excluir.
     List<Gasto> findByCompraParceladaIdAndDataAfter(Integer compraParceladaId, LocalDate data);
 
+    // Gastos de uma recorrência a partir de hoje (inclusive) - removidos ao excluir a
+    // recorrência, mantendo intactos os gastos de meses passados (histórico) - ver
+    // GastoRecorrenteService.excluir. Diferente de compras parceladas (que preservam o
+    // gasto do dia de hoje como "já vencido"), aqui hoje conta como futuro/removível.
+    List<Gasto> findByGastoRecorrenteIdAndDataGreaterThanEqual(Integer gastoRecorrenteId, LocalDate data);
+
     // Agrupa por categoriaId quando presente (fonte de verdade); GROUP BY também por
     // LOWER(categoria) porque categoriaId nulo (gastos legados, sem categoria gerenciada
     // vinculada) não separa grupos no SQL - todo NULL cai no mesmo grupo por padrão.

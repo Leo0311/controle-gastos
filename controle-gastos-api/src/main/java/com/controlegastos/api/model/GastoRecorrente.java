@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -60,4 +61,11 @@ public class GastoRecorrente {
 
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
+
+    // Só usado como entrada da requisição de criar/editar (nunca persistido - por
+    // isso @Transient): quantos meses, a partir do atual, devem ser gerados
+    // imediatamente ao salvar - ver GastoRecorrenteService.gerarProximosMeses. Vem
+    // sempre null nas respostas da API (GET), já que não corresponde a coluna nenhuma.
+    @Transient
+    private Integer mesesGerar;
 }

@@ -66,24 +66,27 @@
   font-weight: 500;
 }
 
-/* Fundo pastel fixo (não muda com o tema) - por isso o texto por cima também precisa
-   ficar fixo em escuro, senão no modo escuro herda a cor clara padrão do chip e fica
-   ilegível sobre o fundo claro (mesmo problema já corrigido no badge de alerta de
-   renda da tela de Análises). */
+/* mat-chip (MDC) não tema pelo background-color/color comuns - a superfície e o
+   texto são desenhados por dentro do componente, então precisam das custom
+   properties do MDC (mesmo padrão já usado nas barras de progresso de Orçamentos,
+   ver .cor-verde/.cor-amarelo/.cor-vermelho lá). Cores fixas (não mudam com o tema)
+   - por isso o texto por cima também fica fixo em escuro, senão no modo escuro
+   herda a cor clara padrão do chip e fica ilegível sobre o fundo claro (mesmo
+   problema já corrigido no badge de alerta de renda da tela de Análises). */
 .chip-ativo {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  background-color: #c8e6c9;
-  color: rgba(0, 0, 0, 0.87);
+  --mdc-chip-elevated-container-color: #43a047;
+  --mdc-chip-label-text-color: #fff;
 }
 
 .chip-pausado {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  background-color: #e0e0e0;
-  color: rgba(0, 0, 0, 0.87);
+  --mdc-chip-elevated-container-color: #e0e0e0;
+  --mdc-chip-label-text-color: rgba(0, 0, 0, 0.87);
 }
 
 .linha-detalhes {

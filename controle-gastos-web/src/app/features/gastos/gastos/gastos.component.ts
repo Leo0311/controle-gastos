@@ -314,13 +314,20 @@ export class GastosComponent implements OnInit {
   // pré-preenchido com os dados extraídos da nota (sucesso), ou em branco (usuário
   // optou por preencher manualmente após uma falha na leitura/consulta) - nunca
   // salva nada sozinho, o usuário sempre revisa e confirma no formulário depois.
-  escanearNotaFiscal(): void {
+  escanearNotaFiscal(evento: MouseEvent): void {
+    // No mobile, o botão fica com aparência de "selecionado/focado" presa depois de
+    // fechar o diálogo (o MatDialog devolve o foco a quem abriu ele, e o estado de
+    // foco do Material - pensado pra navegação por teclado - não se desfaz sozinho
+    // num toque de tela) - guardamos o botão aqui pra tirar o foco dele
+    // explicitamente quando o diálogo fechar, abaixo.
+    const botao = evento.currentTarget as HTMLElement;
     const ref = this.dialog.open<EscanearNotaDialogComponent, undefined, EscanearNotaResultado>(
       EscanearNotaDialogComponent,
       { width: '400px', maxWidth: '95vw' }
     );
 
     ref.afterClosed().subscribe((resultado) => {
+      botao.blur();
       if (!resultado) {
         return;
       }
@@ -374,6 +381,11 @@ export class GastosComponent implements OnInit {
     );
 
     ref.afterClosed().subscribe((resultado) => {
+      // Fecha junto qualquer snackbar que ainda estivesse na tela (ex: o aviso "Ver
+      // nota fiscal" de abrirNotaFiscalEFormulario, que fica até 15s aberto) - nunca
+      // deve sobreviver sozinho depois que o modal em si já fechou. Não faz nada se
+      // não houver snackbar aberto.
+      this.snackBar.dismiss();
       if (!resultado) {
         return;
       }

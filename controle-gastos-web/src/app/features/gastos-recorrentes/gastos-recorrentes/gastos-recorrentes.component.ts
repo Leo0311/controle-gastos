@@ -182,7 +182,8 @@ export class GastosRecorrentesComponent implements OnInit {
       data: {
         titulo: 'Excluir gasto recorrente',
         mensagem: `Tem certeza que deseja excluir a recorrência "${recorrente.descricao}"? `
-          + 'Os gastos já lançados no passado não são afetados - só deixam de ser lançados novos meses.'
+          + 'Os gastos de meses passados continuam intactos como histórico, mas os gastos a partir de hoje '
+          + '(incluindo os já pré-gerados de meses futuros que ainda não venceram) serão removidos.'
       }
     });
     ref.afterClosed().subscribe((confirmado) => {

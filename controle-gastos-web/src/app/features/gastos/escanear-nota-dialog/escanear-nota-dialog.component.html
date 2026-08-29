@@ -1,14 +1,56 @@
 <h2 mat-dialog-title>Escanear nota fiscal</h2>
 
 <mat-dialog-content class="conteudo-dialog">
-  @if (estado === 'iniciando' || estado === 'lendo') {
-    <div [id]="idElementoLeitor" #areaLeitor class="area-camera"></div>
-    <p class="dica-leitura">Aponte a câmera para o QR Code da nota fiscal (NFC-e).</p>
+  <mat-button-toggle-group
+    class="seletor-modo"
+    [value]="modoEntrada"
+    (change)="alternarModo($event)"
+    [disabled]="estado === 'consultando'"
+  >
+    <mat-button-toggle value="camera">
+      <mat-icon inline>photo_camera</mat-icon>
+      Usar câmera
+    </mat-button-toggle>
+    <mat-button-toggle value="arquivo">
+      <mat-icon inline>upload_file</mat-icon>
+      Enviar foto
+    </mat-button-toggle>
+  </mat-button-toggle-group>
+
+  @if (estado !== 'erro') {
     <p class="dica-leitura dica-secundaria">
-      Vamos tentar preencher os dados automaticamente; se a SEFAZ não permitir, você pode abrir a nota numa aba
-      pra conferir e preencher rapidinho.
+      A extração automática dos dados pode variar de nota pra nota — a SEFAZ-SC às vezes exige uma verificação de
+      segurança que impede a leitura automática (isso é do lado deles, não um erro do app). Quando isso acontece,
+      mostramos um botão pra você abrir a nota e conferir os dados por lá.
     </p>
   }
+
+  @if (modoEntrada === 'camera' && (estado === 'iniciando' || estado === 'lendo')) {
+    <div [id]="idElementoLeitor" #areaLeitor class="area-camera"></div>
+    <p class="dica-leitura">Aponte a câmera para o QR Code da nota fiscal (NFC-e).</p>
+  }
+
+  @if (modoEntrada === 'arquivo' && estado === 'aguardandoArquivo') {
+    <div class="area-arquivo">
+      <mat-icon class="icone-arquivo">image</mat-icon>
+      <p class="dica-leitura">Envie uma foto nítida do QR Code da nota fiscal.</p>
+      <button mat-stroked-button (click)="abrirSeletorDeArquivo()">
+        <mat-icon>upload_file</mat-icon>
+        Selecionar imagem
+      </button>
+    </div>
+  }
+
+  <!-- Sempre presente no DOM (nunca dentro de um @if) - scanFile() precisa que o
+       elemento já exista no momento em que o Html5Qrcode é construído. -->
+  <input
+    #inputImagem
+    type="file"
+    accept="image/*"
+    class="input-arquivo-oculto"
+    (change)="onArquivoSelecionado($event)"
+  >
+  <div [id]="idElementoArquivo" class="leitor-arquivo-oculto"></div>
 
   @if (estado === 'consultando') {
     <div class="estado-centralizado">
@@ -17,7 +59,7 @@
     </div>
   }
 
-  @if (estado === 'erroCamera') {
+  @if (estado === 'erro') {
     <div class="estado-centralizado erro-leitura">
       <mat-icon>error_outline</mat-icon>
       <p>{{ mensagemErro }}</p>
@@ -27,7 +69,7 @@
 
 <mat-dialog-actions align="end">
   <button mat-button (click)="cancelar()">Cancelar</button>
-  @if (estado === 'erroCamera') {
+  @if (estado === 'erro') {
     <button mat-stroked-button (click)="tentarNovamente()">Tentar novamente</button>
     <button mat-raised-button color="primary" (click)="preencherManualmente()">Preencher manualmente</button>
   }

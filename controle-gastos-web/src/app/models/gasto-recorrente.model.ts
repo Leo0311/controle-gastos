@@ -9,4 +9,7 @@ export interface GastoRecorrente {
   ativo?: boolean;
   usuarioId?: number;
   dataCriacao?: string;
+  // Só usado ao criar/editar (entrada), nunca vem preenchido nas respostas da API -
+  // ver GastoRecorrenteService.gerarProximosMeses no backend.
+  mesesGerar?: number;
 }

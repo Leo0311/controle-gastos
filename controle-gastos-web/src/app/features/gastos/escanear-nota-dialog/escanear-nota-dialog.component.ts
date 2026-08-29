@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject } from '@angular/core';
+import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +10,11 @@ import { NotaFiscal } from '../../../models/nota-fiscal.model';
 import { NotaFiscalService } from '../../../services/nota-fiscal.service';
 
 const ID_ELEMENTO_LEITOR = 'leitor-qr-nota-fiscal';
+// Container separado (sempre presente no DOM, nunca removido por um @if) usado só
+// pelo modo "Enviar foto" - a leitura de arquivo (scanFile) usa a mesma classe
+// Html5Qrcode da câmera, que exige um elemento com o ID informado já existindo no
+// DOM no momento da construção, mesmo com showImage desligado (sem preview visual).
+const ID_ELEMENTO_ARQUIVO = 'leitor-qr-nota-fiscal-arquivo';
 
 // O diálogo fecha devolvendo um desses três resultados, ou undefined (usuário
 // simplesmente cancelou/fechou - nesse caso a tela de Gastos não abre nada):
@@ -18,20 +24,22 @@ const ID_ELEMENTO_LEITOR = 'leitor-qr-nota-fiscal';
 // - "abrirNota": QR Code lido com sucesso, mas a extração automática falhou (o mais
 //   comum na prática, já que a SEFAZ-SC costuma exigir uma validação de segurança
 //   antes de mostrar os dados da nota, que não dá pra resolver automaticamente) -
-//   a tela de Gastos abre a URL da nota numa aba nova e o formulário em branco.
-// - "manual": falha na câmera em si (sem URL nenhuma pra abrir) - só abre o
+//   a tela de Gastos mostra um botão pra abrir a URL da nota, junto com o
 //   formulário em branco.
+// - "manual": falha na leitura em si (câmera ou arquivo, sem URL nenhuma pra abrir)
+//   - só abre o formulário em branco.
 export type EscanearNotaResultado =
   | { tipo: 'sucesso'; nota: NotaFiscal }
   | { tipo: 'abrirNota'; url: string }
   | { tipo: 'manual' };
 
-type EstadoLeitura = 'iniciando' | 'lendo' | 'consultando' | 'erroCamera';
+type EstadoLeitura = 'iniciando' | 'lendo' | 'aguardandoArquivo' | 'consultando' | 'erro';
+type ModoEntrada = 'camera' | 'arquivo';
 
 @Component({
   selector: 'app-escanear-nota-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [MatDialogModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './escanear-nota-dialog.component.html',
   styleUrl: './escanear-nota-dialog.component.css'
 })
@@ -41,9 +49,12 @@ export class EscanearNotaDialogComponent implements AfterViewInit, OnDestroy {
   private readonly notaFiscalService = inject(NotaFiscalService);
 
   @ViewChild('areaLeitor') private areaLeitorRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('inputImagem') private inputImagemRef?: ElementRef<HTMLInputElement>;
 
   readonly idElementoLeitor = ID_ELEMENTO_LEITOR;
+  readonly idElementoArquivo = ID_ELEMENTO_ARQUIVO;
 
+  modoEntrada: ModoEntrada = 'camera';
   estado: EstadoLeitura = 'iniciando';
   mensagemErro = '';
 
@@ -71,11 +82,69 @@ export class EscanearNotaDialogComponent implements AfterViewInit, OnDestroy {
     this.dialogRef.close({ tipo: 'manual' });
   }
 
-  tentarNovamente(): void {
-    this.estado = 'iniciando';
+  // Alterna entre "Usar câmera" e "Enviar foto" - troca de modo sempre para a
+  // câmera (se estava rodando) e reseta o estado de erro, já que os dois modos são
+  // tentativas de leitura independentes.
+  alternarModo(evento: MatButtonToggleChange): void {
+    const modo = evento.value as ModoEntrada;
+    if (modo === this.modoEntrada) {
+      return;
+    }
+    this.pararCamera();
+    this.modoEntrada = modo;
     this.mensagemErro = '';
     this.jaProcessouLeitura = false;
-    setTimeout(() => this.iniciarCamera(), 0);
+
+    if (modo === 'camera') {
+      this.estado = 'iniciando';
+      setTimeout(() => this.iniciarCamera(), 0);
+    } else {
+      this.estado = 'aguardandoArquivo';
+    }
+  }
+
+  tentarNovamente(): void {
+    this.mensagemErro = '';
+    this.jaProcessouLeitura = false;
+    if (this.modoEntrada === 'camera') {
+      this.estado = 'iniciando';
+      setTimeout(() => this.iniciarCamera(), 0);
+    } else {
+      this.estado = 'aguardandoArquivo';
+    }
+  }
+
+  abrirSeletorDeArquivo(): void {
+    this.inputImagemRef?.nativeElement.click();
+  }
+
+  // Lê o QR Code de uma imagem enviada pelo usuário (scanFile do html5-qrcode) - útil
+  // quando não dá pra usar a câmera direto pro papel (ex: webcam de desktop mal
+  // posicionada): o usuário fotografa a nota pelo celular e envia essa foto aqui.
+  async onArquivoSelecionado(evento: Event): Promise<void> {
+    const input = evento.target as HTMLInputElement;
+    const arquivo = input.files?.[0] ?? null;
+    input.value = '';
+    if (!arquivo || this.jaProcessouLeitura) {
+      return;
+    }
+
+    this.estado = 'consultando';
+    const { Html5Qrcode } = await import('html5-qrcode');
+    const scanner = new Html5Qrcode(ID_ELEMENTO_ARQUIVO);
+    try {
+      // showImage=false: não precisamos do preview da imagem com a marcação do QR
+      // Code, só do texto decodificado.
+      const textoDecodificado = await scanner.scanFile(arquivo, false);
+      this.onQrDecodificado(textoDecodificado);
+    } catch {
+      this.estado = 'erro';
+      this.mensagemErro =
+        'Não conseguimos identificar um QR Code nessa imagem. Tente outra foto, com o QR Code inteiro e nítido '
+        + 'no enquadramento.';
+    } finally {
+      scanner.clear();
+    }
   }
 
   private async iniciarCamera(): Promise<void> {
@@ -100,10 +169,10 @@ export class EscanearNotaDialogComponent implements AfterViewInit, OnDestroy {
       );
       this.estado = 'lendo';
     } catch {
-      this.estado = 'erroCamera';
+      this.estado = 'erro';
       this.mensagemErro =
         'Não foi possível acessar a câmera. Verifique se a permissão de câmera foi concedida para este site '
-        + 'e se nenhum outro aplicativo está usando a câmera agora.';
+        + 'e se nenhum outro aplicativo está usando a câmera agora - ou envie uma foto pela outra opção acima.';
     }
   }
 
@@ -111,8 +180,7 @@ export class EscanearNotaDialogComponent implements AfterViewInit, OnDestroy {
   // devolver os dados de primeira (não é raro - só não é garantido, por causa da
   // validação de segurança que a página pública às vezes exige), o formulário já
   // fecha pré-preenchido; se falhar por qualquer motivo, fecha pedindo pra tela de
-  // Gastos abrir a nota numa aba nova em vez de mostrar um erro aqui no diálogo -
-  // ver GastosComponent.abrirNotaFiscalEFormulario.
+  // Gastos mostrar o botão de abrir a nota - ver GastosComponent.abrirNotaFiscalEFormulario.
   private onQrDecodificado(url: string): void {
     if (this.jaProcessouLeitura) {
       return;

@@ -27,7 +27,7 @@
     </button>
     <input #inputArquivo type="file" accept=".xlsx" class="input-arquivo-oculto" (change)="onArquivoSelecionado($event)">
 
-    <button mat-stroked-button (click)="escanearNotaFiscal()">
+    <button mat-stroked-button (click)="escanearNotaFiscal($event)">
       <mat-icon>qr_code_scanner</mat-icon>
       Escanear nota fiscal
     </button>
@@ -63,7 +63,7 @@
 
   @if (opcoesCategoriaFiltro.length > 0) {
     <mat-form-field appearance="outline" class="campo-filtro-categoria">
-      <mat-label>Categoria</mat-label>
+      <mat-label>Filtrar por categoria</mat-label>
       <mat-select [(ngModel)]="filtroCategoria" (selectionChange)="onCategoriaFiltroChange()">
         <mat-option [value]="null">Todas</mat-option>
         @for (c of opcoesCategoriaFiltro; track c.id) {
