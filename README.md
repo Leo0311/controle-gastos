@@ -33,6 +33,9 @@ Categoria e subcategoria são entidades geridas (não mais texto livre), cada ca
 ### Gastos
 CRUD completo (descrição, valor, categoria, subcategoria opcional, data), listagem por categoria/período/mês, exportação e importação em lote via planilha `.xlsx` (ver abaixo). Cada gasto pode ser vinculado a um orçamento do mês/categoria (ou categoria+subcategoria) correspondente. Um seletor de Mês/Ano no topo (com o mês atual como padrão) filtra a listagem por período, com uma opção "Ver todos os meses" para removê-lo; um campo de busca filtra a lista por descrição em tempo real (client-side, case-insensitive, com pequeno debounce) por cima do período e da categoria já filtrados — os três funcionam em conjunto.
 
+### Leitura de nota fiscal por QR Code
+Na tela de Gastos, o botão "Escanear nota fiscal" abre a câmera do dispositivo (via `html5-qrcode`, carregada sob demanda) e lê o QR Code impresso na NFC-e (nota fiscal de consumidor eletrônica). Hoje só notas da **SEFAZ-SC** (Santa Catarina) são suportadas: a URL decodificada é enviada pro backend, que confirma que o domínio é mesmo `sat.sef.sc.gov.br` (ou o de homologação) antes de acessá-la — qualquer outro domínio é rejeitado, evitando que o servidor seja usado pra buscar URLs arbitrárias de terceiros (SSRF). O HTML da página pública de consulta é então lido (Jsoup) pra extrair nome do estabelecimento, valor total e data de emissão, que preenchem automaticamente o formulário "Novo gasto" — categoria, subcategoria e orçamento ficam em branco pro usuário escolher, e nada é salvo sem o usuário revisar e confirmar. A própria página pública da SEFAZ-SC costuma exigir uma validação de segurança (captcha) antes de mostrar os dados da nota, o que uma leitura automática no servidor não tem como resolver; nesse caso (ou qualquer outra falha na leitura) o app mostra um aviso claro e abre o formulário em branco, sem travar o fluxo.
+
 ### Gastos recorrentes
 Um gasto fixo (aluguel, assinatura etc.) pode ser marcado como recorrente — no próprio formulário de gasto ("Tornar recorrente (todo mês)") ou na tela dedicada **Recorrentes** — informando o dia do mês em que deve ser lançado. Em meses com menos dias que o configurado (ex: dia 31 em fevereiro), o lançamento cai no último dia válido do mês. Como o backend roda no plano gratuito do Render (o serviço "dorme" e não tem cron job garantido), o lançamento dos gastos pendentes do mês é verificado sob demanda, de forma transparente (sem popup), toda vez que o Dashboard ou a tela de Gastos são abertos — nunca duplica o lançamento do mesmo mês. Gastos gerados automaticamente aparecem marcados com 🔁 na listagem. A tela **Recorrentes** lista as recorrências ativas e pausadas, com opção de editar, pausar/reativar (sem excluir) e excluir — excluir uma recorrência não afeta os gastos já lançados no passado, só impede lançamentos futuros.
 
@@ -65,9 +68,9 @@ O frontend é um Progressive Web App: pode ser instalado a partir do navegador e
 
 ## Tecnologias
 
-- **Backend**: Java 17, Maven, Spring Boot 4, Spring Data JPA, Spring Security + JWT (jjwt), Spring Mail
+- **Backend**: Java 17, Maven, Spring Boot 4, Spring Data JPA, Spring Security + JWT (jjwt), Spring Mail, Jsoup (parsing do HTML da consulta de NFC-e)
 - **Banco de dados**: PostgreSQL (Neon em produção)
-- **Frontend**: Angular 18 (standalone components), Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas), `@angular/service-worker` (PWA instalável)
+- **Frontend**: Angular 18 (standalone components), Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas), `html5-qrcode` (leitura de QR Code pela câmera), `@angular/service-worker` (PWA instalável)
 - **Deploy**: Render (frontend como Static Site, API como Web Service via Docker)
 
 ## Pré-requisitos

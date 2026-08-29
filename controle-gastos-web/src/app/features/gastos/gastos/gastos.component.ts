@@ -21,6 +21,10 @@ import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { Gasto } from '../../../models/gasto.model';
+import {
+  EscanearNotaDialogComponent,
+  EscanearNotaResultado
+} from '../escanear-nota-dialog/escanear-nota-dialog.component';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import {
@@ -302,9 +306,39 @@ export class GastosComponent implements OnInit {
   }
 
   novoGasto(): void {
+    this.abrirFormularioGasto();
+  }
+
+  // Abre o diálogo de leitura de QR Code; ao fechar, ou abre "Novo gasto" já
+  // pré-preenchido com os dados extraídos da nota (sucesso), ou em branco (usuário
+  // optou por preencher manualmente após uma falha na leitura/consulta) - nunca
+  // salva nada sozinho, o usuário sempre revisa e confirma no formulário depois.
+  escanearNotaFiscal(): void {
+    const ref = this.dialog.open<EscanearNotaDialogComponent, undefined, EscanearNotaResultado>(
+      EscanearNotaDialogComponent,
+      { width: '400px', maxWidth: '95vw' }
+    );
+
+    ref.afterClosed().subscribe((resultado) => {
+      if (!resultado) {
+        return;
+      }
+      if (resultado.tipo === 'sucesso') {
+        this.abrirFormularioGasto({
+          descricao: resultado.nota.estabelecimento,
+          valor: resultado.nota.valor,
+          data: resultado.nota.dataEmissao
+        });
+      } else {
+        this.abrirFormularioGasto();
+      }
+    });
+  }
+
+  private abrirFormularioGasto(valoresIniciais?: Pick<Gasto, 'descricao' | 'valor' | 'data'>): void {
     const ref = this.dialog.open<GastoFormDialogComponent, GastoFormDialogData, GastoFormResultado>(
       GastoFormDialogComponent,
-      { data: { gasto: null }, width: '480px', maxWidth: '95vw' }
+      { data: { gasto: null, valoresIniciais }, width: '480px', maxWidth: '95vw' }
     );
 
     ref.afterClosed().subscribe((resultado) => {

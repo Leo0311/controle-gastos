@@ -1,0 +1,47 @@
+.conteudo-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 280px;
+  min-height: 260px;
+  padding-top: 4px;
+}
+
+.area-camera {
+  width: 100%;
+  max-width: 320px;
+}
+
+/* html5-qrcode injeta o <video>/<canvas> dentro dessa div - forçamos ele a
+   respeitar a largura do container em vez do tamanho nativo do stream de vídeo
+   (que costuma ser bem maior que o diálogo). */
+.area-camera ::ng-deep video,
+.area-camera ::ng-deep canvas {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.dica-leitura {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--texto-secundario);
+  text-align: center;
+}
+
+.estado-centralizado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  padding: 24px 8px;
+  text-align: center;
+}
+
+.erro-leitura mat-icon {
+  color: #c62828;
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+}

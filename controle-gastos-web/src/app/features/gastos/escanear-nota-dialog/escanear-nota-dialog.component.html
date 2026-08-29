@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Escanear nota fiscal</h2>
+
+<mat-dialog-content class="conteudo-dialog">
+  @if (estado === 'iniciando' || estado === 'lendo') {
+    <div [id]="idElementoLeitor" #areaLeitor class="area-camera"></div>
+    <p class="dica-leitura">Aponte a câmera para o QR Code da nota fiscal (NFC-e).</p>
+  }
+
+  @if (estado === 'consultando') {
+    <div class="estado-centralizado">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Lendo os dados da nota...</p>
+    </div>
+  }
+
+  @if (estado === 'erroCamera' || estado === 'erroConsulta') {
+    <div class="estado-centralizado erro-leitura">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ mensagemErro }}</p>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  @if (estado === 'erroCamera') {
+    <button mat-stroked-button (click)="tentarNovamente()">Tentar novamente</button>
+  }
+  @if (estado === 'erroCamera' || estado === 'erroConsulta') {
+    <button mat-raised-button color="primary" (click)="preencherManualmente()">Preencher manualmente</button>
+  }
+</mat-dialog-actions>
