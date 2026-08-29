@@ -5,6 +5,15 @@
   @if (usuario$ | async; as usuario) {
     <span class="mes-ano-atual">{{ mesAnoAtual }}</span>
     <span class="usuario-nome">{{ usuario.nome }}</span>
+    <button
+      class="botao-tema"
+      mat-icon-button
+      (click)="alternarTema()"
+      [attr.aria-label]="(temaEscuro$ | async) ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
+      [title]="(temaEscuro$ | async) ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
+    >
+      <mat-icon>{{ (temaEscuro$ | async) ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
     <button class="botao-sair" mat-icon-button (click)="sair()" aria-label="Sair" title="Sair">
       <mat-icon>logout</mat-icon>
     </button>

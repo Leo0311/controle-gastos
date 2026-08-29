@@ -27,7 +27,7 @@
   vertical-align: text-top;
   margin-left: 4px;
   cursor: help;
-  color: rgba(0, 0, 0, 0.5);
+  color: var(--texto-terciario);
 }
 
 @media (max-width: 599px) {

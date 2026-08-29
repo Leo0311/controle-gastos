@@ -42,6 +42,19 @@
   </div>
 }
 
+@if (gastos.length > 0) {
+  <mat-form-field appearance="outline" class="campo-busca">
+    <mat-label>Buscar por descrição</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [formControl]="buscaControl" placeholder="Ex: mercado, uber...">
+    @if (buscaControl.value) {
+      <button mat-icon-button matSuffix (click)="buscaControl.setValue('')" aria-label="Limpar busca">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+  </mat-form-field>
+}
+
 @if (carregando) {
   <div class="carregando">
     <mat-spinner diameter="40"></mat-spinner>
@@ -51,9 +64,14 @@
     icon="receipt_long"
     [mensagem]="descricaoFiltro ? 'Nenhum gasto encontrado para ' + descricaoFiltro + '.' : 'Nenhum gasto cadastrado ainda.'"
   ></app-empty-state>
+} @else if (gastosExibidos.length === 0) {
+  <app-empty-state
+    icon="search_off"
+    [mensagem]="'Nenhum gasto encontrado para \'' + buscaControl.value + '\'.'"
+  ></app-empty-state>
 } @else {
   <div class="tabela-scroll mat-elevation-z2">
-    <table mat-table [dataSource]="gastos" class="tabela-gastos">
+    <table mat-table [dataSource]="gastosExibidos" class="tabela-gastos">
 
       <ng-container matColumnDef="descricao">
         <th mat-header-cell *matHeaderCellDef>Descrição</th>

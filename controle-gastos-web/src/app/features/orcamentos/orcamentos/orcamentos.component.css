@@ -106,7 +106,7 @@
 
 .subcategoria-label {
   font-size: 11px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--texto-secundario);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -135,7 +135,7 @@
 .texto-valor-gasto {
   display: block;
   font-size: 11px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--texto-secundario);
   margin-top: 2px;
 }
 

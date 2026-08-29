@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 
 import { AuthService } from './services/auth.service';
+import { TemaService } from './services/tema.service';
 
 const NOMES_MESES = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
@@ -51,9 +52,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   title = 'controle-gastos-web';
 
   private readonly authService = inject(AuthService);
+  private readonly temaService = inject(TemaService);
   private readonly router = inject(Router);
 
   readonly usuario$ = this.authService.usuario$;
+  readonly temaEscuro$ = this.temaService.escuro$;
   readonly mesAnoAtual: string;
 
   @ViewChild('conteudo') private conteudoRef?: ElementRef<HTMLElement>;
@@ -106,6 +109,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   sair(): void {
     this.authService.sair();
     this.router.navigate(['/login']);
+  }
+
+  alternarTema(): void {
+    this.temaService.alternar();
   }
 
   private tratarTouchStart(evento: TouchEvent): void {

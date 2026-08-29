@@ -18,6 +18,7 @@ import { GastoService } from '../../../services/gasto.service';
 import { MetaService } from '../../../services/meta.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
+import { TemaService } from '../../../services/tema.service';
 import { TotalMensal } from '../../../models/gasto.model';
 import { MetaMes, MetaRequest } from '../../../models/meta.model';
 import { Categoria } from '../../../models/categoria.model';
@@ -78,31 +79,14 @@ export class DashboardComponent implements OnInit {
   numeroGastosMes = 0;
 
   pizzaData: ChartData<'doughnut', number[], string> = { labels: [], datasets: [{ data: [] }] };
-  readonly pizzaOptions: ChartConfiguration<'doughnut'>['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    onHover: (evento, elementos) => {
-      const alvo = evento.native?.target as HTMLElement | undefined;
-      if (alvo) {
-        alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
-      }
-    },
-    plugins: { legend: { position: 'bottom' } }
-  };
+  // Não é mais `readonly`: as opções são reconstruídas (nova referência, pra
+  // o ng2-charts perceber a mudança e re-renderizar) toda vez que o tema muda,
+  // já que a cor padrão do texto do Chart.js (cinza escuro) fica ilegível
+  // sobre o fundo escuro do dark mode - ver assinarMudancasDeTema().
+  pizzaOptions: ChartConfiguration<'doughnut'>['options'] = this.construirPizzaOptions(false);
 
   barrasData: ChartData<'bar', number[], string> = { labels: [], datasets: [{ label: 'Total gasto', data: [] }] };
-  readonly barrasOptions: ChartConfiguration<'bar'>['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    onHover: (evento, elementos) => {
-      const alvo = evento.native?.target as HTMLElement | undefined;
-      if (alvo) {
-        alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
-      }
-    },
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: true } }
-  };
+  barrasOptions: ChartConfiguration<'bar'>['options'] = this.construirBarrasOptions(false);
 
   metaMes: MetaMes | null = null;
 
@@ -118,6 +102,7 @@ export class DashboardComponent implements OnInit {
     private readonly metaService: MetaService,
     private readonly categoriaService: CategoriaService,
     private readonly gastoRecorrenteService: GastoRecorrenteService,
+    private readonly temaService: TemaService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog
   ) {
@@ -126,6 +111,13 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Reconstrói as opções dos gráficos (cor do texto/eixos/grade) sempre que
+    // o tema mudar, pra nunca ficarem ilegíveis no dark mode.
+    this.temaService.escuro$.subscribe((escuro) => {
+      this.pizzaOptions = this.construirPizzaOptions(escuro);
+      this.barrasOptions = this.construirBarrasOptions(escuro);
+    });
+
     this.categoriaService.listarVisiveis().subscribe({
       next: (categorias) => { this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c])); },
       error: () => { /* usado só pro emoji na legenda do gráfico de pizza */ }
@@ -346,6 +338,41 @@ export class DashboardComponent implements OnInit {
     const inicioMesSelecionado = new Date(this.ano, this.mes - 1, 1);
     const inicioMesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     return inicioMesSelecionado < inicioMesAtual ? diasNoMes : 0;
+  }
+
+  private construirPizzaOptions(escuro: boolean): ChartConfiguration<'doughnut'>['options'] {
+    const corTexto = escuro ? 'rgba(255, 255, 255, 0.87)' : 'rgba(0, 0, 0, 0.87)';
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      onHover: (evento, elementos) => {
+        const alvo = evento.native?.target as HTMLElement | undefined;
+        if (alvo) {
+          alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
+        }
+      },
+      plugins: { legend: { position: 'bottom', labels: { color: corTexto } } }
+    };
+  }
+
+  private construirBarrasOptions(escuro: boolean): ChartConfiguration<'bar'>['options'] {
+    const corTexto = escuro ? 'rgba(255, 255, 255, 0.87)' : 'rgba(0, 0, 0, 0.87)';
+    const corGrade = escuro ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)';
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      onHover: (evento, elementos) => {
+        const alvo = evento.native?.target as HTMLElement | undefined;
+        if (alvo) {
+          alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
+        }
+      },
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { color: corTexto }, grid: { color: corGrade } },
+        x: { ticks: { color: corTexto }, grid: { color: corGrade } }
+      }
+    };
   }
 
   private formatarData(data: Date): string {

@@ -3,6 +3,20 @@
 <head>
   <meta charset="utf-8">
   <title>Controle de Gastos</title>
+  <script>
+    // Aplica o tema salvo (ou a preferência do sistema, se nunca escolheu)
+    // ANTES do Angular bootstrar, pra pintura inicial já sair no tema certo
+    // (sem "flash" de claro->escuro ou vice-versa).
+    (function () {
+      try {
+        var salvo = localStorage.getItem('controle_gastos_tema');
+        var escuro = salvo ? salvo === 'escuro' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (escuro) {
+          document.documentElement.classList.add('tema-escuro');
+        }
+      } catch (e) { /* localStorage indisponível (modo privado etc.) - segue no tema claro */ }
+    })();
+  </script>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">

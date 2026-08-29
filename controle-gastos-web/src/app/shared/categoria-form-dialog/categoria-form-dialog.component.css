@@ -19,7 +19,7 @@
 .rotulo-paleta {
   margin: 0;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--texto-secundario);
 }
 
 .paleta {
@@ -39,7 +39,7 @@
 }
 
 .botao-emoji:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--divisor-sutil);
 }
 
 .botao-emoji.selecionado {

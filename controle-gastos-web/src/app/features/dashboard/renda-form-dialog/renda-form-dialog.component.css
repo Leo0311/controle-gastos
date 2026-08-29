@@ -13,7 +13,7 @@
 
 .instrucao {
   margin: 0 0 8px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--texto-secundario);
   font-size: 14px;
 }
 

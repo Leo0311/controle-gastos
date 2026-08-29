@@ -1,0 +1,81 @@
+/* You can add global styles to this file, and also import other style files */
+
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+// Paleta $blue-palette do M3 é a que mais se aproxima do indigo (#3f51b5) do
+// tema M2 original (indigo-pink) em matiz; $rose-palette é o equivalente mais
+// próximo do "pink" de acento do tema antigo.
+$tema-claro: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$blue-palette,
+    tertiary: mat.$rose-palette,
+  ),
+));
+
+$tema-escuro: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$blue-palette,
+    tertiary: mat.$rose-palette,
+  ),
+));
+
+// Tema completo (cor + tipografia + densidade) aplicado uma vez só, sempre
+// como o claro; o escuro (ativado via classe .tema-escuro no <html>) só
+// reaplica os tokens de COR por cima (mat.all-component-colors), evitando
+// duplicar toda a tipografia/densidade e mantendo o CSS gerado bem menor.
+html {
+  @include mat.all-component-themes($tema-claro);
+}
+
+html.tema-escuro {
+  @include mat.all-component-colors($tema-escuro);
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: var(--fundo-pagina);
+  color: var(--texto-pagina);
+}
+
+:root {
+  --fundo-pagina: #fafafa;
+  --texto-pagina: rgba(0, 0, 0, 0.87);
+  // Tokens usados nos componentes pra texto/divisores secundários (rótulos,
+  // dicas, bordas sutis) - cada componente referencia essas variáveis em vez
+  // de rgba(0,0,0,X) fixo, senão ficariam ilegíveis (texto escuro sobre fundo
+  // escuro) quando o dark mode está ativo.
+  --texto-secundario: rgba(0, 0, 0, 0.6);
+  --texto-terciario: rgba(0, 0, 0, 0.5);
+  --divisor-sutil: rgba(0, 0, 0, 0.08);
+  // Superfície "cartão" usada por elementos que não são componentes Material
+  // (que já se adaptam sozinhos via tokens --mdc-*), como a bottom nav e os
+  // itens da lista de recorrentes.
+  --fundo-superficie: #ffffff;
+}
+
+html.tema-escuro {
+  --fundo-pagina: #121212;
+  --texto-pagina: rgba(255, 255, 255, 0.87);
+  --texto-secundario: rgba(255, 255, 255, 0.6);
+  --texto-terciario: rgba(255, 255, 255, 0.5);
+  --divisor-sutil: rgba(255, 255, 255, 0.12);
+  --fundo-superficie: #1e1e1e;
+}
+
+.snack-alerta {
+  --mdc-snackbar-container-color: #c62828;
+  --mdc-snackbar-supporting-text-color: #fff;
+  --mat-mdc-snack-bar-button-color: #fff;
+}
+
+.snack-atencao {
+  --mdc-snackbar-container-color: #e65100;
+  --mdc-snackbar-supporting-text-color: #fff;
+  --mat-mdc-snack-bar-button-color: #fff;
+}

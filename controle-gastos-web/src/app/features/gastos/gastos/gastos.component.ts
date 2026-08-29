@@ -1,14 +1,18 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
@@ -55,10 +59,13 @@ const NOMES_MESES_COMPLETO = [
   imports: [
     CurrencyPipe,
     DatePipe,
+    ReactiveFormsModule,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
     MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
     MatMenuModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
@@ -78,6 +85,11 @@ export class GastosComponent implements OnInit {
   filtroMes: number | null = null;
   filtroAno: number | null = null;
   filtroCategoria: string | null = null;
+
+  // Busca por descrição, client-side, em cima da lista já carregada/filtrada por
+  // mês/ano/categoria (não dispara chamada nova à API) - ver ngOnInit e gastosExibidos.
+  readonly buscaControl = new FormControl('', { nonNullable: true });
+  private termoBusca = '';
 
   private todasCategorias: Categoria[] = [];
   private todasSubcategorias: Subcategoria[] = [];
@@ -119,6 +131,13 @@ export class GastosComponent implements OnInit {
       this.carregar();
     });
 
+    this.buscaControl.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe((valor) => {
+      this.termoBusca = valor.trim().toLowerCase();
+    });
+
     // Verifica e lança gastos recorrentes pendentes do mês, de forma transparente
     // (sem aviso algum) - só recarrega a lista se algo novo foi lançado.
     this.gastoRecorrenteService.lancarPendentes().subscribe({
@@ -133,6 +152,16 @@ export class GastosComponent implements OnInit {
 
   categoriaEmoji(categoriaId: number | null | undefined): string {
     return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
+  }
+
+  // Aplica a busca por descrição em cima de "gastos" (já carregado e filtrado por
+  // mês/ano/categoria) - a tabela e o empty-state usam esse getter, nunca "gastos"
+  // diretamente, pra busca e filtros funcionarem juntos.
+  get gastosExibidos(): Gasto[] {
+    if (!this.termoBusca) {
+      return this.gastos;
+    }
+    return this.gastos.filter((g) => g.descricao.toLowerCase().includes(this.termoBusca));
   }
 
   get descricaoFiltro(): string {
@@ -309,11 +338,11 @@ export class GastosComponent implements OnInit {
   }
 
   exportarExibidos(): void {
-    if (this.gastos.length === 0) {
+    if (this.gastosExibidos.length === 0) {
       this.mostrarErro('Nenhum gasto para exportar.');
       return;
     }
-    exportarGastosXlsx(this.gastos);
+    exportarGastosXlsx(this.gastosExibidos);
   }
 
   baixarModeloImportacao(): void {

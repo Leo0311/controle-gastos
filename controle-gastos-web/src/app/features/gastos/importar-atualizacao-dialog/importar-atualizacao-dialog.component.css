@@ -10,7 +10,7 @@ mat-dialog-content {
 
 .instrucao {
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--texto-secundario);
   margin: 0 0 12px;
 }
 

@@ -47,20 +47,20 @@
 
 .aviso-sistema {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--texto-secundario);
 }
 
 .titulo-subcategorias {
   margin: 12px 0 4px;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.7);
+  color: var(--texto-secundario);
 }
 
 .sem-subcategorias {
   margin: 0 0 8px;
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.5);
+  color: var(--texto-terciario);
 }
 
 .lista-subcategorias {
@@ -75,7 +75,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 4px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--divisor-sutil);
 }
 
 .acoes-subcategoria {

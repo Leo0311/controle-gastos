@@ -11,5 +11,5 @@ mat-dialog-content {
 .status {
   margin-top: 12px;
   text-align: center;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--texto-secundario);
 }

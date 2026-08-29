@@ -27,8 +27,7 @@
               }
             ],
             "styles": [
-              "@angular/material/prebuilt-themes/indigo-pink.css",
-              "src/styles.css"
+              "src/styles.scss"
             ],
             "scripts": [],
             "allowedCommonJsDependencies": [
@@ -40,8 +39,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2.5MB",
-                  "maximumError": "2.8MB"
+                  "maximumWarning": "2.9MB",
+                  "maximumError": "3.2MB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -96,8 +95,7 @@
               }
             ],
             "styles": [
-              "@angular/material/prebuilt-themes/indigo-pink.css",
-              "src/styles.css"
+              "src/styles.scss"
             ],
             "scripts": []
           }
