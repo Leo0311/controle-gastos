@@ -45,10 +45,34 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
     BigDecimal somarNoPeriodo(
             @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
+    // Mesmo agrupamento de somarPorCategoriaNoPeriodo, mas também por subcategoriaId/
+    // LOWER(subcategoria) - usado no ranking de categorias com detalhamento por
+    // subcategoria (ver GastoService.rankingCategorias). LOWER(NULL) continua NULL, então
+    // gastos sem subcategoria caem todos no mesmo grupo "sem subcategoria" da categoria.
+    @Query("SELECT g.categoriaId AS categoriaId, LOWER(g.categoria) AS categoria, "
+            + "g.subcategoriaId AS subcategoriaId, LOWER(g.subcategoria) AS subcategoria, SUM(g.valor) AS total "
+            + "FROM Gasto g WHERE g.usuarioId = :usuarioId AND g.data BETWEEN :inicio AND :fim "
+            + "GROUP BY g.categoriaId, LOWER(g.categoria), g.subcategoriaId, LOWER(g.subcategoria) "
+            + "ORDER BY SUM(g.valor) DESC")
+    List<CategoriaSubcategoriaTotal> somarPorCategoriaESubcategoriaNoPeriodo(
+            @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+
     interface CategoriaTotal {
         Integer getCategoriaId();
 
         String getCategoria();
+
+        BigDecimal getTotal();
+    }
+
+    interface CategoriaSubcategoriaTotal {
+        Integer getCategoriaId();
+
+        String getCategoria();
+
+        Integer getSubcategoriaId();
+
+        String getSubcategoria();
 
         BigDecimal getTotal();
     }

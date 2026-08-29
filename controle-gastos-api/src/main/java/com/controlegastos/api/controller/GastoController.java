@@ -1,5 +1,7 @@
 package com.controlegastos.api.controller;
 
+import com.controlegastos.api.dto.ComparacaoMensalDTO;
+import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.ResumoDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
 import com.controlegastos.api.model.Gasto;
@@ -85,5 +87,17 @@ public class GastoController {
     public List<TotalMensalDTO> totaisMensais(
             @RequestParam(defaultValue = "6") int meses, @AuthenticationPrincipal UsuarioPrincipal usuario) {
         return service.totaisMensais(meses, usuario.usuarioId());
+    }
+
+    @GetMapping("/ranking-categorias")
+    public RankingCategoriasDTO rankingCategorias(
+            @RequestParam int mes, @RequestParam int ano, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.rankingCategorias(mes, ano, usuario.usuarioId());
+    }
+
+    @GetMapping("/comparacao-mensal")
+    public ComparacaoMensalDTO comparacaoMensal(
+            @RequestParam int mes, @RequestParam int ano, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.comparacaoMensal(mes, ano, usuario.usuarioId());
     }
 }

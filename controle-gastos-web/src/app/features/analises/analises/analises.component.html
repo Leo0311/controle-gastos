@@ -1,0 +1,108 @@
+<div class="cabecalho">
+  <h2>Análises</h2>
+</div>
+
+<div class="filtros">
+  <mat-form-field appearance="outline">
+    <mat-label>Mês</mat-label>
+    <mat-select [(ngModel)]="mes" (selectionChange)="carregar()">
+      @for (m of meses; track m.valor) {
+        <mat-option [value]="m.valor">{{ m.nome }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Ano</mat-label>
+    <mat-select [(ngModel)]="ano" (selectionChange)="carregar()">
+      @for (a of anos; track a) {
+        <mat-option [value]="a">{{ a }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (carregando) {
+  <div class="carregando">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+} @else {
+  <mat-card class="card-analise">
+    <mat-card-title>Ranking de categorias</mat-card-title>
+    <mat-card-subtitle>{{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
+
+    @if (!ranking || ranking.categorias.length === 0) {
+      <app-empty-state icon="bar_chart" mensagem="Nenhum gasto neste mês."></app-empty-state>
+    } @else {
+      <mat-accordion class="lista-ranking" multi>
+        @for (categoria of ranking.categorias; track categoria.categoriaId; let i = $index) {
+          <mat-expansion-panel [hideToggle]="categoria.subcategorias.length <= 1" class="item-ranking">
+            <mat-expansion-panel-header [class.alerta-renda]="consomeMuitoDaRenda(categoria)">
+              <mat-panel-title>
+                <span class="cabecalho-ranking-item">
+                  <span class="posicao-ranking">{{ i + 1 }}º</span>
+                  <span class="nome-categoria">{{ categoriaEmoji(categoria.categoriaId) }} {{ categoria.categoria }}</span>
+                  @if (consomeMuitoDaRenda(categoria)) {
+                    <span class="badge-alerta-renda" title="Essa categoria sozinha consome mais de 30% da sua renda mensal">
+                      <mat-icon>warning</mat-icon>
+                      {{ percentualDaRenda(categoria) }}% da renda
+                    </span>
+                  }
+                  <span class="valores-ranking-item">
+                    <span class="valor-ranking">{{ categoria.total | currency:'BRL' }}</span>
+                    <span class="percentual-ranking">{{ categoria.percentual }}% do total</span>
+                  </span>
+                </span>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            @if (categoria.subcategorias.length > 1) {
+              <div class="lista-subcategorias">
+                @for (sub of categoria.subcategorias; track sub.subcategoriaId) {
+                  <div class="linha-subcategoria">
+                    <span>{{ sub.subcategoria || 'Sem subcategoria' }}</span>
+                    <span>{{ sub.total | currency:'BRL' }} ({{ sub.percentual }}%)</span>
+                  </div>
+                }
+              </div>
+            }
+          </mat-expansion-panel>
+        }
+      </mat-accordion>
+    }
+  </mat-card>
+
+  <mat-card class="card-analise">
+    <mat-card-title>Comparação com o mês anterior</mat-card-title>
+    <mat-card-subtitle>{{ nomeMesSelecionado }}/{{ ano }} vs {{ nomeMesAnterior }}/{{ anoAnterior }}</mat-card-subtitle>
+
+    @if (comparacao.length === 0) {
+      <app-empty-state icon="compare_arrows" mensagem="Nenhum gasto nos dois meses."></app-empty-state>
+    } @else {
+      <div class="lista-comparacao">
+        @for (categoria of comparacao; track categoria.categoriaId) {
+          <div class="linha-comparacao">
+            <span class="nome-categoria">{{ categoriaEmoji(categoria.categoriaId) }} {{ categoria.categoria }}</span>
+            <span class="valores-comparacao">
+              {{ categoria.totalAnterior | currency:'BRL' }} → {{ categoria.totalAtual | currency:'BRL' }}
+            </span>
+            @if (categoria.categoriaNova) {
+              <span class="variacao-comparacao variacao-nova">Nova</span>
+            } @else {
+              <span
+                class="variacao-comparacao"
+                [class.variacao-subiu]="categoria.variacaoAbsoluta > 0"
+                [class.variacao-desceu]="categoria.variacaoAbsoluta < 0"
+              >
+                <mat-icon>
+                  {{ categoria.variacaoAbsoluta > 0 ? 'arrow_upward' : (categoria.variacaoAbsoluta < 0 ? 'arrow_downward' : 'remove') }}
+                </mat-icon>
+                {{ categoria.variacaoPercentual !== null ? ((categoria.variacaoPercentual > 0 ? '+' : '') + categoria.variacaoPercentual + '%') : '—' }}
+              </span>
+            }
+          </div>
+        }
+      </div>
+    }
+  </mat-card>
+}

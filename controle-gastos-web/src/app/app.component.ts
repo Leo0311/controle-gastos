@@ -5,6 +5,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 
 import { AuthService } from './services/auth.service';
 import { TemaService } from './services/tema.service';
@@ -15,9 +16,15 @@ const NOMES_MESES = [
 ];
 
 // Mesma ordem das seções na bottom nav (ver app.component.html) - o swipe
-// horizontal navega por essa lista. Só ativo em telas <=600px, mesma faixa em
+// horizontal navega por essa lista, incluindo /categorias e /gastos-recorrentes,
+// que na bottom nav ficam agrupadas no item "Mais" (o swipe é independente de como
+// a navegação visual agrupa os itens). Só ativo em telas <=600px, mesma faixa em
 // que a bottom nav aparece (ver LARGURA_MAXIMA_MOBILE abaixo).
-const ORDEM_NAVEGACAO = ['/dashboard', '/gastos', '/orcamentos', '/categorias', '/gastos-recorrentes'];
+const ORDEM_NAVEGACAO = ['/dashboard', '/gastos', '/orcamentos', '/analises', '/categorias', '/gastos-recorrentes'];
+
+// Rotas agrupadas sob o item "Mais" da bottom nav (não cabiam como 6º/7º item direto
+// em 375px sem apertar demais) - usado só pra destacar o item "Mais" como ativo.
+const ROTAS_MENU_MAIS = ['/categorias', '/gastos-recorrentes'];
 
 const LARGURA_MAXIMA_MOBILE = 600;
 // Margem a partir da borda da tela onde o gesto é ignorado, pra não competir
@@ -43,7 +50,7 @@ const AMORTECIMENTO_VISUAL = 0.4;
   standalone: true,
   imports: [
     AsyncPipe, RouterOutlet, RouterLink, RouterLinkActive,
-    MatToolbarModule, MatTabsModule, MatIconModule, MatButtonModule
+    MatToolbarModule, MatTabsModule, MatIconModule, MatButtonModule, MatMenuModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
@@ -113,6 +120,14 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   alternarTema(): void {
     this.temaService.alternar();
+  }
+
+  // Getter (não uma propriedade fixada uma vez) porque o Router não expõe algo como
+  // routerLinkActive pra um botão que não é um link de rota única - recalcula a cada
+  // ciclo de detecção de mudanças, que o próprio Router já dispara a cada navegação.
+  get emMenuMais(): boolean {
+    const rotaAtual = this.router.url.split('?')[0];
+    return ROTAS_MENU_MAIS.includes(rotaAtual);
   }
 
   private tratarTouchStart(evento: TouchEvent): void {

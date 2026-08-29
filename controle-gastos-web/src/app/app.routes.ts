@@ -4,6 +4,7 @@ import { authGuard } from './core/auth.guard';
 import { DashboardComponent } from './features/dashboard/dashboard/dashboard.component';
 import { GastosComponent } from './features/gastos/gastos/gastos.component';
 import { OrcamentosComponent } from './features/orcamentos/orcamentos/orcamentos.component';
+import { AnalisesComponent } from './features/analises/analises/analises.component';
 import { CategoriasComponent } from './features/categorias/categorias/categorias.component';
 import { GastosRecorrentesComponent } from './features/gastos-recorrentes/gastos-recorrentes/gastos-recorrentes.component';
 import { LoginComponent } from './features/auth/login/login.component';
@@ -20,6 +21,7 @@ export const routes: Routes = [
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'gastos', component: GastosComponent, canActivate: [authGuard] },
   { path: 'orcamentos', component: OrcamentosComponent, canActivate: [authGuard] },
+  { path: 'analises', component: AnalisesComponent, canActivate: [authGuard] },
   { path: 'categorias', component: CategoriasComponent, canActivate: [authGuard] },
   { path: 'gastos-recorrentes', component: GastosRecorrentesComponent, canActivate: [authGuard] }
 ];

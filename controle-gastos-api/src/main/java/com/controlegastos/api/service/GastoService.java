@@ -1,6 +1,11 @@
 package com.controlegastos.api.service;
 
 import com.controlegastos.api.dto.CategoriaTotalDTO;
+import com.controlegastos.api.dto.ComparacaoCategoriaDTO;
+import com.controlegastos.api.dto.ComparacaoMensalDTO;
+import com.controlegastos.api.dto.RankingCategoriaDTO;
+import com.controlegastos.api.dto.RankingCategoriasDTO;
+import com.controlegastos.api.dto.RankingSubcategoriaDTO;
 import com.controlegastos.api.dto.ResumoDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
 import com.controlegastos.api.exception.OrcamentoInvalidoException;
@@ -16,10 +21,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -133,6 +144,110 @@ public class GastoService {
             resultado.add(new TotalMensalDTO(mesAno.getMonthValue(), mesAno.getYear(), total));
         }
         return resultado;
+    }
+
+    // Chave de agrupamento por categoria usada no ranking e na comparação mensal - a
+    // mesma dupla (categoriaId, nome legado em minúsculas) usada como GROUP BY nas
+    // queries de agregação, pra tratar corretamente gastos legados sem categoriaId
+    // (ver comentário em GastoRepository.somarPorCategoriaNoPeriodo).
+    private record CategoriaChave(Integer categoriaId, String categoria) {
+    }
+
+    public RankingCategoriasDTO rankingCategorias(int mes, int ano, Integer usuarioId) {
+        validarMesAno(mes, ano);
+        LocalDate inicio = LocalDate.of(ano, mes, 1);
+        LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
+
+        BigDecimal totalGeral = repository.somarNoPeriodo(usuarioId, inicio, fim);
+        List<GastoRepository.CategoriaSubcategoriaTotal> linhas =
+                repository.somarPorCategoriaESubcategoriaNoPeriodo(usuarioId, inicio, fim);
+
+        Map<CategoriaChave, List<GastoRepository.CategoriaSubcategoriaTotal>> porCategoria = linhas.stream()
+                .collect(Collectors.groupingBy(
+                        l -> new CategoriaChave(l.getCategoriaId(), l.getCategoria()),
+                        LinkedHashMap::new, Collectors.toList()));
+
+        List<RankingCategoriaDTO> categorias = new ArrayList<>();
+        for (Map.Entry<CategoriaChave, List<GastoRepository.CategoriaSubcategoriaTotal>> entrada : porCategoria.entrySet()) {
+            BigDecimal totalCategoria = entrada.getValue().stream()
+                    .map(GastoRepository.CategoriaSubcategoriaTotal::getTotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            List<RankingSubcategoriaDTO> subcategorias = entrada.getValue().stream()
+                    .map(l -> new RankingSubcategoriaDTO(
+                            l.getSubcategoriaId(), l.getSubcategoria(), l.getTotal(),
+                            percentual(l.getTotal(), totalCategoria)))
+                    .sorted(Comparator.comparing(RankingSubcategoriaDTO::getTotal).reversed())
+                    .collect(Collectors.toList());
+
+            categorias.add(new RankingCategoriaDTO(
+                    entrada.getKey().categoriaId(), entrada.getKey().categoria(), totalCategoria,
+                    percentual(totalCategoria, totalGeral), subcategorias));
+        }
+        categorias.sort(Comparator.comparing(RankingCategoriaDTO::getTotal).reversed());
+
+        return new RankingCategoriasDTO(totalGeral, categorias);
+    }
+
+    public ComparacaoMensalDTO comparacaoMensal(int mes, int ano, Integer usuarioId) {
+        validarMesAno(mes, ano);
+        LocalDate inicioAtual = LocalDate.of(ano, mes, 1);
+        LocalDate fimAtual = inicioAtual.withDayOfMonth(inicioAtual.lengthOfMonth());
+
+        YearMonth mesAnteriorYm = YearMonth.of(ano, mes).minusMonths(1);
+        LocalDate inicioAnterior = mesAnteriorYm.atDay(1);
+        LocalDate fimAnterior = mesAnteriorYm.atEndOfMonth();
+
+        Map<CategoriaChave, BigDecimal> totalAtualPorCategoria = totalPorCategoria(usuarioId, inicioAtual, fimAtual);
+        Map<CategoriaChave, BigDecimal> totalAnteriorPorCategoria =
+                totalPorCategoria(usuarioId, inicioAnterior, fimAnterior);
+
+        // LinkedHashSet preserva a ordem de chegada (mês atual primeiro) antes do sort final.
+        Set<CategoriaChave> todasCategorias = new LinkedHashSet<>(totalAtualPorCategoria.keySet());
+        todasCategorias.addAll(totalAnteriorPorCategoria.keySet());
+
+        List<ComparacaoCategoriaDTO> categorias = new ArrayList<>();
+        for (CategoriaChave chave : todasCategorias) {
+            BigDecimal totalAtual = totalAtualPorCategoria.getOrDefault(chave, BigDecimal.ZERO);
+            BigDecimal totalAnterior = totalAnteriorPorCategoria.getOrDefault(chave, BigDecimal.ZERO);
+            BigDecimal variacaoAbsoluta = totalAtual.subtract(totalAnterior);
+
+            // Sem gasto nenhum no mês anterior: variação percentual não é definida (não dá
+            // pra calcular "aumento de X%" a partir de uma base zero) - o front mostra "Nova".
+            boolean categoriaNova = totalAnterior.compareTo(BigDecimal.ZERO) == 0;
+            BigDecimal variacaoPercentual = categoriaNova ? null : percentual(variacaoAbsoluta, totalAnterior);
+
+            categorias.add(new ComparacaoCategoriaDTO(
+                    chave.categoriaId(), chave.categoria(), totalAtual, totalAnterior,
+                    variacaoAbsoluta, variacaoPercentual, categoriaNova));
+        }
+        categorias.sort(Comparator.comparing(ComparacaoCategoriaDTO::getTotalAtual).reversed());
+
+        return new ComparacaoMensalDTO(mes, ano, mesAnteriorYm.getMonthValue(), mesAnteriorYm.getYear(), categorias);
+    }
+
+    private Map<CategoriaChave, BigDecimal> totalPorCategoria(Integer usuarioId, LocalDate inicio, LocalDate fim) {
+        return repository.somarPorCategoriaNoPeriodo(usuarioId, inicio, fim).stream()
+                .collect(Collectors.toMap(
+                        c -> new CategoriaChave(c.getCategoriaId(), c.getCategoria()),
+                        GastoRepository.CategoriaTotal::getTotal,
+                        BigDecimal::add, LinkedHashMap::new));
+    }
+
+    private BigDecimal percentual(BigDecimal valor, BigDecimal total) {
+        if (total == null || total.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return valor.multiply(BigDecimal.valueOf(100)).divide(total, 2, RoundingMode.HALF_UP);
+    }
+
+    private void validarMesAno(int mes, int ano) {
+        if (mes < 1 || mes > 12) {
+            throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
+        }
+        if (ano <= 0) {
+            throw new IllegalArgumentException("Ano inválido.");
+        }
     }
 
     private void validarOrcamento(Integer orcamentoId, Integer usuarioId) {

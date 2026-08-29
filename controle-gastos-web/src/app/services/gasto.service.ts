@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../core/api.constants';
 import { Gasto, Resumo, TotalMensal } from '../models/gasto.model';
+import { ComparacaoMensal, RankingCategorias } from '../models/analise.model';
 
 @Injectable({
   providedIn: 'root'
@@ -51,5 +52,15 @@ export class GastoService {
   totaisMensais(meses = 6): Observable<TotalMensal[]> {
     const params = new HttpParams().set('meses', meses);
     return this.http.get<TotalMensal[]>(`${this.baseUrl}/totais-mensais`, { params });
+  }
+
+  rankingCategorias(mes: number, ano: number): Observable<RankingCategorias> {
+    const params = new HttpParams().set('mes', mes).set('ano', ano);
+    return this.http.get<RankingCategorias>(`${this.baseUrl}/ranking-categorias`, { params });
+  }
+
+  comparacaoMensal(mes: number, ano: number): Observable<ComparacaoMensal> {
+    const params = new HttpParams().set('mes', mes).set('ano', ano);
+    return this.http.get<ComparacaoMensal>(`${this.baseUrl}/comparacao-mensal`, { params });
   }
 }

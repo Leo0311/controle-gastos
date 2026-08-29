@@ -33,6 +33,9 @@
     <a mat-tab-link routerLink="/orcamentos" routerLinkActive #orcamentosLink="routerLinkActive" [active]="orcamentosLink.isActive">
       Orçamentos
     </a>
+    <a mat-tab-link routerLink="/analises" routerLinkActive #analisesLink="routerLinkActive" [active]="analisesLink.isActive">
+      Análises
+    </a>
     <a mat-tab-link routerLink="/categorias" routerLinkActive #categoriasLink="routerLinkActive" [active]="categoriasLink.isActive">
       Categorias
     </a>
@@ -57,27 +60,40 @@
 
 @if (usuario$ | async) {
   <!-- Mobile (<=600px): barra fixa no rodapé, estilo apps nativos. Some em
-       telas maiores, onde a navegação é pelas abas no topo (nav-desktop acima). -->
+       telas maiores, onde a navegação é pelas abas no topo (nav-desktop acima).
+       6 seções não cabem bem lado a lado em 375px, então Categorias e Recorrentes
+       (as menos usadas no dia a dia) ficam agrupadas no item "Mais", mantendo
+       Dashboard/Gastos/Orçamentos/Análises com acesso direto de 1 toque. -->
   <nav class="nav-mobile">
-    <a routerLink="/dashboard" routerLinkActive="ativo">
+    <a class="item-mobile" routerLink="/dashboard" routerLinkActive="ativo">
       <mat-icon>dashboard</mat-icon>
       <span>Dashboard</span>
     </a>
-    <a routerLink="/gastos" routerLinkActive="ativo">
+    <a class="item-mobile" routerLink="/gastos" routerLinkActive="ativo">
       <mat-icon>receipt_long</mat-icon>
       <span>Gastos</span>
     </a>
-    <a routerLink="/orcamentos" routerLinkActive="ativo">
+    <a class="item-mobile" routerLink="/orcamentos" routerLinkActive="ativo">
       <mat-icon>savings</mat-icon>
       <span>Orçamentos</span>
     </a>
-    <a routerLink="/categorias" routerLinkActive="ativo">
+    <a class="item-mobile" routerLink="/analises" routerLinkActive="ativo">
+      <mat-icon>insights</mat-icon>
+      <span>Análises</span>
+    </a>
+    <button type="button" class="item-mobile" [matMenuTriggerFor]="menuMais" [class.ativo]="emMenuMais">
+      <mat-icon>menu</mat-icon>
+      <span>Mais</span>
+    </button>
+  </nav>
+  <mat-menu #menuMais="matMenu">
+    <a mat-menu-item routerLink="/categorias">
       <mat-icon>category</mat-icon>
       <span>Categorias</span>
     </a>
-    <a routerLink="/gastos-recorrentes" routerLinkActive="ativo">
+    <a mat-menu-item routerLink="/gastos-recorrentes">
       <mat-icon>autorenew</mat-icon>
       <span>Recorrentes</span>
     </a>
-  </nav>
+  </mat-menu>
 }
