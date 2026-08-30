@@ -487,3 +487,108 @@ CROSS JOIN (VALUES
 ) AS v(nome, emoji)
 WHERE c.usuario_id IS NOT NULL AND LOWER(c.nome) IN ('finanças', 'financeiro')
 ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+-- ============================================================================
+-- Segunda leva de subcategorias padrão do sistema, complementando as
+-- categorias que já receberam a primeira leva acima - preenche as lacunas
+-- identificadas numa auditoria comparando o que já existia contra uma lista
+-- de referência mais completa. Emojis de categoria (Alimentação, Saúde etc.)
+-- não são alterados aqui, só subcategorias novas são adicionadas. "Manutenção"
+-- aparece em Moradia (🛠️) e Transporte (🔧) como itens distintos - sem
+-- conflito, já que o nome só precisa ser único dentro da mesma categoria.
+-- ============================================================================
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Mercado', '🛒'),
+    ('Restaurantes', '🍽️'),
+    ('Delivery', '🛵'),
+    ('Padaria', '🥖')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Alimentação')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Aluguel', '🏡'),
+    ('Condomínio', '🏢'),
+    ('Energia elétrica', '💡'),
+    ('Água', '💧'),
+    ('Gás', '🔥'),
+    ('Manutenção', '🛠️')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Moradia')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Combustível', '⛽'),
+    ('Uber/Táxi', '🚕'),
+    ('Transporte público', '🚌'),
+    ('Estacionamento', '🅿️'),
+    ('Manutenção', '🔧')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Transporte')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Tarifas bancárias', '💳')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Contas e serviços')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Roupas', '👕'),
+    ('Eletrônicos', '📱'),
+    ('Presentes', '🎁'),
+    ('Outros', '🛒')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Compras')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Consultas', '🏥'),
+    ('Medicamentos', '💊'),
+    ('Exames', '🧪'),
+    ('Academia', '🏋️'),
+    ('Plano de saúde', '🩺')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Saúde')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Escola', '🏫'),
+    ('Cursos', '💻'),
+    ('Livros', '📖'),
+    ('Material escolar', '✏️')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Educação')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Cinema', '🎬'),
+    ('Jogos', '🎮')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Lazer')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
