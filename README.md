@@ -55,14 +55,22 @@ mudar para outra). Tudo é resolvido no navegador, a partir da lista de gastos q
 API já devolve — sem endpoint novo. Não aparece ao **editar** um gasto existente.
 
 Quando o histórico pessoal não tem nada parecido (termos que o usuário nunca
-cadastrou, como "café da manhã" ou "jantar com esposa"), entra um **plano B**: a
-descrição é casada contra um dicionário de palavras-chave comuns em português
-(`dicionario-categorias.ts`, um arquivo à parte, fácil de editar) que aponta
-sempre para categoria/subcategoria **padrão do sistema** — garantidas existir para
-todo usuário (ex.: "farmácia" → Saúde > Medicamentos, "aluguel" → Moradia >
-Aluguel, "uber" → Transporte > Uber/Táxi). O histórico pessoal **sempre** tem
-prioridade: o dicionário só é consultado quando o histórico não encontra nada, e
-termos sem correspondência em nenhum dos dois continuam sem mostrar sugestão.
+cadastrou, como "café da manhã", "pizza", "cerveja com amigos" ou "dentista"),
+entra um **plano B**: a descrição é casada contra um dicionário amplo de
+palavras-chave do dia a dia brasileiro (`dicionario-categorias.ts`, um arquivo à
+parte, fácil de editar — centenas de termos de comida, transporte, contas, saúde,
+compras, lazer, educação e viagens, incluindo marcas comuns como iFood, Uber,
+Netflix, Enel) que aponta sempre para categoria/subcategoria **padrão do sistema**
+— garantidas existir para todo usuário (ex.: "farmácia" → Saúde > Medicamentos,
+"seguro do carro" → Transporte > Seguro, "assinatura netflix" → Contas e serviços
+> Streaming). Cada entrada liga uma lista de termos a um par
+categoria/subcategoria: termo de uma palavra casa como palavra inteira ("água" não
+casa dentro de "aguardar"), termo com várias palavras casa como trecho contíguo, e
+quando vários casam vence o mais específico. Se a subcategoria do dicionário não
+existir naquela categoria, a sugestão degrada para só a categoria — nunca quebra.
+O histórico pessoal **sempre** tem prioridade: o dicionário só é consultado quando
+o histórico não encontra nada, e termos sem correspondência em nenhum dos dois
+continuam sem mostrar sugestão.
 
 ### Gastos recorrentes
 Um gasto fixo (aluguel, assinatura etc.) pode ser marcado como recorrente — no próprio formulário de gasto ("Tornar recorrente (todo mês)") ou na tela dedicada **Recorrentes** — informando o dia do mês em que deve ser lançado e "Gerar para os próximos meses" (1 a 12, padrão 12): ao salvar, os gastos desses meses já são lançados imediatamente (a partir do mês atual), então meses futuros já aparecem no Dashboard/Análises sem precisar esperar o usuário abrir aquele mês depois que ele chegar. Passado esse horizonte pré-gerado, a recorrência continua lançando os meses seguintes normalmente conforme o tempo passa: como o backend roda no plano gratuito do Render (o serviço "dorme" e não tem cron job garantido), esse lançamento é verificado sob demanda, de forma transparente (sem popup), toda vez que o Dashboard ou a tela de Gastos são abertos — nunca duplica nenhum lançamento. Em meses com menos dias que o dia configurado (ex: dia 31 em fevereiro), o lançamento cai no último dia válido do mês. Gastos gerados automaticamente aparecem marcados com 🔁 na listagem. A tela **Recorrentes** lista as recorrências ativas (chip verde) e pausadas (chip cinza), com opção de editar, pausar/reativar (sem excluir) e excluir — excluir uma recorrência remove os gastos a partir de hoje (incluindo os pré-gerados de meses futuros que ainda não venceram), mas mantém intactos os gastos de meses passados como histórico.
