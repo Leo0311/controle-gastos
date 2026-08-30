@@ -22,6 +22,7 @@ import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
 import { MascaraDataDirective } from '../../../shared/mascara-data.directive';
+import { definirHabilitado } from '../../../shared/form-utils';
 import {
   CategoriaFormDialogComponent,
   CategoriaFormDialogData
@@ -106,7 +107,9 @@ export class GastoFormDialogComponent implements OnInit {
     descricao: ['', [Validators.required, Validators.maxLength(150)]],
     valor: [null as number | null, [Validators.required, Validators.min(0.01)]],
     categoriaId: [null as number | null, [Validators.required]],
-    subcategoriaId: [null as number | null],
+    // Começa desabilitado: só faz sentido escolher subcategoria depois de ter
+    // uma categoria (habilitado/desabilitado reativamente em ngOnInit).
+    subcategoriaId: [{ value: null as number | null, disabled: true }],
     data: [new Date(), [Validators.required]],
     orcamentoId: [null as number | null],
     recorrente: [false],
@@ -163,17 +166,33 @@ export class GastoFormDialogComponent implements OnInit {
 
     this.form.controls.data.valueChanges.subscribe(() => this.atualizarOpcoesOrcamento());
 
-    // "Tornar recorrente" e "Parcelar compra" são mutuamente exclusivos (ver
-    // [disabled] no template, que impede marcar os dois pela UI) - cada um só precisa
-    // reagir à própria mudança pra atualizar os validators dos campos que controla.
-    this.form.controls.recorrente.valueChanges.subscribe((ativo) =>
-      this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.parcelado.value));
+    // Subcategoria só fica habilitada quando há uma categoria escolhida - reage
+    // tanto à seleção manual quanto a setValue programático (edição, "+ Nova
+    // categoria"). O sync inicial cobre o modo edição, em que a categoria já vem
+    // preenchida pelo construtor (antes deste subscribe existir).
+    this.form.controls.categoriaId.valueChanges.subscribe((categoriaId) =>
+      this.sincronizarHabilitacaoSubcategoria(categoriaId));
+    this.sincronizarHabilitacaoSubcategoria(this.form.controls.categoriaId.value);
+
+    // "Tornar recorrente" e "Parcelar compra" são mutuamente exclusivos: marcar
+    // um desabilita o outro (emitEvent: false para não reentrar no subscribe
+    // oposto). Cada um também atualiza os validators dos campos que controla.
+    this.form.controls.recorrente.valueChanges.subscribe((ativo) => {
+      definirHabilitado(this.form.controls.parcelado, !ativo);
+      this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.parcelado.value);
+    });
     this.form.controls.parcelado.valueChanges.subscribe((ativo) => {
+      definirHabilitado(this.form.controls.recorrente, !ativo);
       this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.recorrente.value);
       const numeroParcelas = this.form.controls.numeroParcelas;
       numeroParcelas.setValidators(ativo ? [Validators.required, Validators.min(2), Validators.max(60)] : []);
       numeroParcelas.updateValueAndValidity();
     });
+  }
+
+  private sincronizarHabilitacaoSubcategoria(categoriaId: number | null): void {
+    const temCategoriaValida = !!categoriaId && categoriaId !== NOVA_CATEGORIA;
+    definirHabilitado(this.form.controls.subcategoriaId, temCategoriaValida);
   }
 
   private atualizarValidadoresDiaDoMes(ativo: boolean): void {
@@ -185,8 +204,10 @@ export class GastoFormDialogComponent implements OnInit {
   onCategoriaChange(evento: MatSelectChange): void {
     if (evento.value === NOVA_CATEGORIA) {
       // Volta pro valor anterior enquanto o mini-diálogo está aberto, sem disparar
-      // valueChanges de novo (senão reentraria aqui).
+      // valueChanges de novo (senão reentraria aqui) - e re-sincroniza o estado da
+      // subcategoria, que o valueChanges com o sentinela -1 acabou de desabilitar.
       this.form.controls.categoriaId.setValue(this.categoriaAnterior, { emitEvent: false });
+      this.sincronizarHabilitacaoSubcategoria(this.categoriaAnterior);
       this.abrirNovaCategoria();
       return;
     }

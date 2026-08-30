@@ -12,12 +12,11 @@ class JwtServiceTest {
     private final JwtService jwtService = new JwtService(SEGREDO);
 
     @Test
-    void tokenCarregaUsuarioIdEmailEVersao() {
+    void tokenCarregaUsuarioIdEVersao() {
         String token = jwtService.gerarToken(42, "user@exemplo.com", 3);
 
         assertThat(jwtService.tokenValido(token)).isTrue();
         assertThat(jwtService.extrairUsuarioId(token)).isEqualTo(42);
-        assertThat(jwtService.extrairEmail(token)).isEqualTo("user@exemplo.com");
         assertThat(jwtService.extrairTokenVersion(token)).isEqualTo(3);
     }
 

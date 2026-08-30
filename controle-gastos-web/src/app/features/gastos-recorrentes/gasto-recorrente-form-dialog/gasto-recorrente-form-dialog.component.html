@@ -42,7 +42,6 @@
       <mat-select
         formControlName="subcategoriaId"
         (selectionChange)="onSubcategoriaChange($event)"
-        [disabled]="!form.controls.categoriaId.value"
       >
         <mat-option [value]="null">Nenhuma</mat-option>
         @for (s of opcoesSubcategoria; track s.id) {
@@ -86,7 +85,7 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Orçamento (opcional)</mat-label>
-      <mat-select formControlName="orcamentoId" [disabled]="!form.controls.categoriaId.value">
+      <mat-select formControlName="orcamentoId">
         <mat-option [value]="null">Nenhum</mat-option>
         @for (o of opcoesOrcamento; track o.id) {
           <mat-option [value]="o.id">

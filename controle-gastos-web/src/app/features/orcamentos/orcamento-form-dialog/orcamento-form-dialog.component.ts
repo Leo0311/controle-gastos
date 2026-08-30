@@ -11,6 +11,7 @@ import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { CategoriaService } from '../../../services/categoria.service';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
+import { definirHabilitado } from '../../../shared/form-utils';
 import {
   CategoriaFormDialogComponent,
   CategoriaFormDialogData
@@ -74,7 +75,9 @@ export class OrcamentoFormDialogComponent implements OnInit {
 
   readonly form = this.fb.group({
     categoriaId: [null as number | null, [Validators.required]],
-    subcategoriaId: [null as number | null],
+    // Só faz sentido escolher subcategoria com uma categoria já selecionada:
+    // começa desabilitado, sincronizado reativamente em ngOnInit.
+    subcategoriaId: [{ value: null as number | null, disabled: true }],
     valorLimite: [null as number | null, [Validators.required, Validators.min(0.01)]],
     mes: [1, [Validators.required]],
     ano: [new Date().getFullYear(), [Validators.required, Validators.min(2000)]]
@@ -82,7 +85,7 @@ export class OrcamentoFormDialogComponent implements OnInit {
 
   constructor(
     private readonly dialogRef: MatDialogRef<OrcamentoFormDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) private readonly data: OrcamentoFormDialogData
+    @Inject(MAT_DIALOG_DATA) data: OrcamentoFormDialogData
   ) {
     this.editando = !!data.orcamento;
     this.categoriaAnterior = data.orcamento?.categoriaId ?? null;
@@ -116,11 +119,23 @@ export class OrcamentoFormDialogComponent implements OnInit {
       },
       error: () => { /* lista auxiliar */ }
     });
+
+    // Subcategoria só fica habilitada com uma categoria escolhida - reage à
+    // seleção manual e a setValue programático; o sync inicial cobre a edição.
+    this.form.controls.categoriaId.valueChanges.subscribe((categoriaId) =>
+      this.sincronizarHabilitacaoSubcategoria(categoriaId));
+    this.sincronizarHabilitacaoSubcategoria(this.form.controls.categoriaId.value);
+  }
+
+  private sincronizarHabilitacaoSubcategoria(categoriaId: number | null): void {
+    const habilitado = !!categoriaId && categoriaId !== NOVA_CATEGORIA;
+    definirHabilitado(this.form.controls.subcategoriaId, habilitado);
   }
 
   onCategoriaChange(evento: MatSelectChange): void {
     if (evento.value === NOVA_CATEGORIA) {
       this.form.controls.categoriaId.setValue(this.categoriaAnterior, { emitEvent: false });
+      this.sincronizarHabilitacaoSubcategoria(this.categoriaAnterior);
       this.abrirNovaCategoria();
       return;
     }

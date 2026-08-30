@@ -44,10 +44,6 @@ public class JwtService {
         }
     }
 
-    public String extrairEmail(String token) {
-        return extrairClaims(token).getSubject();
-    }
-
     public Integer extrairUsuarioId(String token) {
         return extrairClaims(token).get("usuarioId", Integer.class);
     }

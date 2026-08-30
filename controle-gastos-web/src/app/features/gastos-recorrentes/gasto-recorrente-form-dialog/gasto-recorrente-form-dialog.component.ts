@@ -14,6 +14,7 @@ import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
+import { definirHabilitado } from '../../../shared/form-utils';
 import {
   CategoriaFormDialogComponent,
   CategoriaFormDialogData
@@ -74,9 +75,11 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
     descricao: ['', [Validators.required, Validators.maxLength(150)]],
     valor: [null as number | null, [Validators.required, Validators.min(0.01)]],
     categoriaId: [null as number | null, [Validators.required]],
-    subcategoriaId: [null as number | null],
+    // Subcategoria e orçamento dependem de ter uma categoria escolhida: começam
+    // desabilitados e são sincronizados reativamente em ngOnInit.
+    subcategoriaId: [{ value: null as number | null, disabled: true }],
     diaDoMes: [null as number | null, [Validators.required, Validators.min(1), Validators.max(31)]],
-    orcamentoId: [null as number | null],
+    orcamentoId: [{ value: null as number | null, disabled: true }],
     // Quantos meses, a partir do atual, já lançar imediatamente ao salvar - em vez de
     // esperar o lançamento sob demanda de cada mês quando ele chegar (ver
     // GastoRecorrenteService.gerarProximosMeses). Padrão 12 tanto pra criar quanto
@@ -127,11 +130,25 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
       },
       error: () => { /* lista auxiliar */ }
     });
+
+    // Habilita/desabilita Subcategoria e Orçamento conforme há categoria
+    // escolhida - reage à seleção manual e a setValue programático (edição,
+    // "+ Nova categoria"); o sync inicial cobre o modo edição.
+    this.form.controls.categoriaId.valueChanges.subscribe((categoriaId) =>
+      this.sincronizarCamposDependentesDeCategoria(categoriaId));
+    this.sincronizarCamposDependentesDeCategoria(this.form.controls.categoriaId.value);
+  }
+
+  private sincronizarCamposDependentesDeCategoria(categoriaId: number | null): void {
+    const habilitado = !!categoriaId && categoriaId !== NOVA_CATEGORIA;
+    definirHabilitado(this.form.controls.subcategoriaId, habilitado);
+    definirHabilitado(this.form.controls.orcamentoId, habilitado);
   }
 
   onCategoriaChange(evento: MatSelectChange): void {
     if (evento.value === NOVA_CATEGORIA) {
       this.form.controls.categoriaId.setValue(this.categoriaAnterior, { emitEvent: false });
+      this.sincronizarCamposDependentesDeCategoria(this.categoriaAnterior);
       this.abrirNovaCategoria();
       return;
     }

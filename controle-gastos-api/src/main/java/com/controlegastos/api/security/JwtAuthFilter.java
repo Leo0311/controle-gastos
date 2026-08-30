@@ -57,7 +57,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         usuarioRepository.findById(usuarioId)
                 .filter(usuario -> Objects.equals(usuario.getTokenVersion(), versaoTokenNormalizada))
                 .ifPresent(usuario -> {
-                    UsuarioPrincipal principal = new UsuarioPrincipal(usuario.getId(), usuario.getEmail());
+                    UsuarioPrincipal principal = new UsuarioPrincipal(usuario.getId());
 
                     var authentication = new UsernamePasswordAuthenticationToken(principal, null, List.of());
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

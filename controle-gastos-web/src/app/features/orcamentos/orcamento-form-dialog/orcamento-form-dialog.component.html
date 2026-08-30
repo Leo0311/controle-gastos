@@ -22,7 +22,6 @@
       <mat-select
         formControlName="subcategoriaId"
         (selectionChange)="onSubcategoriaChange($event)"
-        [disabled]="!form.controls.categoriaId.value"
       >
         <mat-option [value]="null">Nenhuma</mat-option>
         @for (s of opcoesSubcategoria; track s.id) {

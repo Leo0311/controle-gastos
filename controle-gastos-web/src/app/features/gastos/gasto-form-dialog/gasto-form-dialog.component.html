@@ -42,7 +42,6 @@
       <mat-select
         formControlName="subcategoriaId"
         (selectionChange)="onSubcategoriaChange($event)"
-        [disabled]="!form.controls.categoriaId.value"
       >
         <mat-option [value]="null">Nenhuma</mat-option>
         @for (s of opcoesSubcategoria; track s.id) {
@@ -71,10 +70,10 @@
 
     @if (!editando) {
       <div class="opcoes-especiais">
-        <mat-checkbox formControlName="recorrente" [disabled]="!!form.controls.parcelado.value">
+        <mat-checkbox formControlName="recorrente">
           Tornar recorrente (todo mês)
         </mat-checkbox>
-        <mat-checkbox formControlName="parcelado" [disabled]="!!form.controls.recorrente.value">
+        <mat-checkbox formControlName="parcelado">
           Parcelar compra
         </mat-checkbox>
       </div>
