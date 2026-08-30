@@ -23,3 +23,8 @@ controle-gastos-api/src/main/resources/application.properties
 .DS_Store
 Thumbs.db
 *.log
+
+# ===== Agent skills (ferramenta local, instaladas via `npx skills add`) =====
+.agents/
+.claude/
+skills-lock.json
