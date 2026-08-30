@@ -20,12 +20,49 @@
 }
 
 /* mat-expansion-panel-header tem altura fixa (48px) por padrão, que não comporta o
-   conteúdo (emoji + nome + chip "Sistema" + setas de mover) sem sobrepor em telas
+   conteúdo (alça de arrastar + emoji + nome + chip "Sistema") sem sobrepor em telas
    estreitas - libera pra crescer e permite quebrar linha (mesmo ajuste já usado em
    analises.component.css pro mesmo problema). */
 mat-expansion-panel-header {
   height: auto;
   padding: 12px 16px;
+}
+
+.alca-arrastar {
+  flex-shrink: 0;
+  color: var(--texto-terciario);
+  cursor: grab;
+  /* Impede o navegador de tratar o toque na alça como rolagem/pinça - sem isso o
+     drag por toque no mobile não engata. O CDK cuida do resto do gesto. */
+  touch-action: none;
+}
+
+.alca-arrastar:active {
+  cursor: grabbing;
+}
+
+/* Enquanto um item é arrastado: o "fantasma" que segue o dedo/cursor ganha a
+   superfície de card (o clone é renderizado fora do mat-expansion-panel e perde
+   o estilo do Material), e o buraco deixado para trás fica visível. */
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 4px;
+  padding: 12px 16px;
+  background: var(--fundo-superficie);
+  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0 3px 14px 2px rgba(0, 0, 0, 0.12);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0;
+}
+
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.lista-categorias.cdk-drop-list-dragging mat-expansion-panel:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 .titulo-categoria {
@@ -45,27 +82,6 @@ mat-expansion-panel-header {
   min-height: 22px;
   padding: 0 8px;
   background-color: #e0e0e0;
-}
-
-.acoes-ordem {
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.botao-ordem {
-  width: 32px;
-  height: 32px;
-  line-height: 32px;
-  padding: 0;
-}
-
-.botao-ordem mat-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  line-height: 18px;
 }
 
 .acoes-categoria {

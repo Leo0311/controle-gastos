@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,6 +27,9 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
   selector: 'app-categorias',
   standalone: true,
   imports: [
+    CdkDropList,
+    CdkDrag,
+    CdkDragHandle,
     MatExpansionModule,
     MatButtonModule,
     MatIconModule,
@@ -117,14 +121,25 @@ export class CategoriasComponent implements OnInit {
     });
   }
 
-  // Endpoint já devolve a lista inteira reordenada - só substitui o array local,
-  // sem precisar recarregar categorias+subcategorias de novo (carregar()).
-  moverCategoria(categoria: Categoria, direcao: 'cima' | 'baixo'): void {
-    this.categoriaService.mover(categoria.id!, direcao).subscribe({
+  // Drag & drop (alça ⋮⋮ à esquerda de cada categoria). Reordena o array local
+  // na hora (feedback instantâneo) e manda a ordem completa pro backend; se a
+  // requisição falhar, desfaz o reordenamento otimista. O endpoint devolve a
+  // lista inteira já reordenada, então só substitui o array - sem recarregar
+  // categorias+subcategorias de novo (carregar()).
+  aoSoltar(evento: CdkDragDrop<Categoria[]>): void {
+    if (evento.previousIndex === evento.currentIndex) {
+      return;
+    }
+    const ordemAnterior = [...this.categorias];
+    moveItemInArray(this.categorias, evento.previousIndex, evento.currentIndex);
+    this.categoriaService.reordenar(this.categorias.map((c) => c.id!)).subscribe({
       next: (categorias) => {
         this.categorias = categorias;
       },
-      error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+      error: (erro) => {
+        this.categorias = ordemAnterior;
+        this.mostrarErro(this.mensagemErro(erro));
+      }
     });
   }
 

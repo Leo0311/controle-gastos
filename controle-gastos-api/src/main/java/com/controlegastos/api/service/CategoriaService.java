@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -29,8 +28,6 @@ public class CategoriaService {
 
     private static final String EMOJI_PADRAO = "📁";
     private static final int SEM_ID = 0;
-    private static final String DIRECAO_CIMA = "cima";
-    private static final String DIRECAO_BAIXO = "baixo";
 
     // Ordem padrão quando o usuário nunca personalizou nada (ou pra categorias
     // novas ainda sem posição salva): categorias do sistema primeiro, depois as
@@ -85,39 +82,39 @@ public class CategoriaService {
         return resultado;
     }
 
-    // Move uma categoria uma posição pra cima ou pra baixo na ordem efetiva do
-    // usuário (personalizada, ou padrão se ainda não personalizou), e persiste a
-    // ordem inteira resultante - isso materializa uma posição explícita pra cada
-    // categoria visível na primeira vez que o usuário mexe (antes disso não havia
-    // nenhuma linha em categorias_ordem_usuario pra ele) e mantém tudo consistente
-    // nas vezes seguintes. Retorna a lista já reordenada, pronta pra tela usar sem
-    // precisar recarregar tudo de novo.
+    // Recebe a lista completa de IDs de categoria na ordem final desejada (o
+    // drag & drop da tela) e persiste a posição de cada uma numa tacada só - mais
+    // eficiente que repetir um "mover 1 passo" várias vezes. Materializa uma
+    // posição explícita pra cada categoria visível (antes da primeira
+    // personalização não havia nenhuma linha em categorias_ordem_usuario pro
+    // usuário) e mantém tudo consistente nas vezes seguintes. Retorna a lista já
+    // reordenada, pronta pra tela usar sem precisar recarregar tudo de novo.
     @Transactional
-    public List<Categoria> mover(Integer categoriaId, String direcao, Integer usuarioId) {
-        if (!DIRECAO_CIMA.equalsIgnoreCase(direcao) && !DIRECAO_BAIXO.equalsIgnoreCase(direcao)) {
-            throw new IllegalArgumentException("Direção inválida - use \"cima\" ou \"baixo\".");
-        }
+    public List<Categoria> reordenar(List<Integer> idsOrdenados, Integer usuarioId) {
+        List<Categoria> visiveis = repository.findVisiveis(usuarioId);
+        Map<Integer, Categoria> porId = visiveis.stream()
+                .collect(Collectors.toMap(Categoria::getId, Function.identity()));
 
-        List<Categoria> ordenadas = new ArrayList<>(
-                ordenarPorPreferencia(repository.findVisiveis(usuarioId), usuarioId));
-
-        int origem = -1;
-        for (int i = 0; i < ordenadas.size(); i++) {
-            if (ordenadas.get(i).getId().equals(categoriaId)) {
-                origem = i;
-                break;
+        // Primeiro as categorias citadas na ordem recebida (ignorando IDs
+        // repetidos ou que não são visíveis pro usuário); depois qualquer
+        // categoria visível que ficou de fora da lista, na ordem padrão - assim
+        // uma requisição incompleta (ex: categoria criada em outra aba nesse
+        // meio tempo) nunca faz uma categoria "sumir", só a joga pro fim.
+        List<Categoria> ordenadas = new ArrayList<>();
+        Set<Integer> jaAdicionadas = new HashSet<>();
+        if (idsOrdenados != null) {
+            for (Integer id : idsOrdenados) {
+                Categoria categoria = porId.get(id);
+                if (categoria != null && jaAdicionadas.add(id)) {
+                    ordenadas.add(categoria);
+                }
             }
         }
-        if (origem == -1) {
-            throw new RecursoNaoEncontradoException("Categoria não encontrada com ID " + categoriaId);
-        }
+        visiveis.stream()
+                .filter(c -> !jaAdicionadas.contains(c.getId()))
+                .sorted(ORDEM_PADRAO)
+                .forEach(ordenadas::add);
 
-        int destino = DIRECAO_CIMA.equalsIgnoreCase(direcao) ? origem - 1 : origem + 1;
-        if (destino < 0 || destino >= ordenadas.size()) {
-            throw new IllegalArgumentException("Não é possível mover a categoria além do início/fim da lista.");
-        }
-
-        Collections.swap(ordenadas, origem, destino);
         persistirOrdem(ordenadas, usuarioId);
         return ordenadas;
     }
