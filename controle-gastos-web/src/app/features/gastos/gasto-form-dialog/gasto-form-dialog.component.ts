@@ -17,6 +17,7 @@ import { debounceTime, map } from 'rxjs';
 import { Gasto } from '../../../models/gasto.model';
 import { GastoService } from '../../../services/gasto.service';
 import { calcularSugestaoCategoria, SugestaoCategoria } from './sugestao-categoria';
+import { sugerirPorDicionario } from './dicionario-categorias';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { CompraParcelada } from '../../../models/compra-parcelada.model';
 import { Orcamento } from '../../../models/orcamento.model';
@@ -160,6 +161,10 @@ export class GastoFormDialogComponent implements OnInit {
       next: (categorias) => {
         this.todasCategorias = categorias;
         this.opcoesCategoria = categorias;
+        // A sugestão pelo dicionário precisa das categorias do sistema pra
+        // resolver nome -> ID; recalcula caso já haja texto digitado quando a
+        // lista termina de carregar.
+        this.recalcularSugestaoSeNovo();
       },
       error: () => { /* lista auxiliar; sem ela o dropdown só fica vazio */ }
     });
@@ -167,6 +172,7 @@ export class GastoFormDialogComponent implements OnInit {
       next: (subcategorias) => {
         this.todasSubcategorias = subcategorias;
         this.atualizarOpcoesSubcategoria();
+        this.recalcularSugestaoSeNovo();
       },
       error: () => { /* lista auxiliar */ }
     });
@@ -273,9 +279,21 @@ export class GastoFormDialogComponent implements OnInit {
     return this.sugestaoBruta;
   }
 
+  // Prioridade: o histórico pessoal do usuário sempre ganha; o dicionário de
+  // palavras-chave (ver dicionario-categorias.ts) só entra como plano B, quando
+  // o histórico não indica nada - assim termos que o usuário nunca cadastrou
+  // ("café da manhã", "farmácia") ainda geram sugestão, mas sem sobrepor o que
+  // ele já classificou do próprio jeito.
+  private recalcularSugestaoSeNovo(): void {
+    if (!this.editando) {
+      this.recalcularSugestao(this.form.controls.descricao.value ?? '');
+    }
+  }
+
   private recalcularSugestao(texto: string): void {
     this.sugestaoDispensada = false;
-    const combo = calcularSugestaoCategoria(texto, this.gastosAnteriores);
+    const combo = calcularSugestaoCategoria(texto, this.gastosAnteriores)
+      ?? sugerirPorDicionario(texto, this.todasCategorias, this.todasSubcategorias);
     this.sugestaoBruta = combo ? { ...combo, rotulo: this.montarRotuloSugestao(combo) } : null;
   }
 
