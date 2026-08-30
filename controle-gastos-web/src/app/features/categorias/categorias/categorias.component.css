@@ -19,10 +19,10 @@
   display: block;
 }
 
-/* mat-expansion-panel-header tem altura fixa (48px) por padrão, que não comporta o
-   conteúdo (alça de arrastar + emoji + nome + chip "Sistema") sem sobrepor em telas
-   estreitas - libera pra crescer e permite quebrar linha (mesmo ajuste já usado em
-   analises.component.css pro mesmo problema). */
+/* mat-expansion-panel-header tem altura fixa (48px) por padrão, que aperta o
+   conteúdo (alça de arrastar + emoji + nome + chip "Sistema") em telas estreitas -
+   libera pra crescer (mesmo ajuste já usado em analises.component.css). O nome da
+   categoria é que cede espaço (elipse), então a linha nunca quebra. */
 mat-expansion-panel-header {
   height: auto;
   padding: 12px 16px;
@@ -65,23 +65,47 @@ mat-expansion-panel-header {
   transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }
 
+/* Sem flex-wrap: numa categoria de nome longo (ex: "Contas e serviços") o chip
+   "Sistema" quebrava pra uma segunda linha, desalinhado. Agora a linha fica
+   inteira num nível só - alça, emoji e chip têm largura fixa (flex-shrink: 0) e
+   só o nome encolhe, cortando com reticências quando não couber. */
 .titulo-categoria {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
   min-width: 0;
 }
 
 .emoji-categoria {
+  flex-shrink: 0;
   font-size: 20px;
 }
 
+.nome-categoria {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chip-sistema {
+  flex-shrink: 0;
   font-size: 11px;
-  min-height: 22px;
-  padding: 0 8px;
+  min-height: 20px;
   background-color: #e0e0e0;
+}
+
+/* mat-chip (MDC) tem uma folga interna grande demais para um rótulo de 11px -
+   deixa o chip com ~90px e come o espaço do nome no mobile. Compacta a área
+   clicável interna pra sobrar largura pro nome da categoria. */
+:host ::ng-deep .chip-sistema .mdc-evolution-chip__action {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+:host ::ng-deep .chip-sistema .mat-mdc-chip-action-label {
+  line-height: 1;
 }
 
 .acoes-categoria {

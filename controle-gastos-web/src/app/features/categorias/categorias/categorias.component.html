@@ -25,7 +25,7 @@
               (click)="$event.stopPropagation()"
             >drag_indicator</mat-icon>
             <span class="emoji-categoria">{{ categoria.emoji }}</span>
-            <span>{{ categoria.nome }}</span>
+            <span class="nome-categoria">{{ categoria.nome }}</span>
             @if (!categoria.usuarioId) {
               <mat-chip class="chip-sistema">Sistema</mat-chip>
             }
