@@ -22,12 +22,13 @@ public class JwtService {
         this.chave = Keys.hmacShaKeyFor(segredo.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String gerarToken(Integer usuarioId, String email) {
+    public String gerarToken(Integer usuarioId, String email, Integer tokenVersion) {
         Date agora = new Date();
         Date expiracao = new Date(agora.getTime() + VALIDADE_MS);
         return Jwts.builder()
                 .subject(email)
                 .claim("usuarioId", usuarioId)
+                .claim("tokenVersion", tokenVersion)
                 .issuedAt(agora)
                 .expiration(expiracao)
                 .signWith(chave)
@@ -49,6 +50,12 @@ public class JwtService {
 
     public Integer extrairUsuarioId(String token) {
         return extrairClaims(token).get("usuarioId", Integer.class);
+    }
+
+    // Tokens emitidos antes da introdução do claim retornam null; o filtro trata
+    // esse caso como versão 0 (o mesmo default de quem nunca trocou de senha).
+    public Integer extrairTokenVersion(String token) {
+        return extrairClaims(token).get("tokenVersion", Integer.class);
     }
 
     private Claims extrairClaims(String token) {

@@ -45,6 +45,7 @@ public class UsuarioService {
         usuario.setEmail(dados.email().trim().toLowerCase());
         usuario.setSenha(passwordEncoder.encode(dados.senha()));
         usuario.setDataCriacao(LocalDateTime.now());
+        usuario.setTokenVersion(0);
         usuario = repository.save(usuario);
 
         return gerarResposta(usuario);
@@ -100,6 +101,8 @@ public class UsuarioService {
         usuario.setSenha(passwordEncoder.encode(novaSenha));
         usuario.setTokenRedefinicaoSenha(null);
         usuario.setTokenRedefinicaoExpiracao(null);
+        // Invalida qualquer JWT emitido antes desta troca (ver JwtAuthFilter).
+        usuario.setTokenVersion(usuario.getTokenVersion() + 1);
         repository.save(usuario);
     }
 
@@ -115,7 +118,7 @@ public class UsuarioService {
     }
 
     private LoginResponseDTO gerarResposta(Usuario usuario) {
-        String token = jwtService.gerarToken(usuario.getId(), usuario.getEmail());
+        String token = jwtService.gerarToken(usuario.getId(), usuario.getEmail(), usuario.getTokenVersion());
         return new LoginResponseDTO(token, usuario.getId(), usuario.getNome(), usuario.getEmail());
     }
 

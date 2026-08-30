@@ -1,10 +1,13 @@
 package com.controlegastos.api.config;
 
 import com.controlegastos.api.security.JwtAuthFilter;
+import com.controlegastos.api.security.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -46,6 +49,18 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // Rate limiting registrado como filtro de servlet comum, com a maior
+    // precedência possível, para que as tentativas em excesso sejam barradas com
+    // 429 antes da cadeia do Spring Security e de qualquer processamento de
+    // autenticação (validação de token/credenciais).
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
+        FilterRegistrationBean<RateLimitFilter> registro = new FilterRegistrationBean<>(new RateLimitFilter());
+        registro.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registro.addUrlPatterns("/api/auth/*");
+        return registro;
     }
 
     // Em produção, app.cors.allowed-origins é definido em application-prod.properties (dev

@@ -44,4 +44,11 @@ public class Usuario {
 
     @Column(name = "renda_mensal", precision = 12, scale = 2)
     private BigDecimal rendaMensal;
+
+    // Incrementado sempre que a senha é alterada (ver UsuarioService.redefinirSenha).
+    // O valor no momento do login vai embutido no JWT como claim "tokenVersion" e é
+    // reconferido a cada requisição (ver JwtAuthFilter): um token emitido antes da
+    // troca de senha carrega a versão antiga e deixa de ser aceito, forçando logout.
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion = 0;
 }

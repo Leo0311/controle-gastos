@@ -617,3 +617,15 @@ CREATE TABLE IF NOT EXISTS categorias_ordem_usuario (
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_categorias_ordem_usuario ON categorias_ordem_usuario (usuario_id, categoria_id);
 CREATE INDEX IF NOT EXISTS idx_categorias_ordem_usuario_usuario ON categorias_ordem_usuario (usuario_id);
+
+-- ============================================================================
+-- Revogação de JWT ao trocar a senha: cada usuário tem uma "versão de token"
+-- que é embutida no JWT no login e reconferida a cada requisição pela API.
+-- Redefinir a senha (via link de e-mail) incrementa esse valor, invalidando
+-- na hora qualquer token emitido antes - um token roubado deixa de funcionar
+-- assim que a vítima troca a senha, sem esperar a expiração de 6h.
+-- DEFAULT 0 + NOT NULL: usuários já existentes assumem a versão 0 (a mesma que
+-- vai nos tokens já emitidos, tratados como versão 0 pela API), então aplicar
+-- esta migração não desloga ninguém que esteja logado.
+-- ============================================================================
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0;

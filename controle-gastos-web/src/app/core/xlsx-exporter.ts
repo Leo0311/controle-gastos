@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx-js-style';
 
 import { Gasto } from '../models/gasto.model';
+import { sanitizarLinhas } from './xlsx-sanitizacao';
 
 const NOME_MODELO_ARQUIVO = 'modelo_importacao_gastos.xlsx';
 
@@ -26,7 +27,7 @@ export function baixarModeloImportacaoGastos(): void {
   const cabecalho = ['Descrição', 'Valor', 'Categoria', 'Subcategoria (opcional)', 'Data'];
   const linhaExemplo = ['Almoço no restaurante', 45.9, 'Alimentação', 'Restaurante', '15/03/2026'];
 
-  const planilha = XLSX.utils.aoa_to_sheet([cabecalho, linhaExemplo]);
+  const planilha = XLSX.utils.aoa_to_sheet(sanitizarLinhas([cabecalho, linhaExemplo]));
 
   ['A1', 'B1', 'C1', 'D1', 'E1'].forEach((endereco) => {
     planilha[endereco].s = ESTILO_CABECALHO;
@@ -51,7 +52,10 @@ export function baixarModeloImportacaoGastos(): void {
   XLSX.writeFile(livro, NOME_MODELO_ARQUIVO);
 }
 
-export function exportarGastosXlsx(gastos: Gasto[]): void {
+// Monta a planilha de gastos já sanitizada contra injeção de fórmula (ver
+// sanitizarLinhas) e estilizada. Separada de exportarGastosXlsx para poder ser
+// testada sem disparar o download (XLSX.writeFile).
+export function construirPlanilhaGastos(gastos: Gasto[]): XLSX.WorkSheet {
   const cabecalho = ['ID', 'Descrição', 'Valor', 'Categoria', 'Subcategoria', 'Data'];
   const linhas = gastos.map((gasto) => [
     gasto.id,
@@ -62,7 +66,7 @@ export function exportarGastosXlsx(gastos: Gasto[]): void {
     formatarDataExibicao(gasto.data)
   ]);
 
-  const planilha = XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]);
+  const planilha = XLSX.utils.aoa_to_sheet(sanitizarLinhas([cabecalho, ...linhas]));
 
   for (let coluna = 0; coluna < cabecalho.length; coluna++) {
     const endereco = XLSX.utils.encode_cell({ r: 0, c: coluna });
@@ -80,8 +84,12 @@ export function exportarGastosXlsx(gastos: Gasto[]): void {
     { wch: 14 }
   ];
 
+  return planilha;
+}
+
+export function exportarGastosXlsx(gastos: Gasto[]): void {
   const livro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(livro, planilha, 'Gastos');
+  XLSX.utils.book_append_sheet(livro, construirPlanilhaGastos(gastos), 'Gastos');
 
   XLSX.writeFile(livro, nomeArquivoGastosComTimestamp());
 }
