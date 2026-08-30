@@ -72,6 +72,9 @@ export class DashboardComponent implements OnInit {
   ano = new Date().getFullYear();
 
   carregando = false;
+  // Falha ao carregar: mostra um card de erro no lugar dos números/gráficos, em
+  // vez de cair pra zeros que pareceriam um mês real sem gastos (ver carregar()).
+  erro = false;
   periodoDestaque: 'mes' | 'ano' = 'mes';
 
   totalMesSelecionado = 0;
@@ -146,6 +149,7 @@ export class DashboardComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
+    this.erro = false;
 
     const inicioMes = this.formatarData(new Date(this.ano, this.mes - 1, 1));
     const fimMes = this.formatarData(new Date(this.ano, this.mes, 0));
@@ -192,6 +196,7 @@ export class DashboardComponent implements OnInit {
       },
       error: () => {
         this.carregando = false;
+        this.erro = true;
         this.snackBar.open('Não foi possível carregar o dashboard. Verifique se a API está no ar.', 'Fechar', { duration: 5000 });
       }
     });

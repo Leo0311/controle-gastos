@@ -30,6 +30,12 @@
   <div class="carregando">
     <mat-spinner diameter="40"></mat-spinner>
   </div>
+} @else if (erro) {
+  <mat-card class="erro-dashboard">
+    <mat-icon>error_outline</mat-icon>
+    <p>Não foi possível carregar o dashboard. Verifique se a API está no ar.</p>
+    <button mat-stroked-button color="primary" (click)="carregar()">Tentar novamente</button>
+  </mat-card>
 } @else {
   <div class="cards">
     <mat-card
@@ -39,9 +45,14 @@
       tabindex="0"
       (click)="abrirDetalheMes()"
       (keyup.enter)="abrirDetalheMes()"
+      (keydown.space)="$event.preventDefault()"
+      (keyup.space)="abrirDetalheMes()"
     >
       <mat-card-subtitle>Total gasto em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ totalMesSelecionado | currency:'BRL' }}</mat-card-title>
+      <p class="card-stat-secundario">
+        {{ numeroGastosMes }} {{ numeroGastosMes === 1 ? 'gasto cadastrado' : 'gastos cadastrados' }}
+      </p>
     </mat-card>
 
     <mat-card
@@ -51,20 +62,11 @@
       tabindex="0"
       (click)="abrirDetalheAno()"
       (keyup.enter)="abrirDetalheAno()"
+      (keydown.space)="$event.preventDefault()"
+      (keyup.space)="abrirDetalheAno()"
     >
       <mat-card-subtitle>Total gasto em {{ ano }}</mat-card-subtitle>
       <mat-card-title>{{ totalAnoSelecionado | currency:'BRL' }}</mat-card-title>
-    </mat-card>
-
-    <mat-card
-      class="card-stat clicavel"
-      role="button"
-      tabindex="0"
-      (click)="abrirDetalheMes()"
-      (keyup.enter)="abrirDetalheMes()"
-    >
-      <mat-card-subtitle>Gastos cadastrados em {{ nomeMesSelecionado }}/{{ ano }}</mat-card-subtitle>
-      <mat-card-title>{{ numeroGastosMes }}</mat-card-title>
     </mat-card>
   </div>
 

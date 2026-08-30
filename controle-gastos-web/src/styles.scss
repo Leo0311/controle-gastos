@@ -57,6 +57,16 @@ body {
   // (que já se adaptam sozinhos via tokens --mdc-*), como a bottom nav e os
   // itens da lista de recorrentes.
   --fundo-superficie: #ffffff;
+  // Acento primário (indigo) pra realces que não passam por um componente
+  // Material - borda do card em destaque no dashboard, item ativo da bottom nav.
+  --acento-primario: #3f51b5;
+  // Caixa de aviso/informação (fundo + texto) e trilha neutra de barras de
+  // progresso - precisam de valores próprios no dark mode pra não ficarem
+  // como blocos claros brilhando sobre o fundo escuro.
+  --fundo-aviso: #e8eaf6;
+  --texto-aviso: #283593;
+  --trilha-neutra: #e0e0e0;
+  --sombra-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 html.tema-escuro {
@@ -66,6 +76,12 @@ html.tema-escuro {
   --texto-terciario: rgba(255, 255, 255, 0.5);
   --divisor-sutil: rgba(255, 255, 255, 0.12);
   --fundo-superficie: #1e1e1e;
+  // Indigo mais claro pra manter contraste sobre o fundo escuro.
+  --acento-primario: #9fa8da;
+  --fundo-aviso: rgba(159, 168, 218, 0.16);
+  --texto-aviso: #c5cae9;
+  --trilha-neutra: rgba(255, 255, 255, 0.16);
+  --sombra-hover: 0 4px 12px rgba(0, 0, 0, 0.55);
 }
 
 .snack-alerta {
