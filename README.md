@@ -39,11 +39,36 @@ As **categorias** (só categorias por enquanto, não subcategorias) podem ser re
 ### Gastos
 CRUD completo (descrição, valor, categoria, subcategoria opcional, data), listagem por categoria/período/mês, exportação e importação em lote via planilha `.xlsx` (ver abaixo). Cada gasto pode ser vinculado a um orçamento do mês/categoria (ou categoria+subcategoria) correspondente. A seção **Filtros** reúne um seletor de Mês/Ano no topo (com o mês atual como padrão), um botão que alterna entre "Ver todos os meses" e "Ver mês atual", e um dropdown "Filtrar por categoria" (listando só categorias com pelo menos um gasto cadastrado, para não poluir com categorias nunca usadas) — os dois filtros funcionam em conjunto.
 
+### Auto-categorização inteligente
+No formulário de **Novo gasto**, enquanto o usuário digita a **Descrição** (a partir
+de 3 caracteres, com um pequeno atraso de ~400 ms para não rodar a cada tecla), o app
+procura nos gastos anteriores **do próprio usuário** por descrições parecidas —
+correspondência simples por substring, sem diferenciar maiúsculas/minúsculas nem
+acentos, nos dois sentidos (o texto digitado aparece dentro de uma descrição
+anterior, ou vice-versa). Entre os gastos parecidos, identifica a combinação
+**categoria + subcategoria** mais usada (empate desempata pelo gasto mais recente) e
+mostra um chip discreto abaixo do campo (ex.: "Sugestão: 🚗 Transporte > 🚕
+Uber/Táxi"). Clicar no chip preenche os campos Categoria/Subcategoria do formulário;
+o "x" ignora a sugestão. Nunca aplica nada sozinho, nunca trava a escolha manual, e o
+chip some quando a combinação já selecionada é a sugerida (reaparecendo se o usuário
+mudar para outra). Tudo é resolvido no navegador, a partir da lista de gastos que a
+API já devolve — sem endpoint novo. Não aparece ao **editar** um gasto existente.
+
 ### Gastos recorrentes
 Um gasto fixo (aluguel, assinatura etc.) pode ser marcado como recorrente — no próprio formulário de gasto ("Tornar recorrente (todo mês)") ou na tela dedicada **Recorrentes** — informando o dia do mês em que deve ser lançado e "Gerar para os próximos meses" (1 a 12, padrão 12): ao salvar, os gastos desses meses já são lançados imediatamente (a partir do mês atual), então meses futuros já aparecem no Dashboard/Análises sem precisar esperar o usuário abrir aquele mês depois que ele chegar. Passado esse horizonte pré-gerado, a recorrência continua lançando os meses seguintes normalmente conforme o tempo passa: como o backend roda no plano gratuito do Render (o serviço "dorme" e não tem cron job garantido), esse lançamento é verificado sob demanda, de forma transparente (sem popup), toda vez que o Dashboard ou a tela de Gastos são abertos — nunca duplica nenhum lançamento. Em meses com menos dias que o dia configurado (ex: dia 31 em fevereiro), o lançamento cai no último dia válido do mês. Gastos gerados automaticamente aparecem marcados com 🔁 na listagem. A tela **Recorrentes** lista as recorrências ativas (chip verde) e pausadas (chip cinza), com opção de editar, pausar/reativar (sem excluir) e excluir — excluir uma recorrência remove os gastos a partir de hoje (incluindo os pré-gerados de meses futuros que ainda não venceram), mas mantém intactos os gastos de meses passados como histórico.
 
 ### Compras parceladas
 Diferente de um gasto recorrente (que se repete indefinidamente), uma compra parcelada tem número de parcelas definido — no formulário de gasto, a opção "Parcelar compra" (mutuamente exclusiva com "Tornar recorrente") informa o valor total, o número de parcelas e o dia do mês. Ao salvar, TODAS as parcelas já são lançadas de uma vez, como gastos individuais datadas em meses consecutivos a partir da PRÓXIMA ocorrência futura do dia escolhido — se esse dia já passou (ou é hoje) no mês atual, a primeira parcela começa no mês seguinte, nunca "retroativa" num dia que já ficou no passado deste mês (mesmo ajuste de dia inválido em meses curtos dos gastos recorrentes), com a descrição sufixada (ex: "Tênis (1/3)", "Tênis (2/3)", "Tênis (3/3)") e o valor dividido em partes iguais — a última parcela é ajustada centavo a centavo para a soma bater exatamente com o valor total. Parcelas aparecem marcadas com 💳 na listagem de Gastos. A aba **Parceladas** (dentro da tela Recorrentes) lista as compras parceladas com opção de excluir — diferente de excluir uma recorrência, é uma ação definitiva (a compra não pode ser reativada) que remove o registro por completo (nunca fica como um estado "cancelada" pendurado na lista) e as parcelas futuras (ainda não vencidas); as parcelas já vencidas continuam na listagem de Gastos como histórico.
+
+### Calendário de contas a pagar
+A tela **Recorrentes e Parceladas** tem uma terceira aba, **"Próximas contas"**, com a
+visão cronológica de tudo que já está comprometido para o futuro: todos os gastos com
+data igual ou posterior a hoje que vieram de uma recorrência (🔁) ou de uma parcela
+(💳), em ordem de data e **agrupados por mês**, com o **total de cada mês** no
+cabeçalho do grupo. Cada item mostra o dia, o ícone da origem, a descrição e o valor.
+É uma lista/agenda (não uma grade de calendário), pensada para funcionar bem no
+mobile. Usa os campos `gastoRecorrenteId`/`compraParceladaId` que a API já devolve —
+sem endpoint novo.
 
 ### Orçamentos
 Limite de valor por categoria e mês/ano, com edição. A subcategoria é opcional: um orçamento pode ser **geral** (sem subcategoria, cobrindo a categoria inteira) ou **específico** de uma subcategoria — os dois podem coexistir no mesmo mês para a mesma categoria (ex: um orçamento geral de "Lazer" e outro só para "Lazer/Cinema"), sem conflito. Um gasto vinculado ao orçamento específico de uma subcategoria conta só para ele, nunca para o orçamento geral da categoria. O uso de cada orçamento (soma dos gastos vinculados a ele) é classificado em 4 status, exibidos com barra de progresso colorida: **OK** (< 80%), **Atenção** (80–99%), **Completo** (exatamente 100%) e **Ultrapassou** (> 100%).

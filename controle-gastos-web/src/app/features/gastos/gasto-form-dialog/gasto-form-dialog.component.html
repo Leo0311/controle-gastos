@@ -10,6 +10,19 @@
       }
     </mat-form-field>
 
+    @if (sugestao) {
+      <button type="button" class="chip-sugestao" (click)="aplicarSugestao()">
+        <mat-icon inline>auto_awesome</mat-icon>
+        <span class="texto-sugestao">Sugestão: {{ sugestao.rotulo }}</span>
+        <mat-icon
+          inline
+          class="fechar-sugestao"
+          aria-label="Ignorar sugestão"
+          (click)="dispensarSugestao(); $event.stopPropagation()"
+        >close</mat-icon>
+      </button>
+    }
+
     <mat-form-field appearance="outline">
       <mat-label>Valor</mat-label>
       <span matTextPrefix>R$&nbsp;</span>

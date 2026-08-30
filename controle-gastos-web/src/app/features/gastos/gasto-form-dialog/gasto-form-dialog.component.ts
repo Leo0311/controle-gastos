@@ -1,5 +1,6 @@
 import { AsyncPipe, CurrencyPipe } from '@angular/common';
-import { Component, Inject, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, Inject, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,9 +12,11 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
-import { map } from 'rxjs';
+import { debounceTime, map } from 'rxjs';
 
 import { Gasto } from '../../../models/gasto.model';
+import { GastoService } from '../../../services/gasto.service';
+import { calcularSugestaoCategoria, SugestaoCategoria } from './sugestao-categoria';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { CompraParcelada } from '../../../models/compra-parcelada.model';
 import { Orcamento } from '../../../models/orcamento.model';
@@ -78,8 +81,10 @@ export class GastoFormDialogComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly orcamentoService = inject(OrcamentoService);
   private readonly categoriaService = inject(CategoriaService);
+  private readonly gastoService = inject(GastoService);
   private readonly dialog = inject(MatDialog);
   private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Em telas pequenas, o datepicker abre em modo touch (calendário em tela cheia,
   // mais fácil de usar com o dedo) em vez do pequeno popup ancorado no input.
@@ -102,6 +107,15 @@ export class GastoFormDialogComponent implements OnInit {
   opcoesCategoria: Categoria[] = [];
   opcoesSubcategoria: Subcategoria[] = [];
   opcoesOrcamento: Orcamento[] = [];
+
+  // Auto-categorização: gastos anteriores do usuário (carregados só no modo "Novo
+  // gasto") e a combinação categoria+subcategoria sugerida a partir da descrição
+  // digitada. `sugestaoBruta` é o que o histórico indica; o getter `sugestao`
+  // esconde o chip quando o form já está exatamente naquela combinação, ou quando
+  // o usuário fechou a sugestão no "x" para o texto atual.
+  private gastosAnteriores: Gasto[] = [];
+  private sugestaoBruta: (SugestaoCategoria & { rotulo: string }) | null = null;
+  private sugestaoDispensada = false;
 
   readonly form = this.fb.group({
     descricao: ['', [Validators.required, Validators.maxLength(150)]],
@@ -163,6 +177,22 @@ export class GastoFormDialogComponent implements OnInit {
       },
       error: () => { /* lista auxiliar */ }
     });
+
+    // Auto-categorização: só faz sentido ao criar um gasto novo. Carrega o
+    // histórico uma vez e recalcula a sugestão conforme a descrição é digitada
+    // (debounce para não rodar a cada tecla).
+    if (!this.editando) {
+      this.gastoService.listarTodos().subscribe({
+        next: (gastos) => {
+          this.gastosAnteriores = gastos;
+          this.recalcularSugestao(this.form.controls.descricao.value ?? '');
+        },
+        error: () => { /* sugestão é auxiliar; sem histórico, só não sugere nada */ }
+      });
+      this.form.controls.descricao.valueChanges
+        .pipe(debounceTime(400), takeUntilDestroyed(this.destroyRef))
+        .subscribe((texto) => this.recalcularSugestao(texto ?? ''));
+    }
 
     this.form.controls.data.valueChanges.subscribe(() => this.atualizarOpcoesOrcamento());
 
@@ -228,6 +258,55 @@ export class GastoFormDialogComponent implements OnInit {
 
   onOrcamentoSelecionadoManualmente(_evento: MatSelectChange): void {
     this.escolhaManualOrcamento = true;
+  }
+
+  /** Chip de sugestão a exibir agora — ou null quando não há o que sugerir. */
+  get sugestao(): (SugestaoCategoria & { rotulo: string }) | null {
+    if (!this.sugestaoBruta || this.sugestaoDispensada) {
+      return null;
+    }
+    const categoriaAtual = this.form.controls.categoriaId.value;
+    const subcategoriaAtual = this.form.controls.subcategoriaId.value ?? null;
+    if (categoriaAtual === this.sugestaoBruta.categoriaId && subcategoriaAtual === this.sugestaoBruta.subcategoriaId) {
+      return null;
+    }
+    return this.sugestaoBruta;
+  }
+
+  private recalcularSugestao(texto: string): void {
+    this.sugestaoDispensada = false;
+    const combo = calcularSugestaoCategoria(texto, this.gastosAnteriores);
+    this.sugestaoBruta = combo ? { ...combo, rotulo: this.montarRotuloSugestao(combo) } : null;
+  }
+
+  private montarRotuloSugestao(combo: SugestaoCategoria): string {
+    const categoria = this.todasCategorias.find((c) => c.id === combo.categoriaId);
+    const rotuloCategoria = categoria ? `${categoria.emoji} ${categoria.nome}` : 'Categoria';
+    if (!combo.subcategoriaId) {
+      return rotuloCategoria;
+    }
+    const subcategoria = this.todasSubcategorias.find((s) => s.id === combo.subcategoriaId);
+    return subcategoria ? `${rotuloCategoria} > ${subcategoria.emoji} ${subcategoria.nome}` : rotuloCategoria;
+  }
+
+  aplicarSugestao(): void {
+    const sugestao = this.sugestao;
+    if (!sugestao) {
+      return;
+    }
+    this.form.controls.categoriaId.setValue(sugestao.categoriaId);
+    this.categoriaAnterior = sugestao.categoriaId;
+    this.atualizarOpcoesSubcategoria();
+    this.form.controls.subcategoriaId.setValue(sugestao.subcategoriaId);
+    this.subcategoriaAnterior = sugestao.subcategoriaId;
+    this.atualizarOpcoesOrcamento();
+    // Não zera `sugestaoBruta`: o getter `sugestao` já esconde o chip enquanto a
+    // combinação selecionada for a sugerida, e volta a mostrá-lo se o usuário
+    // trocar a categoria/subcategoria manualmente depois.
+  }
+
+  dispensarSugestao(): void {
+    this.sugestaoDispensada = true;
   }
 
   cancelar(): void {

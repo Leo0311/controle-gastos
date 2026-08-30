@@ -20,6 +20,53 @@
   margin-bottom: 20px;
 }
 
+/* Chip de sugestão de categoria (auto-categorização). Discreto: some no meio dos
+   campos sem chamar mais atenção que eles. Cores de texto/fundo via tokens do
+   tema (legível em claro e escuro); só o ícone "auto_awesome" tem cor fixa. */
+.chip-sugestao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+  margin: -4px 0 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--divisor-sutil);
+  border-radius: 16px;
+  background: var(--divisor-sutil);
+  color: var(--texto-secundario);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chip-sugestao:hover {
+  filter: brightness(0.97);
+}
+
+.chip-sugestao .mat-icon {
+  flex: none;
+  font-size: 16px;
+  height: 16px;
+  width: 16px;
+}
+
+.chip-sugestao .texto-sugestao {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chip-sugestao mat-icon:first-of-type {
+  color: #f9a825;
+}
+
+.chip-sugestao .fechar-sugestao {
+  color: var(--texto-terciario);
+  cursor: pointer;
+}
+
 .opcoes-especiais {
   display: flex;
   flex-direction: column;

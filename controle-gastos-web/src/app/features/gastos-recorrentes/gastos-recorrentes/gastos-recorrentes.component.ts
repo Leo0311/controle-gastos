@@ -12,8 +12,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { CategoriaService } from '../../../services/categoria.service';
+import { GastoService } from '../../../services/gasto.service';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { CompraParcelada } from '../../../models/compra-parcelada.model';
+import { Gasto } from '../../../models/gasto.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import {
   GastoRecorrenteFormDialogComponent,
@@ -21,6 +23,27 @@ import {
 } from '../gasto-recorrente-form-dialog/gasto-recorrente-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+
+const NOMES_MESES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
+/** Um lançamento futuro (recorrente ou parcela) na aba "Próximas contas". */
+interface ItemCalendario {
+  data: string;
+  descricao: string;
+  valor: number;
+  origem: 'recorrente' | 'parcela';
+}
+
+/** Grupo de um mês na aba "Próximas contas", com o total do mês. */
+interface GrupoMesCalendario {
+  chave: string;
+  rotulo: string;
+  total: number;
+  itens: ItemCalendario[];
+}
 
 @Component({
   selector: 'app-gastos-recorrentes',
@@ -45,13 +68,16 @@ export class GastosRecorrentesComponent implements OnInit {
   private readonly service = inject(GastoRecorrenteService);
   private readonly parceladaService = inject(CompraParceladaService);
   private readonly categoriaService = inject(CategoriaService);
+  private readonly gastoService = inject(GastoService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   recorrentes: GastoRecorrente[] = [];
   parceladas: CompraParcelada[] = [];
+  calendario: GrupoMesCalendario[] = [];
   carregando = false;
   carregandoParceladas = false;
+  carregandoCalendario = false;
 
   private categoriasPorId = new Map<number, Categoria>();
   private subcategoriasPorId = new Map<number, Subcategoria>();
@@ -67,6 +93,66 @@ export class GastosRecorrentesComponent implements OnInit {
     });
     this.carregar();
     this.carregarParceladas();
+    this.carregarCalendario();
+  }
+
+  carregarCalendario(): void {
+    this.carregandoCalendario = true;
+    this.gastoService.listarTodos().subscribe({
+      next: (gastos) => {
+        this.calendario = this.agruparProximasContas(gastos);
+        this.carregandoCalendario = false;
+      },
+      error: () => {
+        this.carregandoCalendario = false;
+        this.mostrarErro('Não foi possível carregar as próximas contas. Verifique se a API está no ar.');
+      }
+    });
+  }
+
+  // Gastos futuros (data >= hoje) que vieram de uma recorrência ou de uma compra
+  // parcelada, agrupados por mês em ordem cronológica, com o total de cada mês.
+  private agruparProximasContas(gastos: Gasto[]): GrupoMesCalendario[] {
+    const hoje = this.hojeIso();
+    const futuros = gastos
+      .filter((g) => g.data >= hoje && (g.gastoRecorrenteId != null || g.compraParceladaId != null))
+      .sort((a, b) => a.data.localeCompare(b.data));
+
+    const grupos = new Map<string, GrupoMesCalendario>();
+    for (const gasto of futuros) {
+      const chave = gasto.data.slice(0, 7);
+      let grupo = grupos.get(chave);
+      if (!grupo) {
+        grupo = { chave, rotulo: this.rotuloMes(chave), total: 0, itens: [] };
+        grupos.set(chave, grupo);
+      }
+      grupo.total += gasto.valor;
+      grupo.itens.push({
+        data: gasto.data,
+        descricao: gasto.descricao,
+        valor: gasto.valor,
+        origem: gasto.compraParceladaId != null ? 'parcela' : 'recorrente'
+      });
+    }
+    return [...grupos.values()];
+  }
+
+  private hojeIso(): string {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  private rotuloMes(chave: string): string {
+    const [ano, mes] = chave.split('-').map(Number);
+    return `${NOMES_MESES[mes - 1]} de ${ano}`;
+  }
+
+  formatarDiaMes(data: string): string {
+    const [, mes, dia] = data.split('-');
+    return `${dia}/${mes}`;
   }
 
   carregar(): void {

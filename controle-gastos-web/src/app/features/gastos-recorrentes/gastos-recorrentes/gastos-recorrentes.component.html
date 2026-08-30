@@ -104,4 +104,42 @@
       </div>
     }
   </mat-tab>
+
+  <mat-tab label="Próximas contas">
+    <div class="cabecalho-aba">
+      <p class="dica-aba">
+        Lançamentos futuros (a partir de hoje) que já vieram de um gasto recorrente (🔁) ou de uma compra parcelada (💳),
+        agrupados por mês.
+      </p>
+    </div>
+
+    @if (carregandoCalendario) {
+      <div class="carregando">
+        <mat-spinner diameter="40"></mat-spinner>
+      </div>
+    } @else if (calendario.length === 0) {
+      <app-empty-state icon="event" mensagem="Nenhuma conta futura de recorrentes ou parcelas."></app-empty-state>
+    } @else {
+      <div class="lista-calendario">
+        @for (grupo of calendario; track grupo.chave) {
+          <div class="grupo-mes">
+            <div class="cabecalho-mes">
+              <span class="nome-mes">{{ grupo.rotulo }}</span>
+              <span class="total-mes">{{ grupo.total | currency:'BRL' }}</span>
+            </div>
+            @for (item of grupo.itens; track $index) {
+              <div class="item-calendario">
+                <span class="data-item">{{ formatarDiaMes(item.data) }}</span>
+                <span class="icone-origem" [title]="item.origem === 'parcela' ? 'Parcela' : 'Recorrente'">
+                  {{ item.origem === 'parcela' ? '💳' : '🔁' }}
+                </span>
+                <span class="descricao-item">{{ item.descricao }}</span>
+                <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </mat-tab>
 </mat-tab-group>

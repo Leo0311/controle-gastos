@@ -89,6 +89,69 @@
   --mdc-chip-label-text-color: rgba(0, 0, 0, 0.87);
 }
 
+/* Aba "Próximas contas" */
+.lista-calendario {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.grupo-mes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cabecalho-mes {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--divisor-sutil);
+}
+
+.nome-mes {
+  font-weight: 600;
+}
+
+.total-mes {
+  font-weight: 600;
+  color: var(--texto-secundario);
+}
+
+.item-calendario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.item-calendario .data-item {
+  flex: none;
+  min-width: 42px;
+  font-variant-numeric: tabular-nums;
+  color: var(--texto-secundario);
+  font-size: 13px;
+}
+
+.item-calendario .icone-origem {
+  flex: none;
+}
+
+.item-calendario .descricao-item {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-calendario .valor-item {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
 .linha-detalhes {
   font-size: 13px;
   color: var(--texto-secundario);
