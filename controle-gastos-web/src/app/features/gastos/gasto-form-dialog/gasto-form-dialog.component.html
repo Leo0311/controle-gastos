@@ -60,7 +60,7 @@
     @if (editando || (!form.controls.recorrente.value && !form.controls.parcelado.value)) {
       <mat-form-field appearance="outline">
         <mat-label>Data</mat-label>
-        <input matInput [matDatepicker]="picker" formControlName="data">
+        <input matInput appMascaraData [matDatepicker]="picker" formControlName="data">
         <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
         <mat-datepicker #picker [touchUi]="(telaPequena$ | async) ?? false"></mat-datepicker>
         @if (form.controls.data.hasError('required')) {

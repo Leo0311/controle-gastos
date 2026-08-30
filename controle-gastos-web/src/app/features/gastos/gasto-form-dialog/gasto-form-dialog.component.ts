@@ -21,6 +21,7 @@ import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
+import { MascaraDataDirective } from '../../../shared/mascara-data.directive';
 import {
   CategoriaFormDialogComponent,
   CategoriaFormDialogData
@@ -65,7 +66,8 @@ const NOVA_SUBCATEGORIA = -1;
     MatCheckboxModule,
     MatIconModule,
     MatTooltipModule,
-    MascaraMoedaDirective
+    MascaraMoedaDirective,
+    MascaraDataDirective
   ],
   templateUrl: './gasto-form-dialog.component.html',
   styleUrl: './gasto-form-dialog.component.css'

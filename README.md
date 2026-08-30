@@ -63,6 +63,9 @@ Exportação de todos os gastos para `.xlsx` (incluindo a coluna Subcategoria), 
 ### Campos de valor monetário
 Todos os campos de valor (Valor do gasto, Valor Limite do orçamento, Renda mensal, Meta de economia) usam uma máscara de digitação estilo "caixa registradora": os dígitos entram da direita para a esquerda (centavos primeiro), com suporte completo a Backspace, seleção de texto e colar — funcionando de forma idêntica em desktop e mobile.
 
+### Campo de data
+O campo Data do formulário de gasto aceita tanto a digitação manual quanto a seleção pelo calendário. Ao digitar, uma máscara insere as barras automaticamente (`dd/mm/aaaa`) e ignora caracteres não numéricos; o texto é interpretado por um `DateAdapter` pt-BR próprio (aceita `/`, `-` ou `.` como separador, ano com 2 ou 4 dígitos e os 8 dígitos colados), que devolve uma data válida ou nada — nunca uma data inválida que passe despercebida (o `NativeDateAdapter` do Angular Material faz `Date.parse` no texto e, para `dd/mm/aaaa`, produzia um `Invalid Date` que só quebrava na hora de salvar).
+
 ### Tema claro/escuro
 Um botão no cabeçalho (ícone de sol/lua, ao lado do nome do usuário) alterna entre tema claro e escuro, usando as capacidades de theming M3 do Angular Material (`mat.define-theme`), cobrindo toolbar, abas, cards, tabelas, diálogos e a bottom nav do mobile — inclusive as telas de autenticação (Login, Cadastro, Esqueci/Redefinir senha), que ficam fora do "shell" principal mas herdam o tema corretamente, já que ele é aplicado no `<html>` antes do Angular carregar. Os gráficos do Dashboard (Chart.js) também adaptam a cor do texto, dos eixos e da grade para continuarem legíveis no escuro. A preferência é salva no `localStorage` e aplicada antes do Angular carregar (via script inline no `index.html`), então a página já abre no tema certo, sem "flash" do tema errado.
 
