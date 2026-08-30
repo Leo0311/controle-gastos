@@ -117,6 +117,17 @@ export class CategoriasComponent implements OnInit {
     });
   }
 
+  // Endpoint já devolve a lista inteira reordenada - só substitui o array local,
+  // sem precisar recarregar categorias+subcategorias de novo (carregar()).
+  moverCategoria(categoria: Categoria, direcao: 'cima' | 'baixo'): void {
+    this.categoriaService.mover(categoria.id!, direcao).subscribe({
+      next: (categorias) => {
+        this.categorias = categorias;
+      },
+      error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+    });
+  }
+
   excluirCategoria(categoria: Categoria): void {
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {

@@ -19,9 +19,19 @@
   display: block;
 }
 
+/* mat-expansion-panel-header tem altura fixa (48px) por padrão, que não comporta o
+   conteúdo (emoji + nome + chip "Sistema" + setas de mover) sem sobrepor em telas
+   estreitas - libera pra crescer e permite quebrar linha (mesmo ajuste já usado em
+   analises.component.css pro mesmo problema). */
+mat-expansion-panel-header {
+  height: auto;
+  padding: 12px 16px;
+}
+
 .titulo-categoria {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
 }
@@ -35,6 +45,27 @@
   min-height: 22px;
   padding: 0 8px;
   background-color: #e0e0e0;
+}
+
+.acoes-ordem {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.botao-ordem {
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  padding: 0;
+}
+
+.botao-ordem mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
 }
 
 .acoes-categoria {

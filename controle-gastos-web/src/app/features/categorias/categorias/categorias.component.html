@@ -14,7 +14,7 @@
   <app-empty-state icon="category" mensagem="Nenhuma categoria encontrada."></app-empty-state>
 } @else {
   <mat-accordion class="lista-categorias" multi>
-    @for (categoria of categorias; track categoria.id) {
+    @for (categoria of categorias; track categoria.id; let isFirst = $first, isLast = $last) {
       <mat-expansion-panel>
         <mat-expansion-panel-header>
           <mat-panel-title class="titulo-categoria">
@@ -23,6 +23,26 @@
             @if (!categoria.usuarioId) {
               <mat-chip class="chip-sistema">Sistema</mat-chip>
             }
+            <span class="acoes-ordem">
+              <button
+                mat-icon-button
+                class="botao-ordem"
+                [disabled]="isFirst"
+                (click)="$event.stopPropagation(); moverCategoria(categoria, 'cima')"
+                aria-label="Mover categoria para cima"
+              >
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                class="botao-ordem"
+                [disabled]="isLast"
+                (click)="$event.stopPropagation(); moverCategoria(categoria, 'baixo')"
+                aria-label="Mover categoria para baixo"
+              >
+                <mat-icon>arrow_downward</mat-icon>
+              </button>
+            </span>
           </mat-panel-title>
         </mat-expansion-panel-header>
 

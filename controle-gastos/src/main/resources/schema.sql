@@ -592,3 +592,28 @@ CROSS JOIN (VALUES
 ) AS v(nome, emoji)
 WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Lazer')
 ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+-- ============================================================================
+-- Reordenação manual de categorias: como categorias padrão do sistema são
+-- compartilhadas entre todos os usuários (usuario_id NULL), a ordem escolhida
+-- por um usuário não pode afetar a visão de outros - cada usuário tem sua
+-- própria preferência de ordem, guardada aqui. Só existe uma linha por
+-- categoria visível para o usuário DEPOIS que ele mexe pela primeira vez
+-- (mover uma categoria materializa a posição de todas as categorias visíveis
+-- naquele momento - ver CategoriaService.mover); enquanto o usuário nunca
+-- personalizou nada, não há linha nenhuma aqui e a ordem cai no padrão
+-- (sistema primeiro, depois pessoais, cada grupo em ordem alfabética).
+-- ON DELETE CASCADE em categoria_id: excluir uma categoria pessoal (a
+-- categoria só pode ser excluída pelo próprio dono, e só se não estiver em
+-- uso - ver CategoriaService.excluir) remove automaticamente a preferência de
+-- posição dela, sem deixar linha órfã apontando pra uma categoria inexistente.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS categorias_ordem_usuario (
+    id           SERIAL PRIMARY KEY,
+    usuario_id   INT NOT NULL REFERENCES usuarios(id),
+    categoria_id INT NOT NULL REFERENCES categorias(id) ON DELETE CASCADE,
+    posicao      INT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_categorias_ordem_usuario ON categorias_ordem_usuario (usuario_id, categoria_id);
+CREATE INDEX IF NOT EXISTS idx_categorias_ordem_usuario_usuario ON categorias_ordem_usuario (usuario_id);

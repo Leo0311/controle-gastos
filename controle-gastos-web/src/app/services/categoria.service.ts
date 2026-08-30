@@ -36,6 +36,12 @@ export class CategoriaService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
+  // Retorna a lista inteira de categorias visíveis já na nova ordem - a tela
+  // substitui o que tinha por essa resposta, sem precisar recarregar tudo.
+  mover(id: number, direcao: 'cima' | 'baixo'): Observable<Categoria[]> {
+    return this.http.patch<Categoria[]>(`${this.baseUrl}/${id}/mover`, { direcao });
+  }
+
   listarTodasSubcategorias(): Observable<Subcategoria[]> {
     return this.http.get<Subcategoria[]>(`${API_BASE_URL}/subcategorias`);
   }
