@@ -7,6 +7,34 @@
   gap: 12px;
 }
 
+/* No mobile, as 3 abas (Recorrentes / Parceladas / Próximas contas) não cabem na
+   largura da tela. O Angular Material só deixa navegar pelas setinhas < > do
+   cabeçalho (que deslizam o .mat-mdc-tab-list via transform) - o container
+   .mat-mdc-tab-label-container vem com overflow:hidden, então não dá pra rolar
+   arrastando o dedo. overflow-x: auto devolve a rolagem/deslize nativo por toque
+   (mesma ideia do gráfico anual do Dashboard); a diretiva appAbasArrastaveis
+   converte o transform de paginação do Material nessa mesma rolagem nativa, pros
+   dois não brigarem. O gesto global de trocar de seção (app.component) já ignora
+   swipes que começam dentro de um scroll-x próprio. As setinhas continuam
+   funcionando normalmente. */
+:host ::ng-deep .mat-mdc-tab-label-container {
+  overflow-x: auto;
+  /* a barra de rolagem fica feia atravessada no cabeçalho de abas */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+:host ::ng-deep .mat-mdc-tab-label-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sem a transição de 500ms: a diretiva zera o transform do Material no mesmo
+   instante em que ele é aplicado (convertendo pra scrollLeft) - com a transição
+   isso piscaria. */
+:host ::ng-deep .mat-mdc-tab-list {
+  transition: none;
+}
+
 .cabecalho-aba {
   display: flex;
   align-items: center;

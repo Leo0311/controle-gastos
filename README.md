@@ -80,6 +80,13 @@ cabeçalho do grupo. Cada item mostra o dia, o ícone da origem, a descrição e
 mobile. Usa os campos `gastoRecorrenteId`/`compraParceladaId` que a API já devolve —
 sem endpoint novo.
 
+No mobile, as três abas dessa tela não cabem lado a lado. Além das setinhas `<` `>`
+de paginação do Angular Material, o cabeçalho de abas também rola arrastando o dedo
+na horizontal: a diretiva `appAbasArrastaveis` (em `shared/`) libera o
+`overflow-x: auto` do container do cabeçalho e converte o deslocamento por
+`transform` que o Material usa nas setinhas em rolagem nativa, para os dois
+mecanismos não brigarem entre si.
+
 ### Orçamentos
 Limite de valor por categoria e mês/ano, com edição. A subcategoria é opcional: um orçamento pode ser **geral** (sem subcategoria, cobrindo a categoria inteira) ou **específico** de uma subcategoria — os dois podem coexistir no mesmo mês para a mesma categoria (ex: um orçamento geral de "Lazer" e outro só para "Lazer/Cinema"), sem conflito. Um gasto vinculado ao orçamento específico de uma subcategoria conta só para ele, nunca para o orçamento geral da categoria. O uso de cada orçamento (soma dos gastos vinculados a ele) é classificado em 4 status, exibidos com barra de progresso colorida: **OK** (< 80%), **Atenção** (80–99%), **Completo** (exatamente 100%) e **Ultrapassou** (> 100%).
 

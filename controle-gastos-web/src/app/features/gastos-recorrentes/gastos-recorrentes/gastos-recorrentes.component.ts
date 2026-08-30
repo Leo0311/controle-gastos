@@ -23,6 +23,7 @@ import {
 } from '../gasto-recorrente-form-dialog/gasto-recorrente-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { AbasArrastaveisDirective } from '../../../shared/abas-arrastaveis.directive';
 
 const NOMES_MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -58,7 +59,8 @@ interface GrupoMesCalendario {
     MatDialogModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
-    EmptyStateComponent
+    EmptyStateComponent,
+    AbasArrastaveisDirective
   ],
   templateUrl: './gastos-recorrentes.component.html',
   styleUrl: './gastos-recorrentes.component.css'
