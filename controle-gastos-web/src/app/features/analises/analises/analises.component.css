@@ -29,11 +29,13 @@
 
 /* mat-expansion-panel-header tem altura fixa (48px) por padrão, que não comporta o
    conteúdo (posição + nome + badge + valores) sem cortar - libera pra crescer e
-   permite quebrar linha em telas estreitas. */
+   permite quebrar linha em telas estreitas. O padding-right maior afasta o
+   conteúdo do chevron (que fica na borda). */
 .item-ranking mat-expansion-panel-header {
   height: auto;
-  padding: 12px 16px;
+  padding: 12px 24px 12px 16px;
 }
+
 
 /* Alerta de categoria consumindo muito da renda: tint de atenção (translúcido no
    escuro, ver styles.scss) + uma faixa lateral âmbar, em vez do bloco de fundo
@@ -170,6 +172,20 @@
 }
 
 @media (max-width: 599px) {
+  /* Badge de alerta na sua própria linha - assim a 1ª linha do cabeçalho fica
+     só "1º 🍽️ nome" e o chevron alinha limpo com ela. */
+  .badge-alerta-renda {
+    flex-basis: 100%;
+  }
+
+  /* Cabeçalho quebra em várias linhas no mobile: sem isso o chevron ficava
+     centralizado na vertical, "flutuando" ao lado de uma linha do meio e
+     parecendo cortado na borda. Ancora no topo, alinhado com a 1ª linha. */
+  .item-ranking ::ng-deep .mat-expansion-indicator {
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
   .valores-ranking-item {
     align-items: flex-start;
     margin-left: 0;

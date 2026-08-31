@@ -17,7 +17,10 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <!-- subscriptSizing="dynamic": a dica de ajuda quebra em 2 linhas em telas
+         estreitas; sem isso o espaço reservado (1 linha) não a comporta e ela
+         sobrepõe o label do campo "Valor limite" abaixo. -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Subcategoria (opcional)</mat-label>
       <mat-select
         formControlName="subcategoriaId"

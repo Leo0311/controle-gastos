@@ -152,46 +152,85 @@
     </table>
   </div>
 
-  <!-- Mobile (abaixo de 600px): lista de cartões, mesmo espírito de
-       Recorrentes/Análises - a tabela acima fica ilegível espremida em 375px. -->
+  <!-- Mobile (abaixo de 600px): lista de cartões expansíveis, mesmo padrão do
+       ranking de Análises - a tabela acima fica ilegível espremida em 375px.
+       Tocar em qualquer parte do cartão abre os detalhes (descrição completa,
+       orçamento vinculado, contexto de recorrência/parcela) + Editar/Excluir. O
+       menu ⋮ continua como atalho rápido. -->
   <div class="lista-cartoes">
     @for (gasto of gastos; track gasto.id) {
-      <div class="cartao">
-        <div class="cartao-corpo">
-          <p class="cartao-titulo">
-            <span class="cartao-descricao">{{ gasto.descricao }}</span>
-            @if (gasto.gastoRecorrenteId) {
-              <span class="cartao-marca" role="img" aria-label="Gerado automaticamente por recorrência"
-                title="Gerado automaticamente por recorrência">🔁</span>
-            }
-            @if (gasto.compraParceladaId) {
-              <span class="cartao-marca" role="img" aria-label="Parcela de uma compra parcelada"
-                title="Parcela de uma compra parcelada">💳</span>
-            }
-          </p>
-          <p class="cartao-secundario">
-            <span>{{ categoriaEmoji(gasto.categoriaId) }} {{ gasto.categoria }}{{ gasto.subcategoria ? ' / ' + gasto.subcategoria : '' }}</span>
-            <span class="cartao-sep">·</span>
-            <span>{{ gasto.data | date:'dd/MM/yyyy':'UTC' }}</span>
-          </p>
-        </div>
-        <div class="cartao-lado">
-          <span class="cartao-valor">{{ gasto.valor | currency:'BRL' }}</span>
-          <button mat-icon-button [matMenuTriggerFor]="menuCartao" aria-label="Mais ações">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #menuCartao="matMenu">
-            <button mat-menu-item (click)="editar(gasto)">
+      <mat-expansion-panel class="cartao-gasto">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="cartao-cabecalho">
+              <span class="cartao-linha-principal">
+                <span class="cartao-descricao">{{ gasto.descricao }}</span>
+                @if (gasto.gastoRecorrenteId) {
+                  <span class="cartao-marca" role="img" aria-label="Gerado automaticamente por recorrência"
+                    title="Gerado automaticamente por recorrência">🔁</span>
+                }
+                @if (gasto.compraParceladaId) {
+                  <span class="cartao-marca" role="img" aria-label="Parcela de uma compra parcelada"
+                    title="Parcela de uma compra parcelada">💳</span>
+                }
+              </span>
+              <span class="cartao-secundario">
+                <span>{{ categoriaEmoji(gasto.categoriaId) }} {{ gasto.categoria }}{{ gasto.subcategoria ? ' / ' + gasto.subcategoria : '' }}</span>
+                <span class="cartao-sep">·</span>
+                <span>{{ gasto.data | date:'dd/MM/yyyy':'UTC' }}</span>
+              </span>
+            </span>
+            <span class="cartao-lado">
+              <span class="cartao-valor">{{ gasto.valor | currency:'BRL' }}</span>
+              <button mat-icon-button class="cartao-menu-btn" [matMenuTriggerFor]="menuCartao"
+                (click)="$event.stopPropagation()" aria-label="Ações rápidas">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menuCartao="matMenu">
+                <button mat-menu-item (click)="editar(gasto)">
+                  <mat-icon>edit</mat-icon>
+                  <span>Editar</span>
+                </button>
+                <button mat-menu-item (click)="excluir(gasto)">
+                  <mat-icon color="warn">delete</mat-icon>
+                  <span>Excluir</span>
+                </button>
+              </mat-menu>
+            </span>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="cartao-detalhes">
+          @if (nomeOrcamento(gasto.orcamentoId)) {
+            <p class="linha-detalhe">
+              <mat-icon>savings</mat-icon>
+              <span>Orçamento: {{ nomeOrcamento(gasto.orcamentoId) }}</span>
+            </p>
+          }
+          @if (gasto.gastoRecorrenteId) {
+            <p class="linha-detalhe">
+              <span class="cartao-marca" role="img" aria-label="Recorrência">🔁</span>
+              <span>Lançado automaticamente por uma recorrência.</span>
+            </p>
+          }
+          @if (gasto.compraParceladaId) {
+            <p class="linha-detalhe">
+              <span class="cartao-marca" role="img" aria-label="Compra parcelada">💳</span>
+              <span>Parcela de uma compra parcelada.</span>
+            </p>
+          }
+          <div class="cartao-acoes">
+            <button mat-stroked-button (click)="editar(gasto)">
               <mat-icon>edit</mat-icon>
-              <span>Editar</span>
+              Editar
             </button>
-            <button mat-menu-item (click)="excluir(gasto)">
+            <button mat-stroked-button (click)="excluir(gasto)">
               <mat-icon color="warn">delete</mat-icon>
-              <span>Excluir</span>
+              Excluir
             </button>
-          </mat-menu>
+          </div>
         </div>
-      </div>
+      </mat-expansion-panel>
     }
   </div>
 }

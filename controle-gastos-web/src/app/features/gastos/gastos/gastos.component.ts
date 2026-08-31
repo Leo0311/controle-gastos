@@ -9,6 +9,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom } from 'rxjs';
@@ -67,6 +68,7 @@ const NOMES_MESES_COMPLETO = [
     MatFormFieldModule,
     MatSelectModule,
     MatMenuModule,
+    MatExpansionModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
     EmptyStateComponent,
@@ -112,6 +114,9 @@ export class GastosComponent implements OnInit {
   private todasCategorias: Categoria[] = [];
   private todasSubcategorias: Subcategoria[] = [];
   private categoriasPorId = new Map<number, Categoria>();
+  // Só pro rótulo "Orçamento: ..." nos detalhes do cartão (mobile) - o Gasto traz
+  // orcamentoId, mas não o nome do orçamento vinculado.
+  private orcamentosPorId = new Map<number, Orcamento>();
   // Resultado da resolução texto -> categoria/subcategoria gerenciada da importação
   // em andamento (ver resolverCategorias) - chave é chaveCategoria(categoria, subcategoria).
   private categoriasResolvidas = new Map<string, { categoriaId: number; subcategoriaId: number | null }>();
@@ -146,6 +151,10 @@ export class GastosComponent implements OnInit {
     this.categoriaService.listarTodasSubcategorias().subscribe({
       next: (subcategorias) => { this.todasSubcategorias = subcategorias; },
       error: () => { /* usado só na resolução de categoria durante a importação */ }
+    });
+    this.orcamentoService.listarTodos().subscribe({
+      next: (orcamentos) => { this.orcamentosPorId = new Map(orcamentos.map((o) => [o.id!, o])); },
+      error: () => { /* rótulo do orçamento vinculado nos detalhes do cartão é auxiliar */ }
     });
 
     this.route.queryParamMap.subscribe((params) => {
@@ -185,6 +194,21 @@ export class GastosComponent implements OnInit {
 
   categoriaEmoji(categoriaId: number | null | undefined): string {
     return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
+  }
+
+  // Rótulo do orçamento vinculado a um gasto (ex: "Alimentação / Mercado"),
+  // exibido só nos detalhes expandidos do cartão no mobile. String vazia = sem
+  // vínculo (ou orçamentos ainda não carregados) -> a linha nem aparece.
+  nomeOrcamento(orcamentoId: number | null | undefined): string {
+    if (!orcamentoId) {
+      return '';
+    }
+    const orcamento = this.orcamentosPorId.get(orcamentoId);
+    if (!orcamento) {
+      return '';
+    }
+    const nome = orcamento.categoria ?? '';
+    return orcamento.subcategoria ? `${nome} / ${orcamento.subcategoria}` : nome;
   }
 
   // Só reflete a categoria agora: o período (mês/ano) já fica sempre visível nos

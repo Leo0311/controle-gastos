@@ -31,6 +31,17 @@
   width: 100%;
 }
 
+/* Sem isso, em larguras intermediárias (~660px) o badge "ULTRAPASSOU" da coluna
+   Status encostava no botão ⋮ da coluna Ações. Dá um respiro entre as duas. */
+.tabela-orcamentos .mat-column-status {
+  padding-right: 24px;
+}
+
+.tabela-orcamentos .mat-column-acoes {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .subcategoria-label {
   font-size: 11px;
   color: var(--texto-secundario);

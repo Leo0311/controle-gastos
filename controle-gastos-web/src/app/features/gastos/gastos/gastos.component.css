@@ -55,6 +55,29 @@
   min-width: 180px;
 }
 
+/* No mobile os filtros empilham em largura total e o "Filtrar por categoria"
+   sobe pro topo da faixa (order: -1). Antes ele era o último controle, colado no
+   rodapé fixo: sem espaço abaixo, o overlay do CDK abria pra cima, por cima do
+   próprio campo e dos selects de Mês/Ano. No topo, o painel abre normalmente
+   pra baixo. */
+@media (max-width: 599px) {
+  .filtros-periodo {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .filtros-periodo mat-form-field,
+  .filtros-periodo > button {
+    width: 100%;
+  }
+
+  .campo-filtro-categoria {
+    order: -1;
+    min-width: 0;
+  }
+}
+
 .filtro-ativo {
   display: flex;
   align-items: center;
@@ -92,9 +115,10 @@
   white-space: nowrap;
 }
 
-/* ── Lista de cartões (só mobile) ──────────────────────────────────────────
-   Abaixo de 600px a tabela some e cada gasto vira um cartão legível - mesmo
-   espírito da lista de Recorrentes. */
+/* ── Lista de cartões expansíveis (só mobile) ──────────────────────────────
+   Abaixo de 600px a tabela some e cada gasto vira um mat-expansion-panel -
+   mesmo padrão do ranking de Análises. Colapsado mostra o essencial; tocar
+   em qualquer parte do cartão abre os detalhes + Editar/Excluir. */
 .lista-cartoes {
   display: none;
 }
@@ -111,45 +135,82 @@
   }
 }
 
-.cartao {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: var(--fundo-superficie);
+/* Cada painel se veste como o cartão que existia antes (superfície + borda +
+   cantos arredondados) em vez da faixa achatada padrão do Material dentro de
+   uma lista. */
+.cartao-gasto {
+  border-radius: 8px !important;
   border: 1px solid var(--divisor-sutil);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  background: var(--fundo-superficie);
 }
 
-.cartao-corpo {
+/* Neutraliza a margem que o Material dá ao painel expandido (deslocaria o
+   cartão e brigaria com o gap da lista). */
+.cartao-gasto.mat-expanded {
+  margin: 0;
+}
+
+/* O header padrão tem altura fixa (48px) e não comporta descrição + linha
+   secundária - libera pra crescer, igual a analises.component.css. */
+.cartao-gasto mat-expansion-panel-header {
+  height: auto;
+  padding: 10px 14px;
+}
+
+/* min-width:0 em toda a cadeia flex (content -> title -> cabecalho) pra a
+   descrição realmente cortar com reticências em vez de empurrar o valor pra
+   fora e ser clipada pelo overflow:hidden do .mat-content. */
+.cartao-gasto ::ng-deep .mat-content {
   min-width: 0;
+}
+
+.cartao-gasto mat-panel-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  margin-right: 8px;
+}
+
+.cartao-cabecalho {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
-.cartao-titulo {
-  margin: 0;
+.cartao-linha-principal {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  min-width: 0;
 }
 
+/* Colapsado: uma linha só, cortando com reticências. Ao expandir, a descrição
+   se revela por inteiro (sem parágrafo duplicado nos detalhes). */
 .cartao-descricao {
   font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cartao-gasto.mat-expanded .cartao-descricao {
+  overflow: visible;
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 
 .cartao-marca {
   font-size: 13px;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .cartao-secundario {
-  margin: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 4px 6px;
@@ -173,6 +234,47 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.cartao-menu-btn {
+  /* Encolhe o alvo de 48px do mat-icon-button pra não empurrar o chevron. */
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+/* ── Detalhes expandidos ─────────────────────────────────────────────────── */
+.cartao-detalhes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 2px 4px;
+}
+
+.linha-detalhe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--texto-secundario);
+}
+
+.linha-detalhe mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.cartao-acoes {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cartao-acoes button {
+  flex: 1 1 0;
 }
 
 .carregando {
