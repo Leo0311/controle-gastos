@@ -89,6 +89,7 @@
     [mensagem]="mensagemVazio"
   ></app-empty-state>
 } @else {
+  <!-- Desktop: tabela tradicional (some abaixo de 600px - ver .css). -->
   <div class="tabela-scroll mat-elevation-z2">
     <table mat-table [dataSource]="gastos" class="tabela-gastos">
 
@@ -97,10 +98,12 @@
         <td mat-cell *matCellDef="let gasto">
           {{ gasto.descricao }}
           @if (gasto.gastoRecorrenteId) {
-            <span class="icone-recorrente" title="Gerado automaticamente por recorrência">🔁</span>
+            <span class="icone-recorrente" role="img" aria-label="Gerado automaticamente por recorrência"
+              title="Gerado automaticamente por recorrência">🔁</span>
           }
           @if (gasto.compraParceladaId) {
-            <span class="icone-recorrente" title="Parcela de uma compra parcelada">💳</span>
+            <span class="icone-recorrente" role="img" aria-label="Parcela de uma compra parcelada"
+              title="Parcela de uma compra parcelada">💳</span>
           }
         </td>
       </ng-container>
@@ -147,5 +150,48 @@
       <tr mat-header-row *matHeaderRowDef="colunas"></tr>
       <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
     </table>
+  </div>
+
+  <!-- Mobile (abaixo de 600px): lista de cartões, mesmo espírito de
+       Recorrentes/Análises - a tabela acima fica ilegível espremida em 375px. -->
+  <div class="lista-cartoes">
+    @for (gasto of gastos; track gasto.id) {
+      <div class="cartao">
+        <div class="cartao-corpo">
+          <p class="cartao-titulo">
+            <span class="cartao-descricao">{{ gasto.descricao }}</span>
+            @if (gasto.gastoRecorrenteId) {
+              <span class="cartao-marca" role="img" aria-label="Gerado automaticamente por recorrência"
+                title="Gerado automaticamente por recorrência">🔁</span>
+            }
+            @if (gasto.compraParceladaId) {
+              <span class="cartao-marca" role="img" aria-label="Parcela de uma compra parcelada"
+                title="Parcela de uma compra parcelada">💳</span>
+            }
+          </p>
+          <p class="cartao-secundario">
+            <span>{{ categoriaEmoji(gasto.categoriaId) }} {{ gasto.categoria }}{{ gasto.subcategoria ? ' / ' + gasto.subcategoria : '' }}</span>
+            <span class="cartao-sep">·</span>
+            <span>{{ gasto.data | date:'dd/MM/yyyy':'UTC' }}</span>
+          </p>
+        </div>
+        <div class="cartao-lado">
+          <span class="cartao-valor">{{ gasto.valor | currency:'BRL' }}</span>
+          <button mat-icon-button [matMenuTriggerFor]="menuCartao" aria-label="Mais ações">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #menuCartao="matMenu">
+            <button mat-menu-item (click)="editar(gasto)">
+              <mat-icon>edit</mat-icon>
+              <span>Editar</span>
+            </button>
+            <button mat-menu-item (click)="excluir(gasto)">
+              <mat-icon color="warn">delete</mat-icon>
+              <span>Excluir</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
+    }
   </div>
 }

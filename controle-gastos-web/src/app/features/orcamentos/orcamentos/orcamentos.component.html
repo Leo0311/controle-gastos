@@ -35,6 +35,7 @@
 } @else if (orcamentos.length === 0) {
   <app-empty-state icon="savings" mensagem="Nenhum orçamento definido para este mês."></app-empty-state>
 } @else {
+  <!-- Desktop: tabela tradicional (some abaixo de 600px - ver .css). -->
   <div class="tabela-scroll mat-elevation-z2">
     <table mat-table [dataSource]="orcamentos" class="tabela-orcamentos">
 
@@ -113,5 +114,57 @@
       <tr mat-header-row *matHeaderRowDef="colunas"></tr>
       <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
     </table>
+  </div>
+
+  <!-- Mobile (abaixo de 600px): lista de cartões com a barra de progresso em
+       largura total - na tabela ela ficava espremida numa célula minúscula. -->
+  <div class="lista-cartoes">
+    @for (o of orcamentos; track o.id) {
+      <div class="cartao">
+        <div class="cartao-topo">
+          <div class="cartao-titulo">
+            <span class="cartao-categoria">{{ categoriaEmoji(o.categoriaId) }} {{ o.categoria }}</span>
+            @if (o.subcategoria) {
+              <span class="cartao-subcategoria">{{ o.subcategoria }}</span>
+            }
+          </div>
+          <span
+            class="status-badge"
+            [class.status-ok]="corProgresso(o) === 'ok'"
+            [class.status-atencao]="corProgresso(o) === 'atencao'"
+            [class.status-alerta]="corProgresso(o) === 'alerta'"
+            [class.status-completo]="corProgresso(o) === 'completo'"
+          >{{ rotuloStatus(o) }}</span>
+          <button mat-icon-button [matMenuTriggerFor]="menuCartao" aria-label="Mais ações">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #menuCartao="matMenu">
+            <button mat-menu-item (click)="editar(o)">
+              <mat-icon>edit</mat-icon>
+              <span>Editar</span>
+            </button>
+            <button mat-menu-item (click)="excluir(o)">
+              <mat-icon color="warn">delete</mat-icon>
+              <span>Excluir</span>
+            </button>
+          </mat-menu>
+        </div>
+
+        <div class="cartao-valores">
+          <span>{{ o.gasto | currency:'BRL' }} de {{ o.valorLimite | currency:'BRL' }}</span>
+          <span class="cartao-percent">{{ percentualExibido(o) }}%</span>
+        </div>
+
+        <mat-progress-bar
+          class="cartao-barra"
+          mode="determinate"
+          [value]="percentualUsado(o)"
+          [class.cor-verde]="corProgresso(o) === 'ok'"
+          [class.cor-amarelo]="corProgresso(o) === 'atencao'"
+          [class.cor-vermelho]="corProgresso(o) === 'alerta'"
+          [class.cor-azul]="corProgresso(o) === 'completo'"
+        ></mat-progress-bar>
+      </div>
+    }
   </div>
 }

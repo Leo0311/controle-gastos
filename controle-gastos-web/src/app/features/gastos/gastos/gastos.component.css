@@ -92,51 +92,87 @@
   white-space: nowrap;
 }
 
+/* ── Lista de cartões (só mobile) ──────────────────────────────────────────
+   Abaixo de 600px a tabela some e cada gasto vira um cartão legível - mesmo
+   espírito da lista de Recorrentes. */
+.lista-cartoes {
+  display: none;
+}
+
 @media (max-width: 599px) {
   .tabela-scroll {
-    overflow-x: visible;
+    display: none;
   }
 
-  .tabela-gastos th,
-  .tabela-gastos td {
-    padding: 0 6px;
-    font-size: 12px;
+  .lista-cartoes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
+}
 
-  .tabela-gastos .mat-column-descricao {
-    max-width: 56px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.cartao {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--fundo-superficie);
+  border: 1px solid var(--divisor-sutil);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
 
-  .tabela-gastos .mat-column-categoria {
-    max-width: 60px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.cartao-corpo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-  .tabela-gastos .subcategoria-label {
-    font-size: 9px;
-  }
+.cartao-titulo {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 
-  .tabela-gastos .mat-column-valor {
-    max-width: 60px;
-  }
+.cartao-descricao {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
 
-  .tabela-gastos .mat-column-data {
-    max-width: 76px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.cartao-marca {
+  font-size: 13px;
+  line-height: 1;
+}
 
-  .tabela-gastos th.mat-column-acoes,
-  .tabela-gastos td.mat-column-acoes {
-    max-width: 36px;
-    padding-left: 0;
-  }
+.cartao-secundario {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-size: 12px;
+  color: var(--texto-secundario);
+}
+
+.cartao-sep {
+  color: var(--texto-terciario);
+}
+
+.cartao-lado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.cartao-valor {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .carregando {

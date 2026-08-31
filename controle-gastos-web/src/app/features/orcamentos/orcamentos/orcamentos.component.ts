@@ -193,6 +193,15 @@ export class OrcamentosComponent implements OnInit {
     return 'ok';
   }
 
+  rotuloStatus(orcamento: OrcamentoMes): string {
+    switch (this.corProgresso(orcamento)) {
+      case 'alerta': return 'Ultrapassou';
+      case 'completo': return 'Completo';
+      case 'atencao': return 'Atenção';
+      default: return 'OK';
+    }
+  }
+
   excluir(orcamento: OrcamentoMes): void {
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
