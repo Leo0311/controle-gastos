@@ -222,25 +222,14 @@
   color: var(--texto-terciario);
 }
 
-.cartao-lado {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
+/* Valor à direita, na mesma linha da descrição; não encolhe (a descrição é que
+   corta com reticências). O chevron do próprio mat-expansion-panel vem logo
+   depois, já dentro da área clicável do cabeçalho. */
 .cartao-valor {
+  flex-shrink: 0;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-.cartao-menu-btn {
-  /* Encolhe o alvo de 48px do mat-icon-button pra não empurrar o chevron. */
-  width: 32px;
-  height: 32px;
-  padding: 0;
 }
 
 /* ── Detalhes expandidos ─────────────────────────────────────────────────── */

@@ -155,8 +155,7 @@
   <!-- Mobile (abaixo de 600px): lista de cartões expansíveis, mesmo padrão do
        ranking de Análises - a tabela acima fica ilegível espremida em 375px.
        Tocar em qualquer parte do cartão abre os detalhes (descrição completa,
-       orçamento vinculado, contexto de recorrência/parcela) + Editar/Excluir. O
-       menu ⋮ continua como atalho rápido. -->
+       orçamento vinculado, contexto de recorrência/parcela) + Editar/Excluir. -->
   <div class="lista-cartoes">
     @for (gasto of gastos; track gasto.id) {
       <mat-expansion-panel class="cartao-gasto">
@@ -180,23 +179,7 @@
                 <span>{{ gasto.data | date:'dd/MM/yyyy':'UTC' }}</span>
               </span>
             </span>
-            <span class="cartao-lado">
-              <span class="cartao-valor">{{ gasto.valor | currency:'BRL' }}</span>
-              <button mat-icon-button class="cartao-menu-btn" [matMenuTriggerFor]="menuCartao"
-                (click)="$event.stopPropagation()" aria-label="Ações rápidas">
-                <mat-icon>more_vert</mat-icon>
-              </button>
-              <mat-menu #menuCartao="matMenu">
-                <button mat-menu-item (click)="editar(gasto)">
-                  <mat-icon>edit</mat-icon>
-                  <span>Editar</span>
-                </button>
-                <button mat-menu-item (click)="excluir(gasto)">
-                  <mat-icon color="warn">delete</mat-icon>
-                  <span>Excluir</span>
-                </button>
-              </mat-menu>
-            </span>
+            <span class="cartao-valor">{{ gasto.valor | currency:'BRL' }}</span>
           </mat-panel-title>
         </mat-expansion-panel-header>
 
