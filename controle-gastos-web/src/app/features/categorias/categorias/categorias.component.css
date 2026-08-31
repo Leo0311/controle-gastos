@@ -93,7 +93,10 @@ mat-expansion-panel-header {
   flex-shrink: 0;
   font-size: 11px;
   min-height: 20px;
-  background-color: #e0e0e0;
+  /* mat-chip (MDC) desenha a própria superfície - background-color no host não
+     pega; a cor vem do token do container. Cinza neutro com valor por tema. */
+  --mdc-chip-elevated-container-color: var(--trilha-neutra);
+  --mdc-chip-label-text-color: var(--texto-pagina);
 }
 
 /* mat-chip (MDC) tem uma folga interna grande demais para um rótulo de 11px -

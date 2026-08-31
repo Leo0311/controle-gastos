@@ -69,6 +69,9 @@
   padding: 12px 16px;
   border-radius: 4px;
   background: var(--fundo-superficie);
+  /* borda + sombra: a sombra some no fundo escuro, a borda garante a separação
+     dos itens nos dois temas (mesmo tratamento dos cartões de Gastos/Orçamentos). */
+  border: 1px solid var(--divisor-sutil);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
@@ -96,25 +99,23 @@
 
 /* mat-chip (MDC) não tema pelo background-color/color comuns - a superfície e o
    texto são desenhados por dentro do componente, então precisam das custom
-   properties do MDC (mesmo padrão já usado nas barras de progresso de Orçamentos,
-   ver .cor-verde/.cor-amarelo/.cor-vermelho lá). Cores fixas (não mudam com o tema)
-   - por isso o texto por cima também fica fixo em escuro, senão no modo escuro
-   herda a cor clara padrão do chip e fica ilegível sobre o fundo claro (mesmo
-   problema já corrigido no badge de alerta de renda da tela de Análises). */
+   properties do MDC. "Ativo" usa o tint de status OK; "Pausado", o cinza neutro.
+   Os dois tokens já têm valor próprio no modo escuro (ver styles.scss), então
+   não precisa mais travar a cor do texto. */
 .chip-ativo {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  --mdc-chip-elevated-container-color: #43a047;
-  --mdc-chip-label-text-color: #fff;
+  --mdc-chip-elevated-container-color: var(--status-ok-fundo);
+  --mdc-chip-label-text-color: var(--status-ok-texto);
 }
 
 .chip-pausado {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  --mdc-chip-elevated-container-color: #e0e0e0;
-  --mdc-chip-label-text-color: rgba(0, 0, 0, 0.87);
+  --mdc-chip-elevated-container-color: var(--trilha-neutra);
+  --mdc-chip-label-text-color: var(--texto-pagina);
 }
 
 /* Aba "Próximas contas" */

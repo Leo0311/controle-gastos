@@ -49,8 +49,8 @@
 }
 
 .botao-emoji.selecionado {
-  border-color: #3f51b5;
-  background-color: #e8eaf6;
+  border-color: var(--acento-primario);
+  background-color: var(--fundo-aviso);
 }
 
 @media (max-width: 599px) {

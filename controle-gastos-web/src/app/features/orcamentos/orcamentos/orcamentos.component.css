@@ -79,44 +79,45 @@
 }
 
 .status-ok {
-  background-color: #e6f4ea;
-  color: #1e7e34;
+  background-color: var(--status-ok-fundo);
+  color: var(--status-ok-texto);
 }
 
 .status-atencao {
-  background-color: #fff4e5;
-  color: #e65100;
+  background-color: var(--status-atencao-fundo);
+  color: var(--status-atencao-texto);
 }
 
 .status-alerta {
-  background-color: #fdecea;
-  color: #c62828;
+  background-color: var(--status-critico-fundo);
+  color: var(--status-critico-texto);
 }
 
 .status-completo {
-  background-color: #e3f2fd;
-  color: #1565c0;
+  background-color: var(--status-info-fundo);
+  color: var(--status-info-texto);
 }
 
-/* ── Cores da barra de progresso (tabela e cartão) ───────────────────────── */
+/* ── Cores da barra de progresso (tabela e cartão) ───────────────────────
+   Trilha = fundo do status; indicador = texto do status. */
 .cor-verde {
-  --mdc-linear-progress-active-indicator-color: #1e7e34;
-  --mdc-linear-progress-track-color: #e6f4ea;
+  --mdc-linear-progress-active-indicator-color: var(--status-ok-texto);
+  --mdc-linear-progress-track-color: var(--status-ok-fundo);
 }
 
 .cor-amarelo {
-  --mdc-linear-progress-active-indicator-color: #e65100;
-  --mdc-linear-progress-track-color: #fff4e5;
+  --mdc-linear-progress-active-indicator-color: var(--status-atencao-texto);
+  --mdc-linear-progress-track-color: var(--status-atencao-fundo);
 }
 
 .cor-vermelho {
-  --mdc-linear-progress-active-indicator-color: #c62828;
-  --mdc-linear-progress-track-color: #fdecea;
+  --mdc-linear-progress-active-indicator-color: var(--status-critico-texto);
+  --mdc-linear-progress-track-color: var(--status-critico-fundo);
 }
 
 .cor-azul {
-  --mdc-linear-progress-active-indicator-color: #1565c0;
-  --mdc-linear-progress-track-color: #e3f2fd;
+  --mdc-linear-progress-active-indicator-color: var(--status-info-texto);
+  --mdc-linear-progress-track-color: var(--status-info-fundo);
 }
 
 /* ── Lista de cartões (só mobile) ─────────────────────────────────────────

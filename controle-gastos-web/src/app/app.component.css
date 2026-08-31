@@ -133,7 +133,7 @@
   }
 
   .nav-mobile .item-mobile.ativo {
-    color: #3f51b5;
+    color: var(--acento-primario);
   }
 
   /* Espaço reservado no fim do conteúdo pra barra fixa nunca cobrir o último

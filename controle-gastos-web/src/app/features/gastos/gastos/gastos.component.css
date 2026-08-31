@@ -61,8 +61,8 @@
   gap: 8px;
   padding: 8px 16px;
   margin-bottom: 16px;
-  background-color: #e8eaf6;
-  color: #283593;
+  background-color: var(--fundo-aviso);
+  color: var(--texto-aviso);
   border-radius: 4px;
   flex-wrap: wrap;
 }

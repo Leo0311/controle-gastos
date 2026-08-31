@@ -16,12 +16,12 @@ mat-dialog-content {
 }
 
 .resumo-ok {
-  color: #1e7e34;
+  color: var(--status-ok-texto);
   font-weight: 600;
 }
 
 .resumo-erro {
-  color: #c62828;
+  color: var(--status-critico-texto);
   font-weight: 600;
 }
 
@@ -36,18 +36,18 @@ mat-dialog-content {
 }
 
 .icone-ok {
-  color: #1e7e34;
+  color: var(--status-ok-texto);
 }
 
 .icone-erro {
-  color: #c62828;
+  color: var(--status-critico-texto);
 }
 
 .celula-erro {
-  color: #c62828;
+  color: var(--status-critico-texto);
   font-size: 13px;
 }
 
 .linha-erro {
-  background-color: #fdecea;
+  background-color: var(--status-critico-fundo);
 }

@@ -35,18 +35,12 @@
   padding: 12px 16px;
 }
 
-/* Fundo claro fixo (não muda com o tema, igual aos badges de status dos orçamentos) -
-   por isso o texto por cima também precisa ficar fixo em escuro, senão no modo escuro
-   herda a cor clara padrão do painel e fica ilegível sobre o fundo claro do alerta. */
+/* Alerta de categoria consumindo muito da renda: tint de atenção (translúcido no
+   escuro, ver styles.scss) + uma faixa lateral âmbar, em vez do bloco de fundo
+   cheio que antes exigia travar as cores de texto pra não ficar ilegível. */
 .item-ranking mat-expansion-panel-header.alerta-renda {
-  background-color: #fff4e5;
-}
-
-.item-ranking mat-expansion-panel-header.alerta-renda .posicao-ranking,
-.item-ranking mat-expansion-panel-header.alerta-renda .nome-categoria,
-.item-ranking mat-expansion-panel-header.alerta-renda .valor-ranking,
-.item-ranking mat-expansion-panel-header.alerta-renda .percentual-ranking {
-  color: rgba(0, 0, 0, 0.87);
+  background-color: var(--status-atencao-fundo);
+  box-shadow: inset 3px 0 0 var(--status-atencao-texto);
 }
 
 .cabecalho-ranking-item {
@@ -73,8 +67,8 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: 12px;
-  background-color: #fff4e5;
-  color: #e65100;
+  background-color: var(--status-atencao-fundo);
+  color: var(--status-atencao-texto);
   font-size: 12px;
   font-weight: 500;
 }
@@ -162,11 +156,11 @@
 }
 
 .variacao-subiu {
-  color: #c62828;
+  color: var(--tendencia-subiu);
 }
 
 .variacao-desceu {
-  color: #1e7e34;
+  color: var(--tendencia-desceu);
 }
 
 .variacao-nova {

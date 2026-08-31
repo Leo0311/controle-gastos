@@ -156,15 +156,15 @@
 }
 
 .barra-progresso-preenchida.cor-verde {
-  background-color: #1e7e34;
+  background-color: var(--status-ok-texto);
 }
 
 .barra-progresso-preenchida.cor-amarelo {
-  background-color: #e65100;
+  background-color: var(--status-atencao-texto);
 }
 
 .barra-progresso-preenchida.cor-vermelho {
-  background-color: #c62828;
+  background-color: var(--status-critico-texto);
 }
 
 .texto-progresso-meta {

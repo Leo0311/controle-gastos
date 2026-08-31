@@ -67,6 +67,22 @@ body {
   --texto-aviso: #283593;
   --trilha-neutra: #e0e0e0;
   --sombra-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+  // Cores semânticas de status - fundo tênue + texto forte. Um par serve pra
+  // tudo: badge (fundo/texto), barra de progresso (trilha = fundo, indicador =
+  // texto), alerta de % da renda, chips. No claro são pastéis sólidos; no
+  // escuro viram tint translúcido + texto claro, pra não brilharem como um
+  // bloco pastel sobre o fundo escuro.
+  --status-ok-fundo: #e6f4ea;
+  --status-ok-texto: #1e7e34;
+  --status-atencao-fundo: #fff4e5;
+  --status-atencao-texto: #e65100;
+  --status-critico-fundo: #fdecea;
+  --status-critico-texto: #c62828;
+  --status-info-fundo: #e3f2fd;
+  --status-info-texto: #1565c0;
+  // Tendência: aumento de gasto é ruim (vermelho), redução é bom (verde).
+  --tendencia-subiu: #c62828;
+  --tendencia-desceu: #1e7e34;
 }
 
 html.tema-escuro {
@@ -82,6 +98,16 @@ html.tema-escuro {
   --texto-aviso: #c5cae9;
   --trilha-neutra: rgba(255, 255, 255, 0.16);
   --sombra-hover: 0 4px 12px rgba(0, 0, 0, 0.55);
+  --status-ok-fundo: rgba(129, 201, 149, 0.18);
+  --status-ok-texto: #81c995;
+  --status-atencao-fundo: rgba(252, 163, 17, 0.18);
+  --status-atencao-texto: #fcc266;
+  --status-critico-fundo: rgba(242, 139, 130, 0.18);
+  --status-critico-texto: #f28b82;
+  --status-info-fundo: rgba(138, 180, 248, 0.18);
+  --status-info-texto: #8ab4f8;
+  --tendencia-subiu: #f28b82;
+  --tendencia-desceu: #81c995;
 }
 
 .snack-alerta {
