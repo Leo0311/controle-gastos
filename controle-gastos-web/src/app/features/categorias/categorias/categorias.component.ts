@@ -21,6 +21,7 @@ import {
   SubcategoriaFormResultado
 } from '../../../shared/subcategoria-form-dialog/subcategoria-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { InfoDialogComponent, InfoDialogData } from '../../../shared/info-dialog/info-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 
 @Component({
@@ -160,7 +161,7 @@ export class CategoriasComponent implements OnInit {
           this.mostrarSucesso('Categoria excluída com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.mostrarErroExclusao(erro)
       });
     });
   }
@@ -219,7 +220,7 @@ export class CategoriasComponent implements OnInit {
           this.mostrarSucesso('Subcategoria excluída com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.mostrarErroExclusao(erro)
       });
     });
   }
@@ -227,6 +228,24 @@ export class CategoriasComponent implements OnInit {
   private mensagemErro(erro: unknown): string {
     const erroHttp = erro as { error?: { erro?: string } };
     return erroHttp?.error?.erro ?? 'Ocorreu um erro inesperado.';
+  }
+
+  // Erro ao excluir categoria/subcategoria: o bloqueio "em uso" (400) traz um
+  // resumo do que precisa ser resolvido antes (quantos gastos, orçamentos etc.) -
+  // vai num diálogo, que dá espaço pra ler. Falha transitória (rede, API fora)
+  // continua no snackbar, como no resto da tela.
+  private mostrarErroExclusao(erro: unknown): void {
+    const status = (erro as { status?: number })?.status;
+    const mensagem = this.mensagemErro(erro);
+    if (status === 400) {
+      this.dialog.open<InfoDialogComponent, InfoDialogData>(InfoDialogComponent, {
+        data: { titulo: 'Não foi possível excluir', mensagem },
+        width: '420px',
+        maxWidth: '95vw'
+      });
+    } else {
+      this.mostrarErro(mensagem);
+    }
   }
 
   private mostrarSucesso(mensagem: string): void {

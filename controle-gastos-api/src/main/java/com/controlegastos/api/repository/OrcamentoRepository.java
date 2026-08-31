@@ -16,9 +16,9 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Integer> {
 
     List<Orcamento> findByUsuarioIdAndMesAndAno(Integer usuarioId, int mes, int ano);
 
-    boolean existsByCategoriaId(Integer categoriaId);
+    long countByCategoriaId(Integer categoriaId);
 
-    boolean existsBySubcategoriaId(Integer subcategoriaId);
+    long countBySubcategoriaId(Integer subcategoriaId);
 
     // COALESCE(..., 0) trata dois orçamentos "gerais" (subcategoriaId nulo) da mesma
     // categoria/mês/ano como duplicados entre si, mas não conflita com um orçamento

@@ -20,7 +20,7 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
 
     List<Gasto> findByUsuarioIdAndDataBetweenOrderByDataDescIdDesc(Integer usuarioId, LocalDate inicio, LocalDate fim);
 
-    boolean existsByCategoriaId(Integer categoriaId);
+    long countByCategoriaId(Integer categoriaId);
 
     // IDs das categorias com pelo menos um gasto cadastrado pelo usuário (qualquer
     // período) - usado pra filtrar o dropdown de categoria em Gastos, mostrando só
@@ -29,7 +29,7 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
     @Query("SELECT DISTINCT g.categoriaId FROM Gasto g WHERE g.usuarioId = :usuarioId AND g.categoriaId IS NOT NULL")
     List<Integer> categoriaIdsComGasto(@Param("usuarioId") Integer usuarioId);
 
-    boolean existsBySubcategoriaId(Integer subcategoriaId);
+    long countBySubcategoriaId(Integer subcategoriaId);
 
     // Usado pra checar se uma recorrência já foi lançada no mês/ano atual antes de
     // criar um novo gasto a partir dela - ver GastoRecorrenteService.lancarPendentes.

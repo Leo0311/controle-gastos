@@ -12,7 +12,7 @@ public interface CompraParceladaRepository extends JpaRepository<CompraParcelada
 
     Optional<CompraParcelada> findByIdAndUsuarioId(Integer id, Integer usuarioId);
 
-    boolean existsByCategoriaId(Integer categoriaId);
+    long countByCategoriaId(Integer categoriaId);
 
-    boolean existsBySubcategoriaId(Integer subcategoriaId);
+    long countBySubcategoriaId(Integer subcategoriaId);
 }

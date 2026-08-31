@@ -5,9 +5,7 @@ import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.CategoriaOrdemUsuario;
 import com.controlegastos.api.repository.CategoriaOrdemUsuarioRepository;
 import com.controlegastos.api.repository.CategoriaRepository;
-import com.controlegastos.api.repository.GastoRecorrenteRepository;
 import com.controlegastos.api.repository.GastoRepository;
-import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,8 +38,7 @@ public class CategoriaService {
     private final CategoriaOrdemUsuarioRepository ordemRepository;
     private final SubcategoriaRepository subcategoriaRepository;
     private final GastoRepository gastoRepository;
-    private final OrcamentoRepository orcamentoRepository;
-    private final GastoRecorrenteRepository gastoRecorrenteRepository;
+    private final ContadorDeUso contadorDeUso;
 
     public List<Categoria> listarVisiveis(Integer usuarioId) {
         return ordenarPorPreferencia(repository.findVisiveis(usuarioId), usuarioId);
@@ -171,12 +168,14 @@ public class CategoriaService {
     public void excluir(Integer id, Integer usuarioId) {
         Categoria existente = buscarPropria(id, usuarioId);
 
-        boolean emUso = gastoRepository.existsByCategoriaId(id) || orcamentoRepository.existsByCategoriaId(id)
-                || gastoRecorrenteRepository.existsByCategoriaId(id);
-        if (emUso) {
+        // Bloqueia se ainda houver qualquer lançamento apontando pra ela (inclusive
+        // compras parceladas, que a FK só rejeitaria com um erro cru de banco), e
+        // diz exatamente quantos de cada tipo pro usuário resolver antes.
+        contadorDeUso.descreverUsoCategoria(id).ifPresent(uso -> {
             throw new IllegalArgumentException(
-                    "Essa categoria está em uso em gastos, orçamentos ou gastos recorrentes e não pode ser excluída.");
-        }
+                    "Não é possível excluir a categoria \"" + existente.getNome() + "\": " + uso
+                    + ". Reclassifique ou remova esses lançamentos primeiro.");
+        });
 
         // Nenhuma subcategoria dela pode estar em uso sem a categoria também estar
         // (todo gasto/orçamento com subcategoria tem a categoria correspondente

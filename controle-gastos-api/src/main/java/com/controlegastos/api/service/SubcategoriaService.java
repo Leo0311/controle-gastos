@@ -4,9 +4,6 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaRepository;
-import com.controlegastos.api.repository.GastoRecorrenteRepository;
-import com.controlegastos.api.repository.GastoRepository;
-import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,9 +19,7 @@ public class SubcategoriaService {
 
     private final SubcategoriaRepository repository;
     private final CategoriaRepository categoriaRepository;
-    private final GastoRepository gastoRepository;
-    private final OrcamentoRepository orcamentoRepository;
-    private final GastoRecorrenteRepository gastoRecorrenteRepository;
+    private final ContadorDeUso contadorDeUso;
 
     // Subcategorias visíveis da categoria: as padrão do sistema + as próprias do
     // usuário - mesmo padrão de CategoriaService.listarVisiveis.
@@ -82,12 +77,14 @@ public class SubcategoriaService {
         Subcategoria existente = repository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Subcategoria não encontrada com ID " + id));
 
-        boolean emUso = gastoRepository.existsBySubcategoriaId(id) || orcamentoRepository.existsBySubcategoriaId(id)
-                || gastoRecorrenteRepository.existsBySubcategoriaId(id);
-        if (emUso) {
+        // Bloqueia se ainda houver qualquer lançamento apontando pra ela (inclusive
+        // compras parceladas, que a FK só rejeitaria com um erro cru de banco), e
+        // diz exatamente quantos de cada tipo pro usuário resolver antes.
+        contadorDeUso.descreverUsoSubcategoria(id).ifPresent(uso -> {
             throw new IllegalArgumentException(
-                    "Essa subcategoria está em uso em gastos, orçamentos ou gastos recorrentes e não pode ser excluída.");
-        }
+                    "Não é possível excluir a subcategoria \"" + existente.getNome() + "\": " + uso
+                    + ". Reclassifique ou remova esses lançamentos primeiro.");
+        });
 
         repository.delete(existente);
     }
