@@ -57,7 +57,17 @@ export const DICIONARIO_CATEGORIAS: EntradaDicionario[] = [
       'mercado', 'supermercado', 'feira', 'feira livre', 'hortifruti', 'sacolao',
       'acougue', 'mercearia', 'quitanda', 'emporio', 'atacado', 'atacadao',
       'assai', 'carrefour', 'pao de acucar', 'compras do mes', 'compra do mes',
-      'rancho', 'compras do mercado'
+      'rancho', 'compras do mercado',
+      // Frutas
+      'fruta', 'frutas', 'morango', 'melancia', 'uva', 'melao', 'banana', 'maca',
+      'laranja', 'mamao', 'abacaxi', 'manga', 'pera', 'kiwi', 'abacate', 'goiaba',
+      'maracuja', 'limao', 'tangerina', 'mexerica', 'ameixa', 'caqui', 'figo',
+      'acerola', 'pessego', 'cereja', 'jabuticaba',
+      // Verduras, legumes e itens de despensa
+      'verdura', 'verduras', 'legume', 'legumes', 'tomate', 'cebola', 'batata',
+      'cenoura', 'alface', 'brocolis', 'abobrinha', 'ovos', 'ovo', 'leite', 'arroz',
+      'feijao', 'macarrao', 'farinha', 'acucar', 'oleo', 'cafe em po', 'carne',
+      'frango', 'frango assado', 'peixe', 'linguica'
     ],
     categoria: 'Alimentação',
     subcategoria: 'Mercado'
@@ -290,13 +300,30 @@ export const DICIONARIO_CATEGORIAS: EntradaDicionario[] = [
   {
     termos: [
       'bar', 'cerveja', 'chopp', 'chope', 'boteco', 'botequim', 'happy hour',
-      'balada', 'drinks', 'drink', 'pub', 'cervejaria', 'caipirinha'
+      'balada', 'drinks', 'drink', 'pub', 'cervejaria', 'caipirinha',
+      'cachaca', 'pinga', 'gin tonica', 'aperol', 'negroni', 'whisky', 'vodka',
+      'tequila', 'sake', 'long neck', 'lata de cerveja', 'brahma', 'heineken',
+      // Petiscos de bar
+      'petisco', 'petiscos', 'tira gosto', 'fritas', 'batata frita', 'frango frito',
+      'porcao', 'porcoes', 'iscas de peixe', 'bolinho de bacalhau', 'calabresa acebolada'
     ],
     categoria: 'Lazer',
     subcategoria: 'Bares'
   },
   { termos: ['parque', 'zoologico', 'museu', 'exposicao', 'teatro', 'passeio', 'parque de diversoes'], categoria: 'Lazer', subcategoria: 'Passeios' },
-  { termos: ['boliche', 'quadra', 'futebol', 'society', 'aluguel de quadra'], categoria: 'Lazer', subcategoria: 'Esportes' },
+  {
+    termos: [
+      'boliche', 'quadra', 'aluguel de quadra', 'futebol', 'futsal', 'society', 'pelada',
+      'bola', 'volei', 'voleibol', 'futevolei', 'beach tennis', 'basquete', 'basquetebol',
+      'handebol', 'natacao', 'nadar', 'ciclismo', 'pedalada', 'bike', 'skate', 'surf',
+      'escalada', 'boxe', 'jiu jitsu', 'jiujitsu', 'muay thai', 'judo', 'karate',
+      'tenis de mesa', 'ping pong', 'aula de tenis', 'quadra de tenis', 'jogar tenis',
+      'corrida de rua', 'corrida na esteira', 'maratona', 'meia maratona',
+      'xadrez', 'damas', 'gamao', 'jogo de tabuleiro', 'tabuleiro', 'truco', 'domino'
+    ],
+    categoria: 'Lazer',
+    subcategoria: 'Esportes'
+  },
 
   // ─── Educação ───────────────────────────────────────────────────────────────
   {

@@ -20,7 +20,9 @@ const SUBCATEGORIAS: Subcategoria[] = [
   { id: 14, categoriaId: 3, nome: 'Dentista', emoji: '🦷', usuarioId: null },
   { id: 15, categoriaId: 2, nome: 'Seguro', emoji: '🛡️', usuarioId: null },
   { id: 16, categoriaId: 5, nome: 'Streaming', emoji: '🎬', usuarioId: null },
-  { id: 17, categoriaId: 6, nome: 'Bares', emoji: '🍻', usuarioId: null }
+  { id: 17, categoriaId: 6, nome: 'Bares', emoji: '🍻', usuarioId: null },
+  { id: 18, categoriaId: 1, nome: 'Mercado', emoji: '🛒', usuarioId: null },
+  { id: 19, categoriaId: 6, nome: 'Esportes', emoji: '⚽', usuarioId: null }
   // De propósito SEM "Outros" em Transporte (id 2) - "pedágio" cai só na categoria.
 ];
 
@@ -78,7 +80,14 @@ describe('sugerirPorDicionario', () => {
       ['assinatura netflix', 5, 16],        // Contas e serviços > Streaming
       ['streaming do mes', 5, 16],
       ['seguro do carro anual', 2, 15],     // Transporte > Seguro (termo composto)
-      ['fui na padaria comprar pao', 1, null] // "pao"/"padaria" -> Alimentação > Padaria (subcat não está no fixture -> null)
+      ['fui na padaria comprar pao', 1, null], // "pao"/"padaria" -> Alimentação > Padaria (subcat não está no fixture -> null)
+      ['morango e melancia', 1, 18],        // Alimentação > Mercado (frutas)
+      ['frango assado do mercado', 1, 18],  // Alimentação > Mercado
+      ['chopp gelado', 6, 17],              // Lazer > Bares
+      ['porcao de batata frita', 6, 17],    // "batata frita" (Bares) vence "batata" (Mercado)
+      ['jogo de volei na praia', 6, 19],    // Lazer > Esportes
+      ['torneio de xadrez', 6, 19],         // Lazer > Esportes
+      ['aula de tenis', 6, 19]              // "aula de tenis" (Esportes) vence "tenis" (Calçados)
     ];
     for (const [texto, catId, subId] of casos) {
       it(`"${texto}" -> categoria ${catId}, subcategoria ${subId}`, () => {
