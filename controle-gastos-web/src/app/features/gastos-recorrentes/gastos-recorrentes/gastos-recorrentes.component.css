@@ -118,26 +118,33 @@
   --mdc-chip-label-text-color: var(--texto-pagina);
 }
 
-/* Aba "Próximas contas" */
+/* Aba "Próximas contas" - um mat-expansion-panel por mês */
 .lista-calendario {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 8px;
 }
 
-.grupo-mes {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* Cabeçalho com altura fixa (48px) não comporta nome do mês + total sem apertar;
+   libera pra crescer (mesmo ajuste do ranking de Análises). */
+.grupo-mes mat-expansion-panel-header {
+  height: auto;
+  padding: 12px 16px;
+}
+
+/* Neutraliza a margem que o Material dá ao painel expandido - o espaçamento
+   entre os meses já vem do gap da lista. */
+.grupo-mes.mat-expanded {
+  margin: 0;
 }
 
 .cabecalho-mes {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--divisor-sutil);
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .nome-mes {
@@ -147,6 +154,12 @@
 .total-mes {
   font-weight: 600;
   color: var(--texto-secundario);
+  font-variant-numeric: tabular-nums;
+}
+
+.itens-mes {
+  display: flex;
+  flex-direction: column;
 }
 
 .item-calendario {
@@ -154,6 +167,11 @@
   align-items: center;
   gap: 10px;
   padding: 8px 4px;
+  border-bottom: 1px solid var(--divisor-sutil);
+}
+
+.item-calendario:last-child {
+  border-bottom: none;
 }
 
 .item-calendario .data-item {

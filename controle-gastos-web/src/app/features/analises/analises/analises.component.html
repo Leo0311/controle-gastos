@@ -81,30 +81,58 @@
     @if (comparacao.length === 0) {
       <app-empty-state icon="compare_arrows" mensagem="Nenhum gasto nos dois meses."></app-empty-state>
     } @else {
-      <div class="lista-comparacao">
+      <mat-accordion class="lista-comparacao" multi>
         @for (categoria of comparacao; track categoria.categoriaId) {
-          <div class="linha-comparacao">
-            <span class="nome-categoria">{{ categoriaEmoji(categoria.categoriaId) }} {{ categoria.categoria }}</span>
-            <span class="valores-comparacao">
-              {{ categoria.totalAnterior | currency:'BRL' }} → {{ categoria.totalAtual | currency:'BRL' }}
-            </span>
-            @if (categoria.categoriaNova) {
-              <span class="variacao-comparacao variacao-nova">Nova</span>
-            } @else {
-              <span
-                class="variacao-comparacao"
-                [class.variacao-subiu]="categoria.variacaoAbsoluta > 0"
-                [class.variacao-desceu]="categoria.variacaoAbsoluta < 0"
-              >
-                <mat-icon>
-                  {{ categoria.variacaoAbsoluta > 0 ? 'arrow_upward' : (categoria.variacaoAbsoluta < 0 ? 'arrow_downward' : 'remove') }}
-                </mat-icon>
-                {{ categoria.variacaoPercentual !== null ? ((categoria.variacaoPercentual > 0 ? '+' : '') + categoria.variacaoPercentual + '%') : '—' }}
-              </span>
-            }
-          </div>
+          <mat-expansion-panel class="item-comparacao">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <span class="cabecalho-comparacao-item">
+                  <span class="nome-categoria">{{ categoriaEmoji(categoria.categoriaId) }} {{ categoria.categoria }}</span>
+                  <span class="valores-comparacao">
+                    {{ categoria.totalAnterior | currency:'BRL' }} → {{ categoria.totalAtual | currency:'BRL' }}
+                  </span>
+                  @if (categoria.categoriaNova) {
+                    <span class="variacao-comparacao variacao-nova">Nova</span>
+                  } @else {
+                    <span
+                      class="variacao-comparacao"
+                      [class.variacao-subiu]="categoria.variacaoAbsoluta > 0"
+                      [class.variacao-desceu]="categoria.variacaoAbsoluta < 0"
+                    >
+                      <mat-icon>
+                        {{ categoria.variacaoAbsoluta > 0 ? 'arrow_upward' : (categoria.variacaoAbsoluta < 0 ? 'arrow_downward' : 'remove') }}
+                      </mat-icon>
+                      {{ categoria.variacaoPercentual !== null ? ((categoria.variacaoPercentual > 0 ? '+' : '') + categoria.variacaoPercentual + '%') : '—' }}
+                    </span>
+                  }
+                </span>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="detalhe-comparacao">
+              <div class="linha-detalhe-comparacao">
+                <span>{{ nomeMesAnterior }}/{{ anoAnterior }}</span>
+                <span>{{ categoria.totalAnterior | currency:'BRL' }}</span>
+              </div>
+              <div class="linha-detalhe-comparacao">
+                <span>{{ nomeMesSelecionado }}/{{ ano }}</span>
+                <span>{{ categoria.totalAtual | currency:'BRL' }}</span>
+              </div>
+              <div class="linha-detalhe-comparacao destaque">
+                <span>Variação</span>
+                <span>
+                  {{ categoria.variacaoAbsoluta > 0 ? '+' : '' }}{{ categoria.variacaoAbsoluta | currency:'BRL' }}
+                  @if (!categoria.categoriaNova && categoria.variacaoPercentual !== null) {
+                    ({{ categoria.variacaoPercentual > 0 ? '+' : '' }}{{ categoria.variacaoPercentual }}%)
+                  } @else {
+                    (categoria nova)
+                  }
+                </span>
+              </div>
+            </div>
+          </mat-expansion-panel>
         }
-      </div>
+      </mat-accordion>
     }
   </mat-card>
 }

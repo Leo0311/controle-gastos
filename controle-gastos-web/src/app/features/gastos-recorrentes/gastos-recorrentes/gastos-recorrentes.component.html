@@ -126,26 +126,37 @@
     } @else if (calendario.length === 0) {
       <app-empty-state icon="event" mensagem="Nenhuma conta futura de recorrentes ou parcelas."></app-empty-state>
     } @else {
-      <div class="lista-calendario">
-        @for (grupo of calendario; track grupo.chave) {
-          <div class="grupo-mes">
-            <div class="cabecalho-mes">
-              <span class="nome-mes">{{ grupo.rotulo }}</span>
-              <span class="total-mes">{{ grupo.total | currency:'BRL' }}</span>
-            </div>
-            @for (item of grupo.itens; track $index) {
-              <div class="item-calendario">
-                <span class="data-item">{{ formatarDiaMes(item.data) }}</span>
-                <span class="icone-origem" [title]="item.origem === 'parcela' ? 'Parcela' : 'Recorrente'">
-                  {{ item.origem === 'parcela' ? '💳' : '🔁' }}
+      <!-- Um mat-expansion-panel por mês (mesmo padrão do ranking de Análises): o
+           cabeçalho com nome do mês + total fica sempre visível; a lista de
+           lançamentos abre/fecha ao clicar. O 1º mês (mais próximo) já abre
+           expandido; os demais começam colapsados. -->
+      <mat-accordion class="lista-calendario" multi>
+        @for (grupo of calendario; track grupo.chave; let primeiro = $first) {
+          <mat-expansion-panel class="grupo-mes" [expanded]="primeiro">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <span class="cabecalho-mes">
+                  <span class="nome-mes">{{ grupo.rotulo }}</span>
+                  <span class="total-mes">{{ grupo.total | currency:'BRL' }}</span>
                 </span>
-                <span class="descricao-item">{{ item.descricao }}</span>
-                <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
-              </div>
-            }
-          </div>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="itens-mes">
+              @for (item of grupo.itens; track $index) {
+                <div class="item-calendario">
+                  <span class="data-item">{{ formatarDiaMes(item.data) }}</span>
+                  <span class="icone-origem" [title]="item.origem === 'parcela' ? 'Parcela' : 'Recorrente'">
+                    {{ item.origem === 'parcela' ? '💳' : '🔁' }}
+                  </span>
+                  <span class="descricao-item">{{ item.descricao }}</span>
+                  <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
+                </div>
+              }
+            </div>
+          </mat-expansion-panel>
         }
-      </div>
+      </mat-accordion>
     }
   </mat-tab>
 </mat-tab-group>

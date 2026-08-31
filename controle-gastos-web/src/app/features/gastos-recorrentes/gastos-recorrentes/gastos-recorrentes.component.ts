@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -57,6 +58,7 @@ interface GrupoMesCalendario {
     MatChipsModule,
     MatMenuModule,
     MatTabsModule,
+    MatExpansionModule,
     MatDialogModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
