@@ -23,6 +23,7 @@ import {
 } from '../gasto-recorrente-form-dialog/gasto-recorrente-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 import { AbasArrastaveisDirective } from '../../../shared/abas-arrastaveis.directive';
 
 const NOMES_MESES = [
@@ -60,6 +61,7 @@ interface GrupoMesCalendario {
     MatSnackBarModule,
     MatProgressSpinnerModule,
     EmptyStateComponent,
+    ErroCarregamentoComponent,
     AbasArrastaveisDirective
   ],
   templateUrl: './gastos-recorrentes.component.html',
@@ -80,6 +82,11 @@ export class GastosRecorrentesComponent implements OnInit {
   carregando = false;
   carregandoParceladas = false;
   carregandoCalendario = false;
+  // Uma flag de erro por aba - cada aba carrega separado e mostra seu próprio
+  // estado de erro inline, sem um snackbar sobrescrevendo o aviso do outro.
+  erro = false;
+  erroParceladas = false;
+  erroCalendario = false;
 
   private categoriasPorId = new Map<number, Categoria>();
   private subcategoriasPorId = new Map<number, Subcategoria>();
@@ -100,14 +107,16 @@ export class GastosRecorrentesComponent implements OnInit {
 
   carregarCalendario(): void {
     this.carregandoCalendario = true;
+    this.erroCalendario = false;
     this.gastoService.listarTodos().subscribe({
       next: (gastos) => {
         this.calendario = this.agruparProximasContas(gastos);
         this.carregandoCalendario = false;
       },
       error: () => {
+        this.calendario = [];
         this.carregandoCalendario = false;
-        this.mostrarErro('Não foi possível carregar as próximas contas. Verifique se a API está no ar.');
+        this.erroCalendario = true;
       }
     });
   }
@@ -159,28 +168,32 @@ export class GastosRecorrentesComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
+    this.erro = false;
     this.service.listarTodos().subscribe({
       next: (recorrentes) => {
         this.recorrentes = recorrentes;
         this.carregando = false;
       },
       error: () => {
+        this.recorrentes = [];
         this.carregando = false;
-        this.mostrarErro('Não foi possível carregar os gastos recorrentes. Verifique se a API está no ar.');
+        this.erro = true;
       }
     });
   }
 
   carregarParceladas(): void {
     this.carregandoParceladas = true;
+    this.erroParceladas = false;
     this.parceladaService.listarTodos().subscribe({
       next: (parceladas) => {
         this.parceladas = parceladas;
         this.carregandoParceladas = false;
       },
       error: () => {
+        this.parceladas = [];
         this.carregandoParceladas = false;
-        this.mostrarErro('Não foi possível carregar as compras parceladas. Verifique se a API está no ar.');
+        this.erroParceladas = true;
       }
     });
   }

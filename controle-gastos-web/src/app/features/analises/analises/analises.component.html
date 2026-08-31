@@ -26,6 +26,8 @@
   <div class="carregando">
     <mat-spinner diameter="40"></mat-spinner>
   </div>
+} @else if (erro) {
+  <app-erro-carregamento oQue="as análises" (tentarNovamente)="carregar()"></app-erro-carregamento>
 } @else {
   <mat-card class="card-analise">
     <mat-card-title>Ranking de categorias</mat-card-title>

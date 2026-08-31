@@ -19,6 +19,7 @@ import { Categoria } from '../../../models/categoria.model';
 import { OrcamentoFormDialogComponent, OrcamentoFormDialogData } from '../orcamento-form-dialog/orcamento-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 
 @Component({
   selector: 'app-orcamentos',
@@ -36,7 +37,8 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
     MatProgressBarModule,
     MatFormFieldModule,
     MatSelectModule,
-    EmptyStateComponent
+    EmptyStateComponent,
+    ErroCarregamentoComponent
   ],
   templateUrl: './orcamentos.component.html',
   styleUrl: './orcamentos.component.css'
@@ -59,6 +61,9 @@ export class OrcamentosComponent implements OnInit {
 
   orcamentos: OrcamentoMes[] = [];
   carregando = false;
+  // Falha ao carregar: mostra o estado de erro no lugar da tabela/empty-state,
+  // pra não parecer "sem orçamentos" quando a API caiu (ver carregar()).
+  erro = false;
 
   private categoriasPorId = new Map<number, Categoria>();
 
@@ -84,6 +89,7 @@ export class OrcamentosComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
+    this.erro = false;
     this.orcamentoService.verMes(this.mes, this.ano).subscribe({
       next: (orcamentos) => {
         this.orcamentos = [...orcamentos].sort((a, b) =>
@@ -93,8 +99,10 @@ export class OrcamentosComponent implements OnInit {
         this.carregando = false;
       },
       error: () => {
+        // Limpa os orçamentos do mês anterior antes de mostrar o erro.
+        this.orcamentos = [];
         this.carregando = false;
-        this.mostrarErro('Não foi possível carregar os orçamentos. Verifique se a API está no ar.');
+        this.erro = true;
       }
     });
   }

@@ -8,7 +8,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { GastoService } from '../../../services/gasto.service';
 import { MetaService } from '../../../services/meta.service';
@@ -16,6 +15,7 @@ import { CategoriaService } from '../../../services/categoria.service';
 import { Categoria } from '../../../models/categoria.model';
 import { ComparacaoCategoria, RankingCategoria, RankingCategorias } from '../../../models/analise.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 
 const NOMES_MESES_COMPLETO = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -38,8 +38,8 @@ const LIMIAR_ALERTA_RENDA = 30;
     MatIconModule,
     MatExpansionModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule,
-    EmptyStateComponent
+    EmptyStateComponent,
+    ErroCarregamentoComponent
   ],
   templateUrl: './analises.component.html',
   styleUrl: './analises.component.css'
@@ -53,6 +53,10 @@ export class AnalisesComponent implements OnInit {
   ano = new Date().getFullYear();
 
   carregando = false;
+  // Falha ao carregar: um único estado de erro no lugar de TUDO - antes, ranking
+  // nulo + comparação vazia faziam a tela mostrar dois empty-states conflitantes
+  // ("Nenhum gasto neste mês." e "Nenhum gasto nos dois meses.") ao mesmo tempo.
+  erro = false;
   ranking: RankingCategorias | null = null;
   comparacao: ComparacaoCategoria[] = [];
   nomeMesAnterior = '';
@@ -67,8 +71,7 @@ export class AnalisesComponent implements OnInit {
   constructor(
     private readonly gastoService: GastoService,
     private readonly metaService: MetaService,
-    private readonly categoriaService: CategoriaService,
-    private readonly snackBar: MatSnackBar
+    private readonly categoriaService: CategoriaService
   ) {
     const anoAtual = new Date().getFullYear();
     this.anos = Array.from({ length: 6 }, (_, i) => anoAtual - 2 + i);
@@ -88,6 +91,7 @@ export class AnalisesComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
+    this.erro = false;
     forkJoin({
       ranking: this.gastoService.rankingCategorias(this.mes, this.ano),
       comparacao: this.gastoService.comparacaoMensal(this.mes, this.ano),
@@ -102,8 +106,14 @@ export class AnalisesComponent implements OnInit {
         this.carregando = false;
       },
       error: () => {
+        // Zera os dados do mês anterior antes de mostrar o erro (senão o subtítulo
+        // renderizaria "... vs /0" junto do estado de erro).
+        this.ranking = null;
+        this.comparacao = [];
+        this.nomeMesAnterior = '';
+        this.anoAnterior = 0;
         this.carregando = false;
-        this.snackBar.open('Não foi possível carregar as análises. Verifique se a API está no ar.', 'Fechar', { duration: 5000 });
+        this.erro = true;
       }
     });
   }

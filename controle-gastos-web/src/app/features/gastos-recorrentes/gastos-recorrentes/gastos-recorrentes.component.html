@@ -13,6 +13,8 @@
       <div class="carregando">
         <mat-spinner diameter="40"></mat-spinner>
       </div>
+    } @else if (erro) {
+      <app-erro-carregamento oQue="os gastos recorrentes" (tentarNovamente)="carregar()"></app-erro-carregamento>
     } @else if (recorrentes.length === 0) {
       <app-empty-state icon="autorenew" mensagem="Nenhum gasto recorrente cadastrado."></app-empty-state>
     } @else {
@@ -74,6 +76,8 @@
       <div class="carregando">
         <mat-spinner diameter="40"></mat-spinner>
       </div>
+    } @else if (erroParceladas) {
+      <app-erro-carregamento oQue="as compras parceladas" (tentarNovamente)="carregarParceladas()"></app-erro-carregamento>
     } @else if (parceladas.length === 0) {
       <app-empty-state icon="credit_card" mensagem="Nenhuma compra parcelada cadastrada."></app-empty-state>
     } @else {
@@ -117,6 +121,8 @@
       <div class="carregando">
         <mat-spinner diameter="40"></mat-spinner>
       </div>
+    } @else if (erroCalendario) {
+      <app-erro-carregamento oQue="as próximas contas" (tentarNovamente)="carregarCalendario()"></app-erro-carregamento>
     } @else if (calendario.length === 0) {
       <app-empty-state icon="event" mensagem="Nenhuma conta futura de recorrentes ou parcelas."></app-empty-state>
     } @else {

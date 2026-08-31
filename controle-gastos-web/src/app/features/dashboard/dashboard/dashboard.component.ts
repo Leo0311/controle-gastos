@@ -23,6 +23,7 @@ import { MetaMes, MetaRequest } from '../../../models/meta.model';
 import { Gasto, TotalDiario } from '../../../models/gasto.model';
 import { Categoria } from '../../../models/categoria.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 import {
   DashboardDetalheDialogComponent,
   DashboardDetalheDialogData
@@ -58,7 +59,8 @@ const NOMES_MESES_COMPLETO = [
     MatProgressSpinnerModule,
     MatSnackBarModule,
     BaseChartDirective,
-    EmptyStateComponent
+    EmptyStateComponent,
+    ErroCarregamentoComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
@@ -197,7 +199,6 @@ export class DashboardComponent implements OnInit {
       error: () => {
         this.carregando = false;
         this.erro = true;
-        this.snackBar.open('Não foi possível carregar o dashboard. Verifique se a API está no ar.', 'Fechar', { duration: 5000 });
       }
     });
   }

@@ -30,6 +30,8 @@
   <div class="carregando">
     <mat-spinner diameter="40"></mat-spinner>
   </div>
+} @else if (erro) {
+  <app-erro-carregamento oQue="os orçamentos" (tentarNovamente)="carregar()"></app-erro-carregamento>
 } @else if (orcamentos.length === 0) {
   <app-empty-state icon="savings" mensagem="Nenhum orçamento definido para este mês."></app-empty-state>
 } @else {

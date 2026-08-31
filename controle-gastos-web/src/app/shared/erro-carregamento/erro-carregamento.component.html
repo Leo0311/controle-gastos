@@ -1,0 +1,8 @@
+<div class="erro-carregamento" role="alert">
+  <mat-icon>cloud_off</mat-icon>
+  <p>Não foi possível carregar {{ oQue }}. Verifique se a API está no ar.</p>
+  <button mat-stroked-button color="primary" (click)="tentarNovamente.emit()">
+    <mat-icon>refresh</mat-icon>
+    Tentar novamente
+  </button>
+</div>

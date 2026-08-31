@@ -27,6 +27,7 @@ import {
 } from '../gasto-form-dialog/gasto-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 import { baixarModeloImportacaoGastos, exportarGastosXlsx } from '../../../core/xlsx-exporter';
 import { lerPlanilhaGastos, LinhaImportacao } from '../../../core/xlsx-importer';
 import {
@@ -68,7 +69,8 @@ const NOMES_MESES_COMPLETO = [
     MatMenuModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
-    EmptyStateComponent
+    EmptyStateComponent,
+    ErroCarregamentoComponent
   ],
   templateUrl: './gastos.component.html',
   styleUrl: './gastos.component.css'
@@ -80,6 +82,9 @@ export class GastosComponent implements OnInit {
   readonly colunas = ['descricao', 'valor', 'categoria', 'data', 'acoes'];
   gastos: Gasto[] = [];
   carregando = false;
+  // Falha ao carregar: mostra o estado de erro no lugar da tabela/empty-state,
+  // pra não parecer "sem gastos" quando na verdade a API caiu (ver carregar()).
+  erro = false;
 
   readonly meses = NOMES_MESES_COMPLETO.map((nome, i) => ({ valor: i + 1, nome }));
   readonly anos: number[];
@@ -267,6 +272,7 @@ export class GastosComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
+    this.erro = false;
 
     const origem$ = this.filtroAno
       ? this.gastoService.listarPorPeriodo(...this.intervaloFiltro(this.filtroAno, this.filtroMes))
@@ -280,8 +286,11 @@ export class GastosComponent implements OnInit {
         this.carregando = false;
       },
       error: () => {
+        // Limpa os gastos do filtro anterior antes de mostrar o erro, pra não
+        // ficar exibindo dados desatualizados com o filtro novo no topo.
+        this.gastos = [];
         this.carregando = false;
-        this.mostrarErro('Não foi possível carregar os gastos. Verifique se a API está no ar.');
+        this.erro = true;
       }
     });
   }

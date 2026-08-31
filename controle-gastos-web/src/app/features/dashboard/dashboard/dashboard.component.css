@@ -22,28 +22,6 @@
   padding: 32px;
 }
 
-.erro-dashboard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 12px;
-  padding: 32px 24px;
-}
-
-.erro-dashboard mat-icon {
-  width: 40px;
-  height: 40px;
-  font-size: 40px;
-  color: var(--texto-secundario);
-}
-
-.erro-dashboard p {
-  margin: 0;
-  color: var(--texto-secundario);
-  max-width: 360px;
-}
-
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

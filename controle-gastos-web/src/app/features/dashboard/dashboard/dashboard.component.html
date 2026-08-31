@@ -31,11 +31,7 @@
     <mat-spinner diameter="40"></mat-spinner>
   </div>
 } @else if (erro) {
-  <mat-card class="erro-dashboard">
-    <mat-icon>error_outline</mat-icon>
-    <p>Não foi possível carregar o dashboard. Verifique se a API está no ar.</p>
-    <button mat-stroked-button color="primary" (click)="carregar()">Tentar novamente</button>
-  </mat-card>
+  <app-erro-carregamento oQue="o dashboard" (tentarNovamente)="carregar()"></app-erro-carregamento>
 } @else {
   <div class="cards">
     <mat-card
