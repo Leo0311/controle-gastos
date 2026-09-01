@@ -28,3 +28,6 @@ Thumbs.db
 .agents/
 .claude/
 skills-lock.json
+
+# ===== Validação de navegador (snapshots e screenshots gerados pelo Playwright MCP) =====
+.playwright-mcp/
