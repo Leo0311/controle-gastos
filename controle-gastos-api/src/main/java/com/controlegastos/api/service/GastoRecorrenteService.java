@@ -13,6 +13,7 @@ import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -45,6 +46,7 @@ public class GastoRecorrenteService {
     // os gastos dos próximos "mesesGerar" meses (ver gerarProximosMeses) - assim
     // meses futuros já aparecem no Dashboard/Análises sem esperar o usuário abrir
     // aquele mês especificamente depois que ele chegar.
+    @Transactional
     public GastoRecorrente cadastrar(GastoRecorrente dados, Integer usuarioId) {
         validar(dados);
         validarCategoria(dados, usuarioId);
@@ -62,6 +64,7 @@ public class GastoRecorrenteService {
     // geração é idempotente (nunca duplica um mês já lançado), isso só tem efeito
     // prático quando o usuário aumenta "mesesGerar" em relação ao que já existia,
     // estendendo a pré-geração pros meses recém-incluídos no horizonte.
+    @Transactional
     public GastoRecorrente atualizar(Integer id, GastoRecorrente dados, Integer usuarioId) {
         GastoRecorrente existente = buscarPorId(id, usuarioId);
         validar(dados);
@@ -90,6 +93,7 @@ public class GastoRecorrenteService {
     // continuam intactos como histórico: a FK gastos.gasto_recorrente_id é ON DELETE
     // SET NULL (ver schema.sql), então excluir a recorrência só desvincula esses,
     // sem apagar - mesmo padrão usado em CompraParceladaService.excluir.
+    @Transactional
     public void excluir(Integer id, Integer usuarioId) {
         GastoRecorrente existente = buscarPorId(id, usuarioId);
 

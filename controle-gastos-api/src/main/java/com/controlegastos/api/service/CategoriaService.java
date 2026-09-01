@@ -165,6 +165,7 @@ public class CategoriaService {
         return repository.save(existente);
     }
 
+    @Transactional
     public void excluir(Integer id, Integer usuarioId) {
         Categoria existente = buscarPropria(id, usuarioId);
 

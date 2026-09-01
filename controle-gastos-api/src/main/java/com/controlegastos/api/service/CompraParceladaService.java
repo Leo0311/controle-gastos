@@ -13,6 +13,7 @@ import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -36,6 +37,7 @@ public class CompraParceladaService {
         return repository.findAllByUsuarioIdOrderByDataCriacaoDesc(usuarioId);
     }
 
+    @Transactional
     public CompraParcelada cadastrar(CompraParcelada dados, Integer usuarioId) {
         validar(dados);
         validarCategoria(dados, usuarioId);
@@ -56,6 +58,7 @@ public class CompraParceladaService {
     // continuam intactas como histórico do que já foi pago - a FK
     // gastos.compra_parcelada_id é ON DELETE SET NULL (ver schema.sql), então excluir
     // a compra automaticamente desvincula (sem apagar) essas parcelas passadas.
+    @Transactional
     public void excluir(Integer id, Integer usuarioId) {
         CompraParcelada existente = buscarPorId(id, usuarioId);
 
@@ -72,7 +75,7 @@ public class CompraParceladaService {
     // de arredondamento de ponto flutuante) e ajusta a ÚLTIMA parcela pra soma bater
     // exatamente com valorTotal, sem perder nem sobrar centavo.
     private void gerarParcelas(CompraParcelada compra, Integer usuarioId) {
-        long totalCentavos = compra.getValorTotal().movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact();
+        long totalCentavos = totalEmCentavos(compra.getValorTotal());
         int numeroParcelas = compra.getNumeroParcelas();
         long parcelaBaseCentavos = totalCentavos / numeroParcelas;
 
@@ -95,6 +98,13 @@ public class CompraParceladaService {
             gasto.setCompraParceladaId(compra.getId());
             gastoService.cadastrarVinculadoAParcelada(gasto, usuarioId);
         }
+    }
+
+    // Converte o valor total (reais) para centavos inteiros - evita erro de ponto
+    // flutuante na divisão das parcelas. Extraído pra a validação (validar) e a
+    // geração (gerarParcelas) usarem exatamente a mesma conta e nunca divergirem.
+    private long totalEmCentavos(BigDecimal valorTotal) {
+        return valorTotal.movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact();
     }
 
     // Bug real corrigido: antes, a primeira parcela sempre caía no mês atual mesmo
@@ -150,6 +160,15 @@ public class CompraParceladaService {
         }
         if (dados.getNumeroParcelas() == null || dados.getNumeroParcelas() < 2 || dados.getNumeroParcelas() > 60) {
             throw new IllegalArgumentException("Número de parcelas deve estar entre 2 e 60.");
+        }
+        // Cada parcela precisa fechar em pelo menos 1 centavo - senão a divisão em
+        // centavos (ver gerarParcelas) zera as parcelas base, o CHECK (valor > 0) do
+        // banco rejeita a primeira parcela e a compra_parcelada fica gravada sem
+        // parcela nenhuma. Roda antes de qualquer escrita.
+        if (totalEmCentavos(dados.getValorTotal()) / dados.getNumeroParcelas() < 1) {
+            throw new IllegalArgumentException(
+                    "Valor total muito baixo para dividir em " + dados.getNumeroParcelas()
+                    + " parcelas: cada parcela ficaria abaixo de R$ 0,01.");
         }
         if (dados.getDiaDoMes() == null || dados.getDiaDoMes() < 1 || dados.getDiaDoMes() > 31) {
             throw new IllegalArgumentException("Dia do mês deve estar entre 1 e 31.");
