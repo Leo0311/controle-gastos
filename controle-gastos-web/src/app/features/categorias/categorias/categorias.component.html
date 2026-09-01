@@ -10,6 +10,8 @@
   <div class="carregando">
     <mat-spinner diameter="40"></mat-spinner>
   </div>
+} @else if (erro) {
+  <app-erro-carregamento oQue="as categorias" (tentarNovamente)="carregar()"></app-erro-carregamento>
 } @else if (categorias.length === 0) {
   <app-empty-state icon="category" mensagem="Nenhuma categoria encontrada."></app-empty-state>
 } @else {

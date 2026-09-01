@@ -23,6 +23,7 @@ import {
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { InfoDialogComponent, InfoDialogData } from '../../../shared/info-dialog/info-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 
 @Component({
   selector: 'app-categorias',
@@ -38,7 +39,8 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatChipsModule,
-    EmptyStateComponent
+    EmptyStateComponent,
+    ErroCarregamentoComponent
   ],
   templateUrl: './categorias.component.html',
   styleUrl: './categorias.component.css'
@@ -52,6 +54,9 @@ export class CategoriasComponent implements OnInit {
   categorias: Categoria[] = [];
   private subcategoriasPorCategoria = new Map<number, Subcategoria[]>();
   carregando = false;
+  // Falha ao carregar: mostra o estado de erro no lugar da lista/empty-state,
+  // pra não parecer "sem categorias" quando na verdade a API caiu (ver carregar()).
+  erro = false;
 
   ngOnInit(): void {
     this.carregar();
@@ -59,13 +64,17 @@ export class CategoriasComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
+    // Limpa os dados da carga anterior antes de tentar de novo, pra não exibir
+    // categorias desatualizadas se esta chamada falhar.
+    this.erro = false;
+    this.categorias = [];
+    this.subcategoriasPorCategoria = new Map();
     forkJoin({
       categorias: this.categoriaService.listarVisiveis(),
       subcategorias: this.categoriaService.listarTodasSubcategorias()
     }).subscribe({
       next: ({ categorias, subcategorias }) => {
         this.categorias = categorias;
-        this.subcategoriasPorCategoria = new Map();
         for (const subcategoria of subcategorias) {
           const lista = this.subcategoriasPorCategoria.get(subcategoria.categoriaId) ?? [];
           lista.push(subcategoria);
@@ -75,7 +84,7 @@ export class CategoriasComponent implements OnInit {
       },
       error: () => {
         this.carregando = false;
-        this.mostrarErro('Não foi possível carregar as categorias. Verifique se a API está no ar.');
+        this.erro = true;
       }
     });
   }
