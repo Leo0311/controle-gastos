@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
@@ -20,7 +20,7 @@ import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { TemaService } from '../../../services/tema.service';
 import { MetaMes, MetaRequest } from '../../../models/meta.model';
-import { Gasto, TotalDiario } from '../../../models/gasto.model';
+import { CategoriaTotal, Gasto, TotalDiario } from '../../../models/gasto.model';
 import { Categoria } from '../../../models/categoria.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
@@ -36,30 +36,50 @@ import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog
 // bem tanto sobre o fundo claro quanto sobre o escuro.
 const COR_BARRA = '#2e7f9b';
 
-// Paleta das fatias da pizza. Categoria não tem cor semântica - estas só precisam
-// ser distinguíveis entre si. A fatia 1 (maior gasto) repete COR_BARRA de
-// propósito: os dois gráficos do Dashboard abrem no mesmo tom. As outras 9 são a
-// paleta qualitativa "retrô" (base ColorBrewer Dark2), na ordem pedida. O ocre
-// (fatia 8) foi escurecido de #A6761D pra #8f5e28 pra separar do verde-oliva
-// vizinho sob daltonismo - as duas eram idênticas para deuteranopes.
-// Ordem fixa: a fatia i recebe CORES_CATEGORIAS[i], e os pares vizinhos foram
-// checados para deuteranopia/protanopia.
+// Paleta "retrô" das fatias da pizza (base ColorBrewer Dark2). Categoria não tem
+// cor semântica - estas só precisam ser distinguíveis entre si. A COR É ATRIBUÍDA
+// POR IDENTIDADE DE CATEGORIA, não por posição no gráfico: cada categoria fica com
+// CORES_CATEGORIAS[posição dela na lista de categorias do usuário], então a mesma
+// categoria tem sempre a mesma cor - independente do mês, do filtro ou de itens
+// ocultos na legenda (ver montarPizza).
+//
+// São 12 cores (as 10 pedidas + coral e lavanda): as 11 categorias padrão do
+// sistema cabem sem repetir cor. Da 13ª categoria em diante, as cores se repetem.
+//
+// Ajustes sobre a paleta pedida, por daltonismo - todos os 66 pares foram
+// checados pra deuteranopia/protanopia, já que agora qualquer cor pode encostar
+// em qualquer outra (a adjacência na pizza segue o gasto, não a ordem da paleta):
+//   - ocre  #A6761D -> #8f5e28 e tijolo #B03A2E -> #8C2F2F: senão tijolo e ocre
+//     ficavam idênticos para deuteranopes (ΔE ~1).
+//   - coral e lavanda adicionados: nenhum par novo pior que os que já existiam.
 const CORES_CATEGORIAS = [
-  COR_BARRA, // fatia 1 = mesma cor da barra
+  COR_BARRA, // teal (= cor da barra)
   '#D95F02', // laranja queimado
   '#E6A817', // mostarda
   '#7570B3', // violeta
-  '#B03A2E', // tijolo
+  '#8C2F2F', // tijolo (escurecido — ver nota acima)
   '#CC4C7C', // rosa profundo
   '#66A61E', // verde-oliva
   '#8f5e28', // ocre (escurecido — ver nota acima)
   '#5C4B99', // ametista
-  '#D1495B'  // carmim
+  '#D1495B', // carmim
+  '#E17055', // coral
+  '#8A9BC9'  // lavanda
 ];
+
+// Fatias de gastos legados sem categoria gerida (categoriaId nulo, ex. gravados
+// pelo app de console). Cinza quente fora da paleta - "sem categoria".
+const COR_SEM_CATEGORIA = '#b8b0a4';
+
+// A fatia de maior gasto fica destacada geometricamente (sai do anel) em vez de
+// ganhar cor especial - assim a cor continua estável por categoria. O hover soma
+// mais um tanto por cima (ver montarPizza).
+const OFFSET_FATIA_MAIOR = 14;
+const OFFSET_HOVER = 6;
 
 // Cor da fatia sob o cursor: só clareia a própria cor (mistura com branco), sem
 // mexer em matiz. O padrão do Chart.js satura + escurece no hover, o que aproximava
-// visualmente fatias vizinhas de matiz parecida.
+// visualmente fatias de matiz parecida.
 const clarear = (hex: string, fracao: number): string => {
   const n = parseInt(hex.slice(1), 16);
   const canal = (c: number) => Math.round(c + (255 - c) * fracao);
@@ -68,7 +88,6 @@ const clarear = (hex: string, fracao: number): string => {
   const b = canal(n & 0xff);
   return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
 };
-const CORES_CATEGORIAS_HOVER = CORES_CATEGORIAS.map((c) => clarear(c, 0.18));
 
 const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -156,10 +175,6 @@ export class DashboardComponent implements OnInit {
       this.barrasOptions = this.construirBarrasOptions(escuro);
     });
 
-    this.categoriaService.listarVisiveis().subscribe({
-      next: (categorias) => { this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c])); },
-      error: () => { /* usado só pro emoji na legenda do gráfico de pizza */ }
-    });
     this.carregar();
 
     // Verifica e lança gastos recorrentes pendentes do mês, de forma transparente
@@ -204,26 +219,22 @@ export class DashboardComponent implements OnInit {
       totaisDiarios: this.periodoDestaque === 'mes'
         ? this.gastoService.totaisDiarios(this.mes, this.ano)
         : of<TotalDiario[]>([]),
-      metaMes: this.metaService.metaDoMes(this.mes, this.ano)
+      metaMes: this.metaService.metaDoMes(this.mes, this.ano),
+      // A lista de categorias (na ordem do usuário) define a COR de cada fatia da
+      // pizza - por identidade, não por posição. Vem aqui no forkJoin, e não à
+      // parte, pra não haver corrida: a pizza só monta quando a cor já está
+      // disponível. Se a chamada falhar, segue com lista vazia (fatias sem emoji e
+      // sem categoria conhecida caem na cor neutra).
+      categorias: this.categoriaService.listarVisiveis().pipe(catchError(() => of<Categoria[]>([])))
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes }) => {
+      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias }) => {
         this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
 
+        this.categoriasPorId = new Map(categorias.map(c => [c.id!, c]));
         this.nomesCategoriaPizza = resumo.porCategoria.map(c => c.categoria);
-        this.pizzaData = {
-          labels: resumo.porCategoria.map(c => {
-            const emoji = c.categoriaId ? this.categoriasPorId.get(c.categoriaId)?.emoji : null;
-            return emoji ? `${emoji} ${c.categoria}` : c.categoria;
-          }),
-          datasets: [{
-            data: resumo.porCategoria.map(c => c.total),
-            backgroundColor: resumo.porCategoria.map((_, i) => CORES_CATEGORIAS[i % CORES_CATEGORIAS.length]),
-            hoverBackgroundColor: resumo.porCategoria.map((_, i) => CORES_CATEGORIAS_HOVER[i % CORES_CATEGORIAS_HOVER.length]),
-            hoverOffset: 6
-          }]
-        };
+        this.pizzaData = this.montarPizza(resumo.porCategoria, categorias);
 
         this.barrasData = this.periodoDestaque === 'mes'
           ? this.construirBarrasDiarias(totaisDiarios)
@@ -237,6 +248,41 @@ export class DashboardComponent implements OnInit {
         this.erro = true;
       }
     });
+  }
+
+  // Monta o gráfico de pizza a partir do resumo do mês (já ordenado por gasto
+  // decrescente) e da lista de categorias do usuário. A cor de cada fatia vem da
+  // POSIÇÃO da categoria nessa lista - não da posição no gráfico - então a mesma
+  // categoria fica sempre com a mesma cor. A primeira fatia (maior gasto) sai do
+  // anel (offset), sem cor especial.
+  private montarPizza(
+    porCategoria: CategoriaTotal[],
+    categorias: Categoria[]
+  ): ChartData<'doughnut', number[], string> {
+    const corPorCategoriaId = new Map<number, string>();
+    categorias.forEach((c, i) => {
+      if (c.id != null) {
+        corPorCategoriaId.set(c.id, CORES_CATEGORIAS[i % CORES_CATEGORIAS.length]);
+      }
+    });
+    const corDe = (categoriaId: number | null): string =>
+      (categoriaId != null && corPorCategoriaId.get(categoriaId)) || COR_SEM_CATEGORIA;
+
+    return {
+      labels: porCategoria.map(c => {
+        const emoji = c.categoriaId ? this.categoriasPorId.get(c.categoriaId)?.emoji : null;
+        return emoji ? `${emoji} ${c.categoria}` : c.categoria;
+      }),
+      datasets: [{
+        data: porCategoria.map(c => c.total),
+        backgroundColor: porCategoria.map(c => corDe(c.categoriaId)),
+        hoverBackgroundColor: porCategoria.map(c => clarear(corDe(c.categoriaId), 0.18)),
+        // porCategoria[0] é o maior gasto: fica sempre "pra fora" do anel. No hover,
+        // qualquer fatia ganha +OFFSET_HOVER por cima do offset de repouso dela.
+        offset: porCategoria.map((_, i) => (i === 0 ? OFFSET_FATIA_MAIOR : 0)),
+        hoverOffset: porCategoria.map((_, i) => (i === 0 ? OFFSET_FATIA_MAIOR : 0) + OFFSET_HOVER)
+      }]
+    };
   }
 
   // Um dia (1 até o último dia do mês selecionado) por barra - usado quando
