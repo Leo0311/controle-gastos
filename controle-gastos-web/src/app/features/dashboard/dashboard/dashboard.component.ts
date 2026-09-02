@@ -31,10 +31,28 @@ import {
 import { RendaFormDialogComponent, RendaFormDialogData } from '../renda-form-dialog/renda-form-dialog.component';
 import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog/meta-form-dialog.component';
 
+// Paleta das fatias da pizza: 10 tons dessaturados no clima neutro quente da
+// interface. Categoria não tem cor semântica - estas só precisam ser
+// distinguíveis entre si. Ordem pensada pra daltonismo: nenhum vermelho e verde
+// ficam em fatias adjacentes (o vermelho-argila e o oliva estão separados pelo
+// azul-ardósia).
 const CORES_CATEGORIAS = [
-  '#3f51b5', '#e91e63', '#009688', '#ff9800', '#9c27b0',
-  '#4caf50', '#f44336', '#00bcd4', '#795548', '#607d8b'
+  '#0f6e56', // verde-petróleo (acento)
+  '#b9823b', // ocre
+  '#7c6a9c', // roxo suave
+  '#a85751', // vermelho-argila
+  '#4f6d8f', // azul-ardósia
+  '#6e8c4a', // oliva
+  '#3c7a8c', // azul-petróleo
+  '#c99a5b', // areia
+  '#8c6e5a', // taupe
+  '#5b8a7d'  // sálvia
 ];
+
+// Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é
+// reconstruída ao trocar de período, não ao trocar de tema, então precisa ler
+// bem tanto sobre o fundo claro quanto sobre o escuro.
+const COR_BARRA = '#33876c';
 
 const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -211,7 +229,7 @@ export class DashboardComponent implements OnInit {
     totaisDiarios.forEach((t) => { totalPorDia[t.dia - 1] = t.total; });
     return {
       labels: Array.from({ length: diasNoMes }, (_, i) => String(i + 1)),
-      datasets: [{ label: 'Total gasto', data: totalPorDia, backgroundColor: '#3f51b5' }]
+      datasets: [{ label: 'Total gasto', data: totalPorDia, backgroundColor: COR_BARRA }]
     };
   }
 
@@ -226,7 +244,7 @@ export class DashboardComponent implements OnInit {
     });
     return {
       labels: NOMES_MESES,
-      datasets: [{ label: 'Total gasto', data: totalPorMes, backgroundColor: '#3f51b5' }]
+      datasets: [{ label: 'Total gasto', data: totalPorMes, backgroundColor: COR_BARRA }]
     };
   }
 
@@ -370,7 +388,7 @@ export class DashboardComponent implements OnInit {
   }
 
   private construirPizzaOptions(escuro: boolean): ChartConfiguration<'doughnut'>['options'] {
-    const corTexto = escuro ? 'rgba(255, 255, 255, 0.87)' : 'rgba(0, 0, 0, 0.87)';
+    const corTexto = escuro ? '#e9e2d4' : '#4a463d';
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -385,8 +403,8 @@ export class DashboardComponent implements OnInit {
   }
 
   private construirBarrasOptions(escuro: boolean): ChartConfiguration<'bar'>['options'] {
-    const corTexto = escuro ? 'rgba(255, 255, 255, 0.87)' : 'rgba(0, 0, 0, 0.87)';
-    const corGrade = escuro ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)';
+    const corTexto = escuro ? '#e9e2d4' : '#4a463d';
+    const corGrade = escuro ? 'rgba(233, 226, 212, 0.14)' : 'rgba(30, 27, 19, 0.12)';
     return {
       responsive: true,
       maintainAspectRatio: false,

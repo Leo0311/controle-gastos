@@ -58,8 +58,10 @@
   overflow-wrap: anywhere;
 }
 
+/* Ícone de lâmpada do chip de sugestão de categoria: acento (era âmbar fixo, que
+   agora é reservado a status de orçamento e não respondia ao tema). */
 .chip-sugestao mat-icon:first-of-type {
-  color: #f9a825;
+  color: var(--acento-primario);
 }
 
 .chip-sugestao .fechar-sugestao {

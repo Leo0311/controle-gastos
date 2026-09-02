@@ -196,12 +196,13 @@
   height: 18px;
 }
 
-.variacao-subiu {
-  color: var(--tendencia-subiu);
-}
-
+/* Variação de gasto vs. mês anterior: a direção (seta ▲/▼ ao lado do número, no
+   template) já diz o sentido. Sem cor - gastar mais numa categoria não é
+   intrinsecamente "ruim", e pintar de vermelho/verde transformaria a variação em
+   julgamento e ainda disputaria o significado com o status de orçamento. */
+.variacao-subiu,
 .variacao-desceu {
-  color: var(--tendencia-desceu);
+  color: var(--texto-pagina);
 }
 
 .variacao-nova {

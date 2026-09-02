@@ -72,7 +72,7 @@
   /* borda + sombra: a sombra some no fundo escuro, a borda garante a separação
      dos itens nos dois temas (mesmo tratamento dos cartões de Gastos/Orçamentos). */
   border: 1px solid var(--divisor-sutil);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--sombra-cartao);
 }
 
 .item-recorrente.pausado {
@@ -99,15 +99,15 @@
 
 /* mat-chip (MDC) não tema pelo background-color/color comuns - a superfície e o
    texto são desenhados por dentro do componente, então precisam das custom
-   properties do MDC. "Ativo" usa o tint de status OK; "Pausado", o cinza neutro.
-   Os dois tokens já têm valor próprio no modo escuro (ver styles.scss), então
-   não precisa mais travar a cor do texto. */
+   properties do MDC. "Ativo" usa o tint do acento (verde é reservado a status de
+   orçamento); "Pausado", o cinza neutro. Os dois tokens já têm valor próprio no
+   modo escuro (ver styles.scss), então não precisa mais travar a cor do texto. */
 .chip-ativo {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  --mdc-chip-elevated-container-color: var(--status-ok-fundo);
-  --mdc-chip-label-text-color: var(--status-ok-texto);
+  --mdc-chip-elevated-container-color: var(--fundo-aviso);
+  --mdc-chip-label-text-color: var(--texto-aviso);
 }
 
 .chip-pausado {

@@ -1,3 +1,13 @@
+/* Toolbar sem color="primary": superfície neutra com borda inferior, pra faixa
+   colorida de largura total não dominar a tela nem enfraquecer o acento no resto
+   da interface. O verde-petróleo fica só na aba ativa (abas do topo) e no item
+   ativo da bottom nav. */
+mat-toolbar {
+  background: var(--fundo-superficie);
+  color: var(--texto-pagina);
+  border-bottom: 1px solid var(--borda);
+}
+
 .logo-icone {
   margin-right: 12px;
   flex-shrink: 0;
@@ -92,7 +102,7 @@
     right: 0;
     z-index: 1000;
     background: var(--fundo-superficie);
-    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--sombra-nav);
     /* padding-bottom extra respeita a "home indicator" de iPhones com notch
        (safe-area-inset-bottom é 0 em navegadores/dispositivos sem ela). */
     padding-bottom: env(safe-area-inset-bottom, 0);

@@ -1,38 +1,25 @@
 /* You can add global styles to this file, and also import other style files */
 
 @use '@angular/material' as mat;
+@use './m3-theme' as tema;
 
 @include mat.core();
 
-// Paleta $blue-palette do M3 é a que mais se aproxima do indigo (#3f51b5) do
-// tema M2 original (indigo-pink) em matiz; $rose-palette é o equivalente mais
-// próximo do "pink" de acento do tema antigo.
-$tema-claro: mat.define-theme((
-  color: (
-    theme-type: light,
-    primary: mat.$blue-palette,
-    tertiary: mat.$rose-palette,
-  ),
-));
-
-$tema-escuro: mat.define-theme((
-  color: (
-    theme-type: dark,
-    primary: mat.$blue-palette,
-    tertiary: mat.$rose-palette,
-  ),
-));
-
-// Tema completo (cor + tipografia + densidade) aplicado uma vez só, sempre
-// como o claro; o escuro (ativado via classe .tema-escuro no <html>) só
-// reaplica os tokens de COR por cima (mat.all-component-colors), evitando
-// duplicar toda a tipografia/densidade e mantendo o CSS gerado bem menor.
+// Tema completo (cor + tipografia + densidade) aplicado uma vez só, sempre como o
+// claro; o escuro (ativado via classe .tema-escuro no <html>) só reaplica os tokens
+// de COR por cima (mat.all-component-colors), evitando duplicar toda a
+// tipografia/densidade e mantendo o CSS gerado bem menor.
+//
+// As paletas vêm de m3-theme.scss (gerado por `ng generate @angular/material:m3-theme`
+// com primary #0F6E56 e neutral quente #7d786d). O acento único verde-petróleo sai
+// daqui para TODO componente Material - aba ativa, botão primário, foco de campo,
+// ripple, chip selecionado, barra de progresso padrão.
 html {
-  @include mat.all-component-themes($tema-claro);
+  @include mat.all-component-themes(tema.$light-theme);
 }
 
 html.tema-escuro {
-  @include mat.all-component-colors($tema-escuro);
+  @include mat.all-component-colors(tema.$dark-theme);
 }
 
 html, body { height: 100%; }
@@ -43,81 +30,116 @@ body {
   color: var(--texto-pagina);
 }
 
+// Link de conteúdo (telas de auth: "Esqueci minha senha", "Cadastre-se", …) -
+// era o azul padrão do navegador (#0000EE), que não respondia ao tema e destoava
+// da paleta. Acento único. Os links que passam por componente Material
+// (mat-tab-link, a[mat-menu-item], a[mat-button]) têm cor própria e não são
+// afetados pela especificidade deste seletor.
+a {
+  color: var(--acento-primario);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tokens da camada própria (fora do theming do Material)
+//
+// Os 26 CSS de componente consomem SÓ estas variáveis - nenhum tem cor literal.
+// Os valores estão alinhados à paleta neutral quente que o Material gera em
+// m3-theme.scss (não brigam com o algoritmo tonal): --fundo-* seguem os papéis
+// M3 surface / surface-container-low, então superfície própria (bottom nav, itens
+// de lista, cards custom) casa com mat-card sem precisar sobrescrever token do MDC.
+// ─────────────────────────────────────────────────────────────────────────────
 :root {
-  --fundo-pagina: #fafafa;
-  --texto-pagina: rgba(0, 0, 0, 0.87);
-  // Tokens usados nos componentes pra texto/divisores secundários (rótulos,
-  // dicas, bordas sutis) - cada componente referencia essas variáveis em vez
-  // de rgba(0,0,0,X) fixo, senão ficariam ilegíveis (texto escuro sobre fundo
-  // escuro) quando o dark mode está ativo.
-  --texto-secundario: rgba(0, 0, 0, 0.6);
-  --texto-terciario: rgba(0, 0, 0, 0.5);
-  --divisor-sutil: rgba(0, 0, 0, 0.08);
-  // Superfície "cartão" usada por elementos que não são componentes Material
-  // (que já se adaptam sozinhos via tokens --mdc-*), como a bottom nav e os
-  // itens da lista de recorrentes.
-  --fundo-superficie: #ffffff;
-  // Acento primário (indigo) pra realces que não passam por um componente
-  // Material - borda do card em destaque no dashboard, item ativo da bottom nav.
-  --acento-primario: #3f51b5;
-  // Caixa de aviso/informação (fundo + texto) e trilha neutra de barras de
-  // progresso - precisam de valores próprios no dark mode pra não ficarem
-  // como blocos claros brilhando sobre o fundo escuro.
-  --fundo-aviso: #e8eaf6;
-  --texto-aviso: #283593;
-  --trilha-neutra: #e0e0e0;
-  --sombra-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
-  // Cores semânticas de status - fundo tênue + texto forte. Um par serve pra
-  // tudo: badge (fundo/texto), barra de progresso (trilha = fundo, indicador =
-  // texto), alerta de % da renda, chips. No claro são pastéis sólidos; no
-  // escuro viram tint translúcido + texto claro, pra não brilharem como um
-  // bloco pastel sobre o fundo escuro.
-  --status-ok-fundo: #e6f4ea;
-  --status-ok-texto: #1e7e34;
-  --status-atencao-fundo: #fff4e5;
-  --status-atencao-texto: #e65100;
-  --status-critico-fundo: #fdecea;
-  --status-critico-texto: #c62828;
-  --status-info-fundo: #e3f2fd;
-  --status-info-texto: #1565c0;
-  // Tendência: aumento de gasto é ruim (vermelho), redução é bom (verde).
-  --tendencia-subiu: #c62828;
-  --tendencia-desceu: #1e7e34;
+  // Fundo da página = M3 surface (neutral 98); superfície elevada = M3
+  // surface-container-low (neutral 96), o mesmo tom do mat-card no claro.
+  --fundo-pagina: #fff8ef;
+  --fundo-superficie: #faf3e6;
+
+  --texto-pagina: #1e1b13;
+  // Texto/divisores secundários (rótulos, dicas, bordas sutis) - cada componente
+  // referencia estas variáveis em vez de rgba(0,0,0,X) fixo, senão ficariam
+  // ilegíveis (texto escuro sobre fundo escuro) no dark mode.
+  --texto-secundario: #565248;
+  --texto-terciario: #7c776c;
+  --borda: #e0dacc;
+  --divisor-sutil: rgba(30, 27, 19, 0.09);
+
+  // Acento primário (verde-petróleo) para realces que não passam por um componente
+  // Material - borda do card em destaque no dashboard, item ativo da bottom nav,
+  // outline de foco de card clicável. Mesma matiz do primary do Material.
+  --acento-primario: #0f6e56;
+
+  // Painel informativo (fundo + texto) e destaque de item selecionado nos dialogs
+  // de categoria - tint do acento (era índigo). Não é status: é "informação".
+  --fundo-aviso: #e3efe9;
+  --texto-aviso: #0b5642;
+
+  // Trilha neutra de barras de progresso e chip "pausado".
+  --trilha-neutra: #e7e0d2;
+
+  // Sombras (tint quente no claro). --sombra-cartao: repouso; --sombra-hover:
+  // elevação em hover / arraste; --sombra-nav: barra fixa do rodapé (aponta pra cima).
+  --sombra-cartao: 0 1px 3px rgba(45, 40, 28, 0.12);
+  --sombra-hover: 0 4px 12px rgba(45, 40, 28, 0.14);
+  --sombra-nav: 0 -1px 4px rgba(45, 40, 28, 0.12);
+
+  // Cores semânticas de status - RESERVADAS a status de orçamento (verde/âmbar/
+  // vermelho). Fundo tênue + texto forte. Um par serve pra tudo: badge, barra de
+  // progresso (trilha = fundo, indicador = texto), alerta de % da renda, chips.
+  --status-ok-fundo: #e4f1ea;
+  --status-ok-texto: #15795a;
+  --status-atencao-fundo: #f7ecdc;
+  --status-atencao-texto: #a5620f;
+  --status-critico-fundo: #f4e1e0;
+  --status-critico-texto: #a32d2d;
+
+  // Snackbars de erro/aviso - tom forte fixo, igual nos dois temas (o snackbar
+  // aparece sobre qualquer superfície e precisa de fundo sólido + texto branco).
+  --fundo-snack-erro: #a32d2d;
+  --fundo-snack-atencao: #b5701a;
 }
 
 html.tema-escuro {
-  --fundo-pagina: #121212;
-  --texto-pagina: rgba(255, 255, 255, 0.87);
-  --texto-secundario: rgba(255, 255, 255, 0.6);
-  --texto-terciario: rgba(255, 255, 255, 0.5);
-  --divisor-sutil: rgba(255, 255, 255, 0.12);
-  --fundo-superficie: #1e1e1e;
-  // Indigo mais claro pra manter contraste sobre o fundo escuro.
-  --acento-primario: #9fa8da;
-  --fundo-aviso: rgba(159, 168, 218, 0.16);
-  --texto-aviso: #c5cae9;
-  --trilha-neutra: rgba(255, 255, 255, 0.16);
-  --sombra-hover: 0 4px 12px rgba(0, 0, 0, 0.55);
-  --status-ok-fundo: rgba(129, 201, 149, 0.18);
-  --status-ok-texto: #81c995;
-  --status-atencao-fundo: rgba(252, 163, 17, 0.18);
-  --status-atencao-texto: #fcc266;
-  --status-critico-fundo: rgba(242, 139, 130, 0.18);
-  --status-critico-texto: #f28b82;
-  --status-info-fundo: rgba(138, 180, 248, 0.18);
-  --status-info-texto: #8ab4f8;
-  --tendencia-subiu: #f28b82;
-  --tendencia-desceu: #81c995;
+  // M3 dark: surface = neutral 6, surface-container-low = neutral 10 (tom do
+  // mat-card no escuro). Container mais claro que o fundo, como manda o M3.
+  --fundo-pagina: #12100b;
+  --fundo-superficie: #1e1b13;
+
+  --texto-pagina: #e9e2d4;
+  --texto-secundario: #c4beb2;
+  --texto-terciario: #a7a194;
+  --borda: #38342b;
+  --divisor-sutil: rgba(233, 226, 212, 0.12);
+
+  // Verde-petróleo mais claro pra manter contraste sobre o fundo escuro.
+  --acento-primario: #5dcaa5;
+
+  --fundo-aviso: rgba(93, 202, 165, 0.13);
+  --texto-aviso: #a0e8d1;
+
+  --trilha-neutra: rgba(233, 226, 212, 0.15);
+
+  --sombra-cartao: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --sombra-hover: 0 6px 16px rgba(0, 0, 0, 0.55);
+  --sombra-nav: 0 -1px 4px rgba(0, 0, 0, 0.45);
+
+  // No escuro os status viram tint translúcido + texto claro, pra não brilharem
+  // como um bloco pastel sobre o fundo escuro.
+  --status-ok-fundo: rgba(29, 158, 117, 0.18);
+  --status-ok-texto: #9fe1cb;
+  --status-atencao-fundo: rgba(239, 159, 39, 0.18);
+  --status-atencao-texto: #fac775;
+  --status-critico-fundo: rgba(226, 75, 74, 0.2);
+  --status-critico-texto: #f09595;
 }
 
 .snack-alerta {
-  --mdc-snackbar-container-color: #c62828;
+  --mdc-snackbar-container-color: var(--fundo-snack-erro);
   --mdc-snackbar-supporting-text-color: #fff;
   --mat-mdc-snack-bar-button-color: #fff;
 }
 
 .snack-atencao {
-  --mdc-snackbar-container-color: #e65100;
+  --mdc-snackbar-container-color: var(--fundo-snack-atencao);
   --mdc-snackbar-supporting-text-color: #fff;
   --mat-mdc-snack-bar-button-color: #fff;
 }

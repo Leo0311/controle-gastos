@@ -104,9 +104,11 @@
   color: var(--status-critico-texto);
 }
 
+/* "Completo" = mês de orçamento encerrado (passado). Não é um status de
+   verde/âmbar/vermelho - é estado arquivado, então tom neutro de baixa ênfase. */
 .status-completo {
-  background-color: var(--status-info-fundo);
-  color: var(--status-info-texto);
+  background-color: var(--trilha-neutra);
+  color: var(--texto-secundario);
 }
 
 /* ── Cores da barra de progresso (tabela e cartão) ───────────────────────
@@ -127,8 +129,8 @@
 }
 
 .cor-azul {
-  --mdc-linear-progress-active-indicator-color: var(--status-info-texto);
-  --mdc-linear-progress-track-color: var(--status-info-fundo);
+  --mdc-linear-progress-active-indicator-color: var(--texto-terciario);
+  --mdc-linear-progress-track-color: var(--trilha-neutra);
 }
 
 /* ── Lista de cartões (só mobile) ─────────────────────────────────────────
@@ -159,7 +161,7 @@
   border-radius: 8px;
   background: var(--fundo-superficie);
   border: 1px solid var(--divisor-sutil);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--sombra-cartao);
 }
 
 .cartao-topo {

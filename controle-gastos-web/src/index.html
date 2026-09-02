@@ -23,7 +23,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&amp;display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#3f51b5">
+  <!-- Cor da barra do navegador/PWA = superfície da toolbar. A troca de tema do app
+       é por classe (não prefers-color-scheme), mas a chrome do navegador só responde
+       a media query - então segue a preferência do sistema, que é o caso comum. -->
+  <meta name="theme-color" content="#fff8ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#12100b" media="(prefers-color-scheme: dark)">
 </head>
 <body class="mat-typography">
   <app-root></app-root>
