@@ -33,17 +33,17 @@ import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog
 
 // Paleta das fatias da pizza: 10 tons dessaturados no clima neutro quente da
 // interface. Categoria não tem cor semântica - estas só precisam ser
-// distinguíveis entre si. Ordem pensada pra daltonismo: nenhum vermelho e verde
-// ficam em fatias adjacentes (o vermelho-argila e o oliva estão separados pelo
-// azul-ardósia).
+// distinguíveis entre si (e do azul-petróleo do acento: o único azul aqui é o
+// ardósia da posição 5, bem mais acinzentado). Ordem pensada pra daltonismo:
+// vermelho e verde nunca ficam em fatias adjacentes.
 const CORES_CATEGORIAS = [
-  '#0f6e56', // verde-petróleo (acento)
+  '#2f7060', // verde-petróleo
   '#b9823b', // ocre
   '#7c6a9c', // roxo suave
   '#a85751', // vermelho-argila
   '#4f6d8f', // azul-ardósia
   '#6e8c4a', // oliva
-  '#3c7a8c', // azul-petróleo
+  '#b0708f', // rosa acinzentado
   '#c99a5b', // areia
   '#8c6e5a', // taupe
   '#5b8a7d'  // sálvia
@@ -52,7 +52,7 @@ const CORES_CATEGORIAS = [
 // Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é
 // reconstruída ao trocar de período, não ao trocar de tema, então precisa ler
 // bem tanto sobre o fundo claro quanto sobre o escuro.
-const COR_BARRA = '#33876c';
+const COR_BARRA = '#2e7f9b';
 
 const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 

@@ -12,13 +12,10 @@
   width: 100%;
 }
 
-/* O wrapper do mat-hint no Material é position:absolute (para animar a troca
-   hint/erro), então não empurra o próximo campo mesmo quando o texto quebra em
-   duas linhas - sem essa margem extra, um hint de duas linhas (como o de "Dia
-   do mês" e o de "Orçamento") visualmente sobrepõe o campo seguinte. */
-.form-content mat-form-field:has(mat-hint) {
-  margin-bottom: 20px;
-}
+/* Os campos com mat-hint usam subscriptSizing="dynamic" (no template): o subscript
+   entra no fluxo e reserva a altura real do texto - inclusive quando o hint quebra
+   em 3-4 linhas, como o de "Gerar para os próximos meses" - em vez de ficar
+   position:absolute e sobrepor o campo seguinte. */
 
 @media (max-width: 599px) {
   .form-content {

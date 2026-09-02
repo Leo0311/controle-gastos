@@ -11,7 +11,7 @@
 // tipografia/densidade e mantendo o CSS gerado bem menor.
 //
 // As paletas vêm de m3-theme.scss (gerado por `ng generate @angular/material:m3-theme`
-// com primary #0F6E56 e neutral quente #7d786d). O acento único verde-petróleo sai
+// com primary #1F6F8B e neutral quente #7d786d). O acento único azul-petróleo sai
 // daqui para TODO componente Material - aba ativa, botão primário, foco de campo,
 // ripple, chip selecionado, barra de progresso padrão.
 html {
@@ -39,6 +39,14 @@ a {
   color: var(--acento-primario);
 }
 
+// Edge/IE desenham o próprio botão de "revelar senha" dentro do input, que aparece
+// sobreposto ao toggle de olho do Angular Material (Login, Cadastro, Redefinir
+// senha). Suprime o nativo e deixa só o do Material.
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tokens da camada própria (fora do theming do Material)
 //
@@ -63,15 +71,17 @@ a {
   --borda: #e0dacc;
   --divisor-sutil: rgba(30, 27, 19, 0.09);
 
-  // Acento primário (verde-petróleo) para realces que não passam por um componente
+  // Acento primário (azul-petróleo) para realces que não passam por um componente
   // Material - borda do card em destaque no dashboard, item ativo da bottom nav,
   // outline de foco de card clicável. Mesma matiz do primary do Material.
-  --acento-primario: #0f6e56;
+  --acento-primario: #1f6f8b;
+  // Texto/ícone sobre uma superfície pintada com --acento-primario.
+  --acento-texto: #ffffff;
 
   // Painel informativo (fundo + texto) e destaque de item selecionado nos dialogs
-  // de categoria - tint do acento (era índigo). Não é status: é "informação".
-  --fundo-aviso: #e3efe9;
-  --texto-aviso: #0b5642;
+  // de categoria - tint do acento. Não é status: é "informação".
+  --fundo-aviso: #e2eef3;
+  --texto-aviso: #134b5f;
 
   // Trilha neutra de barras de progresso e chip "pausado".
   --trilha-neutra: #e7e0d2;
@@ -110,11 +120,12 @@ html.tema-escuro {
   --borda: #38342b;
   --divisor-sutil: rgba(233, 226, 212, 0.12);
 
-  // Verde-petróleo mais claro pra manter contraste sobre o fundo escuro.
-  --acento-primario: #5dcaa5;
+  // Azul-petróleo mais claro pra manter contraste sobre o fundo escuro.
+  --acento-primario: #6fbbd4;
+  --acento-texto: #10262e;
 
-  --fundo-aviso: rgba(93, 202, 165, 0.13);
-  --texto-aviso: #a0e8d1;
+  --fundo-aviso: rgba(111, 187, 212, 0.13);
+  --texto-aviso: #a9dcec;
 
   --trilha-neutra: rgba(233, 226, 212, 0.15);
 

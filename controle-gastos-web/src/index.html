@@ -4,14 +4,13 @@
   <meta charset="utf-8">
   <title>Controle de Gastos</title>
   <script>
-    // Aplica o tema salvo (ou a preferência do sistema, se nunca escolheu)
-    // ANTES do Angular bootstrar, pra pintura inicial já sair no tema certo
-    // (sem "flash" de claro->escuro ou vice-versa).
+    // Aplica o tema salvo ANTES do Angular bootstrar, pra pintura inicial já sair
+    // no tema certo (sem "flash" de claro->escuro). O app abre SEMPRE no claro até
+    // a pessoa escolher escuro dentro dele (botão de sol/lua) - não segue mais o
+    // prefers-color-scheme do sistema. Depois de escolher, a preferência salva vale.
     (function () {
       try {
-        var salvo = localStorage.getItem('controle_gastos_tema');
-        var escuro = salvo ? salvo === 'escuro' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (escuro) {
+        if (localStorage.getItem('controle_gastos_tema') === 'escuro') {
           document.documentElement.classList.add('tema-escuro');
         }
       } catch (e) { /* localStorage indisponível (modo privado etc.) - segue no tema claro */ }
@@ -23,11 +22,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&amp;display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
-  <!-- Cor da barra do navegador/PWA = superfície da toolbar. A troca de tema do app
-       é por classe (não prefers-color-scheme), mas a chrome do navegador só responde
-       a media query - então segue a preferência do sistema, que é o caso comum. -->
-  <meta name="theme-color" content="#fff8ef" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#12100b" media="(prefers-color-scheme: dark)">
+  <!-- Cor da barra do navegador/PWA = superfície da toolbar no tema claro, que é
+       como o app sempre abre. A chrome do navegador não acompanha o toggle de tema
+       (que é por classe no <html>, não media query); manter fixo no claro evita
+       uma barra escura sobre um app claro quando o sistema está no escuro. -->
+  <meta name="theme-color" content="#fff8ef">
 </head>
 <body class="mat-typography">
   <app-root></app-root>
