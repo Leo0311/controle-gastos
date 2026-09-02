@@ -33,20 +33,20 @@ import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog
 
 // Paleta das fatias da pizza: 10 tons dessaturados no clima neutro quente da
 // interface. Categoria não tem cor semântica - estas só precisam ser
-// distinguíveis entre si (e do azul-petróleo do acento: o único azul aqui é o
-// ardósia da posição 5, bem mais acinzentado). Ordem pensada pra daltonismo:
-// vermelho e verde nunca ficam em fatias adjacentes.
+// distinguíveis entre si. Nenhuma é verde (competiria com o status "OK" dos
+// orçamentos, que é quase a mesma matiz) nem azul-petróleo (o acento); o único
+// tom frio é o ardósia da posição 5, bem acinzentado e distante do acento.
 const CORES_CATEGORIAS = [
-  '#2f7060', // verde-petróleo
+  '#87796b', // cinza-quente (fatia 1 = maior gasto; neutro, não disputa com nada)
   '#b9823b', // ocre
   '#7c6a9c', // roxo suave
   '#a85751', // vermelho-argila
-  '#4f6d8f', // azul-ardósia
-  '#6e8c4a', // oliva
+  '#4f6d8f', // ardósia (único tom frio)
+  '#8a5064', // ameixa
   '#b0708f', // rosa acinzentado
   '#c99a5b', // areia
   '#8c6e5a', // taupe
-  '#5b8a7d'  // sálvia
+  '#a54f34'  // terracota queimada
 ];
 
 // Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é

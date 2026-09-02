@@ -2,7 +2,7 @@
   "name": "Controle de Gastos",
   "short_name": "Gastos",
   "description": "Controle de gastos pessoais com categorias, orçamentos e metas de economia.",
-  "theme_color": "#0f6e56",
+  "theme_color": "#fff8ef",
   "background_color": "#fff8ef",
   "display": "standalone",
   "scope": "./",

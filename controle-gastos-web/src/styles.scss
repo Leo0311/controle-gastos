@@ -30,12 +30,13 @@ body {
   color: var(--texto-pagina);
 }
 
-// Link de conteúdo (telas de auth: "Esqueci minha senha", "Cadastre-se", …) -
-// era o azul padrão do navegador (#0000EE), que não respondia ao tema e destoava
-// da paleta. Acento único. Os links que passam por componente Material
-// (mat-tab-link, a[mat-menu-item], a[mat-button]) têm cor própria e não são
-// afetados pela especificidade deste seletor.
-a {
+// Link de conteúdo (telas de auth: "Esqueci minha senha", "Cadastre-se", "Voltar
+// para o login", …) - era o azul padrão do navegador (#0000EE), que não respondia
+// ao tema e destoava da paleta. Acento único. Escopado nas classes dos parágrafos
+// de link das telas de auth para NÃO vazar num `<a>` de componente Material
+// (mat-tab-link, a[mat-menu-item]), que já tem cor própria.
+.link-cadastro a,
+.link-esqueci a {
   color: var(--acento-primario);
 }
 
@@ -75,8 +76,6 @@ input[type="password"]::-ms-clear {
   // Material - borda do card em destaque no dashboard, item ativo da bottom nav,
   // outline de foco de card clicável. Mesma matiz do primary do Material.
   --acento-primario: #1f6f8b;
-  // Texto/ícone sobre uma superfície pintada com --acento-primario.
-  --acento-texto: #ffffff;
 
   // Painel informativo (fundo + texto) e destaque de item selecionado nos dialogs
   // de categoria - tint do acento. Não é status: é "informação".
@@ -122,7 +121,6 @@ html.tema-escuro {
 
   // Azul-petróleo mais claro pra manter contraste sobre o fundo escuro.
   --acento-primario: #6fbbd4;
-  --acento-texto: #10262e;
 
   --fundo-aviso: rgba(111, 187, 212, 0.13);
   --texto-aviso: #a9dcec;

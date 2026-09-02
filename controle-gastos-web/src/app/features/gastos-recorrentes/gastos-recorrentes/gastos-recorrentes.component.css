@@ -99,15 +99,16 @@
 
 /* mat-chip (MDC) não tema pelo background-color/color comuns - a superfície e o
    texto são desenhados por dentro do componente, então precisam das custom
-   properties do MDC. "Ativo" usa o tint do acento (verde é reservado a status de
-   orçamento); "Pausado", o cinza neutro. Os dois tokens já têm valor próprio no
-   modo escuro (ver styles.scss), então não precisa mais travar a cor do texto. */
+   properties do MDC. "Ativo" usa o tint de status OK (verde aqui = "está
+   funcionando", leitura natural do estado da recorrência); "Pausado", o cinza
+   neutro. Os dois tokens já têm valor próprio no modo escuro (ver styles.scss),
+   então não precisa mais travar a cor do texto. */
 .chip-ativo {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  --mdc-chip-elevated-container-color: var(--fundo-aviso);
-  --mdc-chip-label-text-color: var(--texto-aviso);
+  --mdc-chip-elevated-container-color: var(--status-ok-fundo);
+  --mdc-chip-label-text-color: var(--status-ok-texto);
 }
 
 .chip-pausado {
