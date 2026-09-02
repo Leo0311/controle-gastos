@@ -31,23 +31,40 @@ import {
 import { RendaFormDialogComponent, RendaFormDialogData } from '../renda-form-dialog/renda-form-dialog.component';
 import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog/meta-form-dialog.component';
 
-// Paleta das fatias da pizza: 10 tons dessaturados no clima neutro quente da
-// interface. Categoria não tem cor semântica - estas só precisam ser
-// distinguíveis entre si. Nenhuma é verde (competiria com o status "OK" dos
-// orçamentos, que é quase a mesma matiz) nem azul-petróleo (o acento); o único
-// tom frio é o ardósia da posição 5, bem acinzentado e distante do acento.
+// Paleta "retrô" das fatias da pizza (baseada na ColorBrewer Dark2, com ajustes).
+// Categoria não tem cor semântica - estas só precisam ser distinguíveis entre si.
+// Ordem fixa: a fatia i recebe CORES_CATEGORIAS[i], então as vizinhas na ordem
+// foram checadas para daltonismo (deuteranopia/protanopia). Dois ajustes sobre a
+// paleta pedida:
+//   - petróleo #117A8B -> #12656E: mais escuro, pra não se confundir com o
+//     azul-petróleo do acento (#1F6F8B), que a fatia quase repetia.
+//   - ocre #A6761D -> #8f5e28: mais escuro, pra separar de verde-oliva (a fatia
+//     vizinha na ordem) sob daltonismo - as duas eram idênticas para deuteranopes.
 const CORES_CATEGORIAS = [
-  '#87796b', // cinza-quente (fatia 1 = maior gasto; neutro, não disputa com nada)
-  '#b9823b', // ocre
-  '#7c6a9c', // roxo suave
-  '#a85751', // vermelho-argila
-  '#4f6d8f', // ardósia (único tom frio)
-  '#8a5064', // ameixa
-  '#b0708f', // rosa acinzentado
-  '#c99a5b', // areia
-  '#8c6e5a', // taupe
-  '#a54f34'  // terracota queimada
+  '#D95F02', // laranja queimado
+  '#E6A817', // mostarda
+  '#7570B3', // violeta
+  '#B03A2E', // tijolo
+  '#12656E', // petróleo (escurecido — ver nota acima)
+  '#CC4C7C', // rosa profundo
+  '#66A61E', // verde-oliva
+  '#8f5e28', // ocre (escurecido — ver nota acima)
+  '#5C4B99', // ametista
+  '#D1495B'  // carmim
 ];
+
+// Cor da fatia sob o cursor: só clareia a própria cor (mistura com branco), sem
+// mexer em matiz. O padrão do Chart.js satura + escurece no hover, o que aproximava
+// visualmente fatias vizinhas de matiz parecida.
+const clarear = (hex: string, fracao: number): string => {
+  const n = parseInt(hex.slice(1), 16);
+  const canal = (c: number) => Math.round(c + (255 - c) * fracao);
+  const r = canal((n >> 16) & 0xff);
+  const g = canal((n >> 8) & 0xff);
+  const b = canal(n & 0xff);
+  return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+};
+const CORES_CATEGORIAS_HOVER = CORES_CATEGORIAS.map((c) => clarear(c, 0.18));
 
 // Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é
 // reconstruída ao trocar de período, não ao trocar de tema, então precisa ler
@@ -203,7 +220,9 @@ export class DashboardComponent implements OnInit {
           }),
           datasets: [{
             data: resumo.porCategoria.map(c => c.total),
-            backgroundColor: resumo.porCategoria.map((_, i) => CORES_CATEGORIAS[i % CORES_CATEGORIAS.length])
+            backgroundColor: resumo.porCategoria.map((_, i) => CORES_CATEGORIAS[i % CORES_CATEGORIAS.length]),
+            hoverBackgroundColor: resumo.porCategoria.map((_, i) => CORES_CATEGORIAS_HOVER[i % CORES_CATEGORIAS_HOVER.length]),
+            hoverOffset: 6
           }]
         };
 
