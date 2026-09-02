@@ -31,21 +31,25 @@ import {
 import { RendaFormDialogComponent, RendaFormDialogData } from '../renda-form-dialog/renda-form-dialog.component';
 import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog/meta-form-dialog.component';
 
-// Paleta "retrô" das fatias da pizza (baseada na ColorBrewer Dark2, com ajustes).
-// Categoria não tem cor semântica - estas só precisam ser distinguíveis entre si.
-// Ordem fixa: a fatia i recebe CORES_CATEGORIAS[i], então as vizinhas na ordem
-// foram checadas para daltonismo (deuteranopia/protanopia). Dois ajustes sobre a
-// paleta pedida:
-//   - petróleo #117A8B -> #12656E: mais escuro, pra não se confundir com o
-//     azul-petróleo do acento (#1F6F8B), que a fatia quase repetia.
-//   - ocre #A6761D -> #8f5e28: mais escuro, pra separar de verde-oliva (a fatia
-//     vizinha na ordem) sob daltonismo - as duas eram idênticas para deuteranopes.
+// Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é
+// reconstruída ao trocar de período, não ao trocar de tema, então precisa ler
+// bem tanto sobre o fundo claro quanto sobre o escuro.
+const COR_BARRA = '#2e7f9b';
+
+// Paleta das fatias da pizza. Categoria não tem cor semântica - estas só precisam
+// ser distinguíveis entre si. A fatia 1 (maior gasto) repete COR_BARRA de
+// propósito: os dois gráficos do Dashboard abrem no mesmo tom. As outras 9 são a
+// paleta qualitativa "retrô" (base ColorBrewer Dark2), na ordem pedida. O ocre
+// (fatia 8) foi escurecido de #A6761D pra #8f5e28 pra separar do verde-oliva
+// vizinho sob daltonismo - as duas eram idênticas para deuteranopes.
+// Ordem fixa: a fatia i recebe CORES_CATEGORIAS[i], e os pares vizinhos foram
+// checados para deuteranopia/protanopia.
 const CORES_CATEGORIAS = [
+  COR_BARRA, // fatia 1 = mesma cor da barra
   '#D95F02', // laranja queimado
   '#E6A817', // mostarda
   '#7570B3', // violeta
   '#B03A2E', // tijolo
-  '#12656E', // petróleo (escurecido — ver nota acima)
   '#CC4C7C', // rosa profundo
   '#66A61E', // verde-oliva
   '#8f5e28', // ocre (escurecido — ver nota acima)
@@ -65,11 +69,6 @@ const clarear = (hex: string, fracao: number): string => {
   return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
 };
 const CORES_CATEGORIAS_HOVER = CORES_CATEGORIAS.map((c) => clarear(c, 0.18));
-
-// Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é
-// reconstruída ao trocar de período, não ao trocar de tema, então precisa ler
-// bem tanto sobre o fundo claro quanto sobre o escuro.
-const COR_BARRA = '#2e7f9b';
 
 const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
