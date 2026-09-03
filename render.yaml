@@ -1,9 +1,9 @@
 # Blueprint do Render para o frontend Angular (Static Site).
 #
-# A API (controle-gastos-api) já está publicada separadamente como Web Service
-# via Docker (ver controle-gastos-api/Dockerfile) e não está descrita aqui,
-# para não arriscar o Render tentar reconciliar/recriar um serviço que já
-# existe com configuração própria (env vars de banco, JWT, e-mail etc.).
+# A API (controle-gastos-api) NÃO está no Render - roda numa VM da Oracle Cloud
+# (systemd + nginx, deploy manual; ver CLAUDE.md). Por isso este blueprint só
+# descreve o frontend. O controle-gastos-api/Dockerfile continua no repo de
+# propósito: é o caminho de volta pro Render como Web Service se a VM der problema.
 services:
   - type: web
     name: controle-gastos-web
