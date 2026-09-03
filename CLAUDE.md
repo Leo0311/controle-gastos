@@ -2,14 +2,21 @@
 
 Monorepo com três apps que compartilham um PostgreSQL: `controle-gastos/` (console
 Java, legado/congelado), `controle-gastos-api/` (API Spring Boot 4, Java 17, :8080) e
-`controle-gastos-web/` (Angular 18 + Material, :4200). Deploy no Render (frontend
-Static Site, API Web Service via Docker), banco Neon em produção.
+`controle-gastos-web/` (Angular 18 + Material, :4200). Em produção: frontend no Render
+(Static Site, auto-deploy no push), API numa VM da Oracle Cloud (systemd, deploy
+manual — ver abaixo), banco no Neon.
 
 ## Vale para qualquer tarefa
 
-- **`git push` na `master` faz deploy em produção na hora** — frontend e API, via
-  auto-deploy do Render. Não há staging nem PR. Antes de um push que envolva schema,
-  migração de dados ou mexida em auth, diga ao usuário o que vai ao ar e confirme.
+- **`git push` na `master` publica SÓ o frontend** — Render Static Site, auto-deploy
+  na hora, sem staging nem PR. **A API NÃO sobe no push:** roda numa VM da Oracle
+  Cloud (serviço systemd `controle-gastos`) e só atualiza por deploy manual, feito
+  na própria VM — `git pull` na raiz do repo, depois
+  `cd controle-gastos-api && ./mvnw clean package -DskipTests` e
+  `sudo systemctl restart controle-gastos`. Ou seja: mexeu em `.java`, `schema.sql`
+  ou config do backend, o push **não** leva isso ao ar — avise o usuário que a API
+  precisa ser reimplantada à mão. Antes de um push que envolva schema, migração de
+  dados ou mexida em auth, diga o que vai ao ar e confirme.
 - **Nunca use `Stop-Process` por nome ou regex** (`java`, `node`, …) — já matou a shell
   da própria sessão e os JVMs dos testes. Mate pelo dono da porta (skill `ambiente-local`).
 - **Não atualize dependências reativamente.** Nada de `npm audit fix --force`,

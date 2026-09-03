@@ -4,10 +4,9 @@ Sistema de controle de gastos pessoais com autenticação, categorias e subcateg
 
 ## Produção
 
-- **Frontend**: https://controle-gastos-web-v8wf.onrender.com
-- **API**: https://controle-gastos-api-cfr4.onrender.com/api
-
-Hospedados no [Render](https://render.com) (frontend como Static Site via Blueprint em `render.yaml`, API como Web Service via Docker); banco PostgreSQL gerenciado pelo [Neon](https://neon.tech).
+- **Frontend**: https://controle-gastos-web-v8wf.onrender.com — [Render](https://render.com) Static Site (Blueprint em `render.yaml`), **auto-deploy a cada push na `master`**.
+- **API**: https://controle-gastos-leo.duckdns.org (base dos endpoints: `/api`) — VM na [Oracle Cloud](https://www.oracle.com/cloud/) (Always Free). Roda como serviço `systemd` (`controle-gastos`); nginx faz o proxy reverso com TLS via Let's Encrypt; as variáveis de ambiente (banco, JWT, e-mail) ficam em `/etc/controle-gastos.env`. **O deploy é manual, na VM**: `git pull` na raiz do repo, `cd controle-gastos-api && ./mvnw clean package -DskipTests`, `sudo systemctl restart controle-gastos`. Um push na `master` **não** atualiza a API.
+- **Banco**: PostgreSQL gerenciado pelo [Neon](https://neon.tech).
 
 ## Estrutura do repositório
 
@@ -139,7 +138,7 @@ O frontend é um Progressive Web App: pode ser instalado a partir do navegador e
 - **Backend**: Java 17, Maven, Spring Boot 4, Spring Data JPA, Spring Security + JWT (jjwt), Spring Mail
 - **Banco de dados**: PostgreSQL (Neon em produção)
 - **Frontend**: Angular 18 (standalone components), Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas), `@angular/service-worker` (PWA instalável)
-- **Deploy**: Render (frontend como Static Site, API como Web Service via Docker)
+- **Deploy**: frontend no Render (Static Site, auto-deploy no push); API numa VM da Oracle Cloud (systemd + nginx, deploy manual — ver seção "Produção")
 
 ## Pré-requisitos
 
