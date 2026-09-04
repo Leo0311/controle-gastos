@@ -106,10 +106,16 @@ export class GastosComponent implements OnInit {
   // (verTodosOsMeses), não "aplique o padrão do mês atual" de novo.
   private primeiraCarga = true;
 
-  // Opções do <mat-select> de filtro por categoria - só categorias com pelo menos
-  // um gasto cadastrado (ver ngOnInit), diferente de todasCategorias (usada na
+  // Opções do <mat-select> de filtro por categoria - derivadas de gastosDoPeriodo
+  // (ver atualizarOpcoesCategoriaFiltro), não de uma chamada à parte: só entram
+  // categorias com gasto no período ATUAL, diferente de todasCategorias (usada na
   // importação/emoji da tabela, que precisa de todas, mesmo sem gasto ainda).
   opcoesCategoriaFiltro: Categoria[] = [];
+
+  // Gastos do período (mês/ano) selecionado, ANTES do filtro de categoria - fonte
+  // de opcoesCategoriaFiltro. Precisa ser antes do filtro pra não fazer a lista de
+  // categorias murchar pra uma opção só assim que o usuário escolhe uma.
+  private gastosDoPeriodo: Gasto[] = [];
 
   private todasCategorias: Categoria[] = [];
   private todasSubcategorias: Subcategoria[] = [];
@@ -143,10 +149,6 @@ export class GastosComponent implements OnInit {
         this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c]));
       },
       error: () => { /* usado só pro emoji na tabela e na importação; sem ela ainda funciona sem emoji */ }
-    });
-    this.categoriaService.listarComGastos().subscribe({
-      next: (categorias) => { this.opcoesCategoriaFiltro = categorias; },
-      error: () => { /* filtro auxiliar; sem ela o dropdown só fica vazio */ }
     });
     this.categoriaService.listarTodasSubcategorias().subscribe({
       next: (subcategorias) => { this.todasSubcategorias = subcategorias; },
@@ -304,6 +306,8 @@ export class GastosComponent implements OnInit {
 
     origem$.subscribe({
       next: (gastos) => {
+        this.gastosDoPeriodo = gastos;
+        this.atualizarOpcoesCategoriaFiltro();
         this.gastos = this.filtroCategoria
           ? gastos.filter((g) => (g.categoria ?? '').trim().toLowerCase() === this.filtroCategoria!.trim().toLowerCase())
           : gastos;
@@ -313,10 +317,43 @@ export class GastosComponent implements OnInit {
         // Limpa os gastos do filtro anterior antes de mostrar o erro, pra não
         // ficar exibindo dados desatualizados com o filtro novo no topo.
         this.gastos = [];
+        this.gastosDoPeriodo = [];
+        this.opcoesCategoriaFiltro = [];
         this.carregando = false;
         this.erro = true;
       }
     });
+  }
+
+  // Deriva as opções do filtro a partir de gastosDoPeriodo (sem chamada extra à
+  // API): só entram categorias com pelo menos um gasto no período atual - que já é
+  // o histórico inteiro quando "Ver todos os meses" está ativo (gastosDoPeriodo vem
+  // de listarTodos() nesse caso, ver carregar()). Em ordem alfabética: essa lista só
+  // existe depois que os gastos do período chegam, e esperar todasCategorias (que
+  // carrega à parte, em paralelo) pra ordenar pela preferência do usuário entraria
+  // em corrida com ela.
+  private atualizarOpcoesCategoriaFiltro(): void {
+    const porId = new Map<number, Categoria>();
+    for (const gasto of this.gastosDoPeriodo) {
+      if (gasto.categoriaId == null || porId.has(gasto.categoriaId)) {
+        continue;
+      }
+      porId.set(gasto.categoriaId, this.categoriasPorId.get(gasto.categoriaId) ?? {
+        id: gasto.categoriaId,
+        nome: gasto.categoria ?? '',
+        emoji: ''
+      });
+    }
+    this.opcoesCategoriaFiltro = Array.from(porId.values())
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    // A categoria filtrada deixou de ter gasto no período atual (ex: trocou de mês) -
+    // reseta pra "Todas" em vez de deixar a tela vazia sem explicação.
+    const categoriaAindaExiste = this.opcoesCategoriaFiltro.some((c) =>
+      c.nome.trim().toLowerCase() === this.filtroCategoria?.trim().toLowerCase());
+    if (this.filtroCategoria && !categoriaAindaExiste) {
+      this.filtroCategoria = null;
+    }
   }
 
   private intervaloFiltro(ano: number, mes: number | null): [string, string] {
