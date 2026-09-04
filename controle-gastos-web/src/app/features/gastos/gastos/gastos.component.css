@@ -20,15 +20,22 @@
     align-items: stretch;
   }
 
-  /* Os dois botões lado a lado, não empilhados em largura total: "Planilha"
-     colapsa pra só o ícone (o rótulo some), "Novo gasto" mantém o texto e ocupa
-     o resto - fica claro quem é a ação principal. */
+  /* Os dois botões lado a lado, dividindo a linha igualmente: "Planilha"
+     colapsa pra só o ícone (o rótulo some), "Novo gasto" mantém o texto. Sem
+     o flex:1 no botão de Planilha, o padding assimétrico que o mat-stroked-button
+     reserva pro rótulo (agora vazio) sobra como espaço em branco à direita do
+     ícone - por isso os dois ganham a mesma largura e o ícone é centralizado. */
   .acoes-cabecalho .rotulo-planilha {
     display: none;
   }
 
+  .acoes-cabecalho .btn-planilha,
   .acoes-cabecalho .btn-novo-gasto {
     flex: 1;
+  }
+
+  .acoes-cabecalho .btn-planilha {
+    justify-content: center;
   }
 }
 
