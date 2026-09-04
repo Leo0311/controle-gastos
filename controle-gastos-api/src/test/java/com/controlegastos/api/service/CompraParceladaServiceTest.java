@@ -20,7 +20,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,9 +30,9 @@ import static org.mockito.Mockito.when;
 
 /**
  * Aritmética de CompraParceladaService.gerarParcelas (divisão em centavos +
- * ajuste da última parcela), a validação da parcela mínima, e a matemática de
- * data (mesDaPrimeiraParcela + clamping do dia no loop de parcelas) - Mockito
- * puro, sem banco e sem @SpringBootTest.
+ * ajuste da última parcela), a validação da parcela mínima e da janela da 1ª
+ * parcela, e a geração das datas a partir da data informada (sequência de meses
+ * + clamping do dia) - Mockito puro, sem banco e sem @SpringBootTest.
  */
 class CompraParceladaServiceTest {
 
@@ -69,17 +68,27 @@ class CompraParceladaServiceTest {
     }
 
     private CompraParcelada compra(String valorTotal, int numeroParcelas) {
-        return compra(valorTotal, numeroParcelas, 10);
+        return compra(valorTotal, numeroParcelas, LocalDate.now().withDayOfMonth(10));
     }
 
-    private CompraParcelada compra(String valorTotal, int numeroParcelas, int diaDoMes) {
+    private CompraParcelada compra(String valorTotal, int numeroParcelas, LocalDate dataPrimeiraParcela) {
         CompraParcelada dados = new CompraParcelada();
         dados.setDescricao("Notebook");
         dados.setValorTotal(new BigDecimal(valorTotal));
         dados.setNumeroParcelas(numeroParcelas);
         dados.setCategoriaId(CATEGORIA);
-        dados.setDiaDoMes(diaDoMes);
+        dados.setDataPrimeiraParcela(dataPrimeiraParcela);
         return dados;
+    }
+
+    // Primeira data >= referência com esse dia do mês, num mês que tenha o dia -
+    // usado por testes de clamping (dia 31) sem depender do tamanho do mês corrente.
+    private LocalDate dataComDia(int dia) {
+        YearMonth mes = YearMonth.now();
+        while (mes.lengthOfMonth() < dia) {
+            mes = mes.plusMonths(1);
+        }
+        return mes.atDay(dia);
     }
 
     @SuppressWarnings("unchecked")
@@ -182,36 +191,54 @@ class CompraParceladaServiceTest {
     }
 
     @Test
-    void primeiraParcelaVaiParaOMesSeguinteQuandoODiaEscolhidoJaPassouOuEHoje() {
-        LocalDate hoje = LocalDate.now();
-        // dia 1: em qualquer data do mês, essa ocorrência já passou (ou é hoje),
-        // então a primeira parcela nunca é retroativa - pula pro mês seguinte.
-        service.cadastrar(compra("300.00", 3, 1), USUARIO);
+    void primeiraParcelaCaiExatamenteNaDataInformada() {
+        LocalDate inicio = LocalDate.now().minusMonths(1).withDayOfMonth(10);
+        service.cadastrar(compra("300.00", 3, inicio), USUARIO);
 
-        List<Gasto> parcelas = parcelasGeradas(3);
-        assertThat(parcelas.get(0).getData()).isAfter(hoje);
-        assertThat(YearMonth.from(parcelas.get(0).getData()))
-                .isEqualTo(YearMonth.from(hoje).plusMonths(1));
+        assertThat(parcelasGeradas(3).get(0).getData()).isEqualTo(inicio);
     }
 
     @Test
-    void primeiraParcelaFicaNoMesAtualQuandoODiaEscolhidoAindaNaoChegou() {
+    void dataRetroativaGeraParcelasNoPassadoPresenteEFuturo() {
+        // compra do mês passado só agora registrada: 1ª parcela já venceu, 2ª cai
+        // neste mês, 3ª é futura.
+        LocalDate inicio = LocalDate.now().minusMonths(1).withDayOfMonth(10);
+        service.cadastrar(compra("300.00", 3, inicio), USUARIO);
+
+        List<LocalDate> datas = parcelasGeradas(3).stream().map(Gasto::getData).toList();
         LocalDate hoje = LocalDate.now();
-        assumeTrue(hoje.getDayOfMonth() < hoje.lengthOfMonth(),
-                "cenário exige que ainda exista um dia futuro no mês corrente");
+        assertThat(datas.get(0)).isBefore(hoje);
+        assertThat(YearMonth.from(datas.get(1))).isEqualTo(YearMonth.from(hoje));
+        assertThat(datas.get(2)).isAfter(hoje);
+    }
 
-        service.cadastrar(compra("300.00", 3, hoje.getDayOfMonth() + 1), USUARIO);
+    @Test
+    void rejeitaPrimeiraParcelaMaisDe12MesesNoPassadoSemGravarNada() {
+        assertThatThrownBy(() ->
+                service.cadastrar(compra("300.00", 3, LocalDate.now().minusMonths(13)), USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("12 meses");
 
-        List<Gasto> parcelas = parcelasGeradas(3);
-        assertThat(parcelas.get(0).getData()).isAfter(hoje);
-        assertThat(YearMonth.from(parcelas.get(0).getData())).isEqualTo(YearMonth.from(hoje));
+        verify(repository, never()).save(any());
+        verifyNoInteractions(gastoService);
+    }
+
+    @Test
+    void rejeitaPrimeiraParcelaMaisDe2MesesNoFuturoSemGravarNada() {
+        assertThatThrownBy(() ->
+                service.cadastrar(compra("300.00", 3, LocalDate.now().plusMonths(3)), USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("futuro");
+
+        verify(repository, never()).save(any());
+        verifyNoInteractions(gastoService);
     }
 
     @Test
     void clampingDeDia_parcelaNoDia31CaiNoUltimoDiaDeFevereiroInclusiveEmAnoBissexto() {
         // 60 parcelas cobrem 5 anos - qualquer janela desse tamanho contém um
         // fevereiro comum (28), um fevereiro bissexto (29) e meses de 30 dias.
-        service.cadastrar(compra("6000.00", 60, 31), USUARIO);
+        service.cadastrar(compra("6000.00", 60, dataComDia(31)), USUARIO);
 
         List<LocalDate> datas = parcelasGeradas(60).stream().map(Gasto::getData).toList();
 

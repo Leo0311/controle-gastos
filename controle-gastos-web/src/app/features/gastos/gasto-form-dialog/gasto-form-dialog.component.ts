@@ -93,6 +93,14 @@ export class GastoFormDialogComponent implements OnInit {
     .pipe(map((resultado) => resultado.matches));
 
   readonly editando: boolean;
+  // Janela permitida para a data da 1ª parcela: 12 meses pra trás (compra antiga
+  // só agora registrada) e 2 meses pra frente (fat-finger de ano). Mesma janela
+  // validada no backend (CompraParceladaService.validar).
+  private readonly hoje = new Date();
+  readonly minDataPrimeiraParcela =
+    new Date(this.hoje.getFullYear(), this.hoje.getMonth() - 12, this.hoje.getDate());
+  readonly maxDataPrimeiraParcela =
+    new Date(this.hoje.getFullYear(), this.hoje.getMonth() + 2, this.hoje.getDate());
   // Editando uma parcela de compra parcelada: descrição, valor e data são
   // definidos pela compra e ficam travados (mudar quebraria o "(k/N)", a soma das
   // parcelas ou a sequência de meses). Categoria/subcategoria/orçamento seguem
@@ -134,7 +142,10 @@ export class GastoFormDialogComponent implements OnInit {
     orcamentoId: [null as number | null],
     recorrente: [false],
     parcelado: [false],
+    // "Dia do mês" só no modo recorrente; "Data da 1ª parcela" só no modo parcela
+    // (padrão hoje, aceita retroativo dentro da janela). Validators reativos abaixo.
     diaDoMes: [new Date().getDate() as number | null],
+    dataPrimeiraParcela: [new Date() as Date | null],
     numeroParcelas: [null as number | null]
   });
 
@@ -226,11 +237,13 @@ export class GastoFormDialogComponent implements OnInit {
     // oposto). Cada um também atualiza os validators dos campos que controla.
     this.form.controls.recorrente.valueChanges.subscribe((ativo) => {
       definirHabilitado(this.form.controls.parcelado, !ativo);
-      this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.parcelado.value);
+      this.atualizarValidadoresDiaDoMes(!!ativo);
     });
     this.form.controls.parcelado.valueChanges.subscribe((ativo) => {
       definirHabilitado(this.form.controls.recorrente, !ativo);
-      this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.recorrente.value);
+      const dataPrimeiraParcela = this.form.controls.dataPrimeiraParcela;
+      dataPrimeiraParcela.setValidators(ativo ? [Validators.required] : []);
+      dataPrimeiraParcela.updateValueAndValidity();
       const numeroParcelas = this.form.controls.numeroParcelas;
       numeroParcelas.setValidators(ativo ? [Validators.required, Validators.min(2), Validators.max(120)] : []);
       numeroParcelas.updateValueAndValidity();
@@ -370,7 +383,7 @@ export class GastoFormDialogComponent implements OnInit {
         numeroParcelas: valores.numeroParcelas!,
         categoriaId: valores.categoriaId!,
         subcategoriaId: valores.subcategoriaId ?? null,
-        diaDoMes: valores.diaDoMes!,
+        dataPrimeiraParcela: this.formatarDataIso(valores.dataPrimeiraParcela!),
         orcamentoId: valores.orcamentoId ?? null
       };
       this.dialogRef.close({ tipo: 'parcelada', parcelada } satisfies GastoFormResultado);

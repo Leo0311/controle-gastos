@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -48,8 +49,9 @@ public class CompraParcelada {
     @Column(name = "orcamento_id")
     private Integer orcamentoId;
 
-    // 1-31. Mesmo clamping de GastoRecorrente.diaDoMes em meses mais curtos - ver
-    // CompraParceladaService.gerarParcelas.
+    // 1-31, DERIVADO de dataPrimeiraParcela.getDayOfMonth() no cadastro (não é mais
+    // input). Persistido só para o rótulo "Todo dia X" e o clamping em meses mais
+    // curtos - ver CompraParceladaService.gerarParcelas.
     @Column(name = "dia_do_mes", nullable = false)
     private Integer diaDoMes;
 
@@ -64,6 +66,14 @@ public class CompraParcelada {
 
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
+
+    // Data da 1ª parcela - input do cadastro (pode ser retroativa: compra antiga só
+    // agora registrada). As parcelas seguintes seguem mês a mês a partir dela. Não é
+    // coluna (por isso @Transient): dia_do_mes é derivado dela e persistido; o
+    // mês/ano de início se reconstrói de MIN(gastos.data). Vem null nas respostas,
+    // igual a GastoRecorrente.mesesGerar.
+    @Transient
+    private LocalDate dataPrimeiraParcela;
 
     // Quantos gastos estão realmente vinculados a esta compra hoje. Não é coluna
     // (por isso @Transient) - preenchido só na listagem (CompraParceladaService.

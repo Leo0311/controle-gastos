@@ -52,6 +52,9 @@ public class CompraParceladaService {
     @Transactional
     public CompraParcelada cadastrar(CompraParcelada dados, Integer usuarioId) {
         validar(dados);
+        // dia_do_mes deixou de ser input: é derivado da data da 1ª parcela e
+        // persistido só para o rótulo "Todo dia X" e o clamping em meses curtos.
+        dados.setDiaDoMes(dados.getDataPrimeiraParcela().getDayOfMonth());
         // Resolve categoria/subcategoria/orçamento uma vez só, aqui - antes de
         // qualquer escrita. gerarParcelas reaproveita os nomes já resolvidos em
         // todas as N parcelas, em vez de o GastoService revalidar por parcela.
@@ -84,9 +87,11 @@ public class CompraParceladaService {
     }
 
     // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir da
-    // PRÓXIMA ocorrência futura do dia escolhido (ver mesDaPrimeiraParcela) - a compra
-    // parcelada é lançada de uma vez, diferente da recorrência, que só lança o gasto
-    // do mês quando o dia configurado chega. Divide valorTotal em centavos (evita erro
+    // data da 1ª parcela informada no cadastro - a compra parcelada é lançada de uma
+    // vez, diferente da recorrência, que só lança o gasto do mês quando o dia
+    // configurado chega. A data da 1ª parcela pode ser retroativa (compra antiga sendo
+    // registrada agora): parcelas com data anterior a hoje entram como histórico e as
+    // futuras aparecem em "Próximas contas". Divide valorTotal em centavos (evita erro
     // de arredondamento de ponto flutuante) e ajusta a ÚLTIMA parcela pra soma bater
     // exatamente com valorTotal, sem perder nem sobrar centavo.
     private void gerarParcelas(CompraParcelada compra, CategoriaResolvida categoria, Integer usuarioId) {
@@ -94,7 +99,7 @@ public class CompraParceladaService {
         int numeroParcelas = compra.getNumeroParcelas();
         long parcelaBaseCentavos = totalCentavos / numeroParcelas;
 
-        LocalDate referencia = mesDaPrimeiraParcela(compra.getDiaDoMes());
+        LocalDate referencia = compra.getDataPrimeiraParcela();
         List<Gasto> parcelas = new ArrayList<>(numeroParcelas);
         for (int i = 0; i < numeroParcelas; i++) {
             YearMonth mesParcela = YearMonth.from(referencia).plusMonths(i);
@@ -124,20 +129,6 @@ public class CompraParceladaService {
     // geração (gerarParcelas) usarem exatamente a mesma conta e nunca divergirem.
     private long totalEmCentavos(BigDecimal valorTotal) {
         return valorTotal.movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact();
-    }
-
-    // Bug real corrigido: antes, a primeira parcela sempre caía no mês atual mesmo
-    // quando o dia escolhido já tinha passado (ex: hoje dia 29, dia escolhido 10 -
-    // lançava uma parcela "retroativa" no dia 10 deste mês, que já ficou no passado).
-    // Agora a primeira parcela sempre começa na PRÓXIMA ocorrência futura do dia
-    // escolhido: se esse dia (já ajustado pro último dia válido do mês atual, mesmo
-    // clamping usado no loop de gerarParcelas) ainda não chegou este mês, a primeira
-    // parcela continua no mês atual; se já passou (ou é hoje), pula pro mês seguinte.
-    // Só o mês importa aqui - o dia exato de cada parcela é recalculado no loop acima.
-    private LocalDate mesDaPrimeiraParcela(int diaDoMes) {
-        LocalDate hoje = LocalDate.now();
-        LocalDate primeiraOcorrenciaNoMesAtual = hoje.withDayOfMonth(Math.min(diaDoMes, hoje.lengthOfMonth()));
-        return primeiraOcorrenciaNoMesAtual.isAfter(hoje) ? hoje : hoje.plusMonths(1);
     }
 
     private CompraParcelada buscarPorId(Integer id, Integer usuarioId) {
@@ -195,8 +186,21 @@ public class CompraParceladaService {
                     "Valor total muito baixo para dividir em " + dados.getNumeroParcelas()
                     + " parcelas: cada parcela ficaria abaixo de R$ 0,01.");
         }
-        if (dados.getDiaDoMes() == null || dados.getDiaDoMes() < 1 || dados.getDiaDoMes() > 31) {
-            throw new IllegalArgumentException("Dia do mês deve estar entre 1 e 31.");
+        if (dados.getDataPrimeiraParcela() == null) {
+            throw new IllegalArgumentException("Data da primeira parcela é obrigatória.");
+        }
+        // Cadastro retroativo é permitido (compra antiga só agora registrada), mas
+        // limitado: 12 meses pra trás cobre o "esqueci de lançar" sem deixar um erro
+        // de digitação de ano criar gasto em 2019; 2 meses pra frente barra o
+        // fat-finger de ano no futuro. Mesma janela validada no frontend.
+        LocalDate hoje = LocalDate.now();
+        if (dados.getDataPrimeiraParcela().isBefore(hoje.minusMonths(12))) {
+            throw new IllegalArgumentException(
+                    "A primeira parcela não pode ser há mais de 12 meses. Para uma compra mais antiga, "
+                    + "lance as parcelas passadas como gastos avulsos.");
+        }
+        if (dados.getDataPrimeiraParcela().isAfter(hoje.plusMonths(2))) {
+            throw new IllegalArgumentException("A primeira parcela não pode ser a mais de 2 meses no futuro.");
         }
     }
 }

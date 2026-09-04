@@ -95,7 +95,7 @@
       </div>
     }
 
-    @if (!editando && (form.controls.recorrente.value || form.controls.parcelado.value)) {
+    @if (!editando && form.controls.recorrente.value) {
       <mat-form-field appearance="outline">
         <mat-label>Dia do mês</mat-label>
         <input matInput type="number" min="1" max="31" formControlName="diaDoMes">
@@ -110,6 +110,26 @@
     }
 
     @if (!editando && form.controls.parcelado.value) {
+      <mat-form-field appearance="outline">
+        <mat-label>Data da 1ª parcela</mat-label>
+        <input matInput appMascaraData [matDatepicker]="pickerParcela"
+          [min]="minDataPrimeiraParcela" [max]="maxDataPrimeiraParcela"
+          formControlName="dataPrimeiraParcela">
+        <mat-datepicker-toggle matIconSuffix [for]="pickerParcela"></mat-datepicker-toggle>
+        <mat-datepicker #pickerParcela [touchUi]="(telaPequena$ | async) ?? false"></mat-datepicker>
+        <mat-hint>Padrão hoje. Registre a data real da compra — as parcelas seguintes seguem mês a mês.</mat-hint>
+        @if (form.controls.dataPrimeiraParcela.hasError('required')) {
+          <mat-error>Data da 1ª parcela é obrigatória.</mat-error>
+        }
+        @if (form.controls.dataPrimeiraParcela.hasError('matDatepickerMin')) {
+          <mat-error>A primeira parcela não pode ser há mais de 12 meses. Para uma compra mais antiga,
+            lance as parcelas passadas como gastos avulsos.</mat-error>
+        }
+        @if (form.controls.dataPrimeiraParcela.hasError('matDatepickerMax')) {
+          <mat-error>A primeira parcela não pode ser a mais de 2 meses no futuro.</mat-error>
+        }
+      </mat-form-field>
+
       <mat-form-field appearance="outline">
         <mat-label>Número de parcelas</mat-label>
         <input matInput type="number" min="2" max="120" formControlName="numeroParcelas">
