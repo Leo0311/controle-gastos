@@ -80,7 +80,16 @@ export class GastosRecorrentesComponent implements OnInit {
 
   recorrentes: GastoRecorrente[] = [];
   parceladas: CompraParcelada[] = [];
+  // calendario = todos os meses (a API já devolve tudo; o agrupamento é no
+  // cliente). calendarioVisivel = só a janela renderizada - uma parcelada de 120x
+  // são 120 mat-expansion-panel, e mostrar todos de uma vez deixa a rolagem
+  // inutilizável. Não muda tráfego nem tempo de resposta, só o que vai pro DOM.
   calendario: GrupoMesCalendario[] = [];
+  calendarioVisivel: GrupoMesCalendario[] = [];
+  mesesRestantes = 0;
+  proximoBloco = 0;
+  private readonly INCREMENTO_MESES = 12;
+  private mesesVisiveis = this.INCREMENTO_MESES;
   carregando = false;
   carregandoParceladas = false;
   carregandoCalendario = false;
@@ -120,15 +129,37 @@ export class GastosRecorrentesComponent implements OnInit {
     this.gastoService.listarTodos().subscribe({
       next: (gastos) => {
         this.calendario = this.agruparProximasContas(gastos);
+        this.mesesVisiveis = this.INCREMENTO_MESES;
+        this.atualizarJanelaCalendario();
         this.recalcularLancamentosFuturos(gastos);
         this.carregandoCalendario = false;
       },
       error: () => {
         this.calendario = [];
+        this.atualizarJanelaCalendario();
         this.carregandoCalendario = false;
         this.erroCalendario = true;
       }
     });
+  }
+
+  // Recorta calendario na janela atual e recalcula quanto ainda falta. Os meses
+  // revelados entram DEPOIS do botão (que fica no fim da lista), então a rolagem
+  // não pula: o conteúdo acima do ponto de scroll não muda, o botão só desce.
+  private atualizarJanelaCalendario(): void {
+    this.calendarioVisivel = this.calendario.slice(0, this.mesesVisiveis);
+    this.mesesRestantes = Math.max(0, this.calendario.length - this.mesesVisiveis);
+    this.proximoBloco = Math.min(this.INCREMENTO_MESES, this.mesesRestantes);
+  }
+
+  verMaisMeses(): void {
+    this.mesesVisiveis += this.INCREMENTO_MESES;
+    this.atualizarJanelaCalendario();
+  }
+
+  verTodosOsMeses(): void {
+    this.mesesVisiveis = this.calendario.length;
+    this.atualizarJanelaCalendario();
   }
 
   // Gastos futuros (data >= hoje) que vieram de uma recorrência ou de uma compra

@@ -139,7 +139,7 @@
            lançamentos abre/fecha ao clicar. O 1º mês (mais próximo) já abre
            expandido; os demais começam colapsados. -->
       <mat-accordion class="lista-calendario" multi>
-        @for (grupo of calendario; track grupo.chave; let primeiro = $first) {
+        @for (grupo of calendarioVisivel; track grupo.chave; let primeiro = $first) {
           <mat-expansion-panel class="grupo-mes" [expanded]="primeiro">
             <mat-expansion-panel-header>
               <mat-panel-title>
@@ -165,6 +165,22 @@
           </mat-expansion-panel>
         }
       </mat-accordion>
+
+      @if (mesesRestantes > 0) {
+        <div class="ver-mais-meses">
+          <button mat-stroked-button type="button" (click)="verMaisMeses()">
+            Ver mais {{ proximoBloco }} {{ proximoBloco === 1 ? 'mês' : 'meses' }}
+          </button>
+          <!-- Só quando ainda faltaria mais de um clique: aí o "Ver tudo" também
+               serve de indicador de quanto falta, sem virar um segundo botão
+               concorrendo no caso comum (parcelada curta, poucos meses a mais). -->
+          @if (mesesRestantes > proximoBloco) {
+            <button mat-button type="button" (click)="verTodosOsMeses()">
+              Ver tudo (mais {{ mesesRestantes }} meses)
+            </button>
+          }
+        </div>
+      }
     }
   </mat-tab>
 </mat-tab-group>

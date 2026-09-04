@@ -94,6 +94,17 @@ começam colapsados, para a agenda inteira caber numa olhada. É uma lista/agend
 uma grade de calendário), pensada para funcionar bem no mobile. Usa os campos
 `gastoRecorrenteId`/`compraParceladaId` que a API já devolve — sem endpoint novo.
 
+Só os **primeiros 12 meses** são renderizados de início; no fim da lista, um botão
+**"Ver mais 12 meses"** revela o próximo bloco, acumulando, e ao lado um
+**"Ver tudo (mais N meses)"** (que aparece só quando ainda faltaria mais de um clique)
+mostra tudo de uma vez e serve de indicador de quanto falta. Quando não há mais meses
+ocultos, os botões somem; se a agenda inteira cabe em 12 meses, nenhum botão aparece.
+A API já manda todos os lançamentos (o agrupamento por mês é no cliente), então isso
+não muda tráfego nem tempo de resposta — só evita despejar, por exemplo, os 120
+`mat-expansion-panel` de uma parcelada de 120x no DOM de uma vez, o que tornava a
+rolagem inutilizável. Revelar um bloco não mexe na rolagem: os meses novos entram
+abaixo do botão, o conteúdo acima do ponto de scroll não muda.
+
 No mobile, as três abas dessa tela não cabem lado a lado. Além das setinhas `<` `>`
 de paginação do Angular Material, o cabeçalho de abas também rola arrastando o dedo
 na horizontal: a diretiva `appAbasArrastaveis` (em `shared/`) libera o
