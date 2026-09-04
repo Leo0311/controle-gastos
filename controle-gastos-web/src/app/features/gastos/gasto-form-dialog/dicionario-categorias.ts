@@ -310,7 +310,14 @@ export const DICIONARIO_CATEGORIAS: EntradaDicionario[] = [
     categoria: 'Lazer',
     subcategoria: 'Bares'
   },
-  { termos: ['parque', 'zoologico', 'museu', 'exposicao', 'teatro', 'passeio', 'parque de diversoes'], categoria: 'Lazer', subcategoria: 'Passeios' },
+  {
+    termos: [
+      'parque', 'zoologico', 'museu', 'exposicao', 'teatro', 'passeio', 'parque de diversoes',
+      'caminhada', 'caminhar'
+    ],
+    categoria: 'Lazer',
+    subcategoria: 'Passeios'
+  },
   {
     termos: [
       'boliche', 'quadra', 'aluguel de quadra', 'futebol', 'futsal', 'society', 'pelada',
