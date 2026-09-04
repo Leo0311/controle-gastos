@@ -207,6 +207,16 @@ export class GastosRecorrentesComponent implements OnInit {
     return recorrenteId != null ? (this.lancamentosFuturosPorRecorrente.get(recorrenteId) ?? 0) : 0;
   }
 
+  // Quantas parcelas a compra tem hoje (do backend, contagem agregada). Sem o dado,
+  // assume completo pra não sinalizar falso.
+  parcelasLancadas(parcelada: CompraParcelada): number {
+    return parcelada.parcelasLancadas ?? parcelada.numeroParcelas;
+  }
+
+  parcelamentoIncompleto(parcelada: CompraParcelada): boolean {
+    return parcelada.parcelasLancadas != null && parcelada.parcelasLancadas < parcelada.numeroParcelas;
+  }
+
   private hojeIso(): string {
     const hoje = new Date();
     const ano = hoje.getFullYear();

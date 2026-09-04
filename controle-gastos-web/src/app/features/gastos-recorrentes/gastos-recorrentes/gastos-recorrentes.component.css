@@ -237,6 +237,24 @@
   color: var(--texto-terciario);
 }
 
+/* Selo de atenção (âmbar) quando o parcelamento está incompleto - só sinaliza. */
+.parcelas-incompletas {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--status-atencao-fundo);
+  color: var(--status-atencao-texto);
+  font-weight: 500;
+}
+
+.parcelas-incompletas mat-icon {
+  font-size: 15px;
+  height: 15px;
+  width: 15px;
+}
+
 @media (max-width: 599px) {
   .cabecalho {
     flex-direction: column;

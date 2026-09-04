@@ -75,6 +75,20 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
     List<CategoriaSubcategoriaTotal> somarPorCategoriaESubcategoriaNoPeriodo(
             @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
+    // Quantos gastos estão vinculados a cada compra parcelada do usuário - uma query
+    // agregada só, usada pra mostrar "N de M parcelas" na aba Parceladas e sinalizar
+    // parcelamentos incompletos (ver CompraParceladaService.listarTodos).
+    @Query("SELECT g.compraParceladaId AS compraId, COUNT(g) AS total FROM Gasto g "
+            + "WHERE g.usuarioId = :usuarioId AND g.compraParceladaId IS NOT NULL "
+            + "GROUP BY g.compraParceladaId")
+    List<ParcelasPorCompra> contarParcelasPorCompra(@Param("usuarioId") Integer usuarioId);
+
+    interface ParcelasPorCompra {
+        Integer getCompraId();
+
+        long getTotal();
+    }
+
     interface CategoriaTotal {
         Integer getCategoriaId();
 

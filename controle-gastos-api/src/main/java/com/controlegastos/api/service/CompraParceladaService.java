@@ -22,6 +22,8 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +37,16 @@ public class CompraParceladaService {
     private final OrcamentoRepository orcamentoRepository;
 
     public List<CompraParcelada> listarTodos(Integer usuarioId) {
-        return repository.findAllByUsuarioIdOrderByDataCriacaoDesc(usuarioId);
+        List<CompraParcelada> compras = repository.findAllByUsuarioIdOrderByDataCriacaoDesc(usuarioId);
+        // Contagem agregada (uma query) de quantas parcelas cada compra ainda tem -
+        // pra a UI mostrar "N de M parcelas" e sinalizar parcelamento incompleto.
+        Map<Integer, Long> lancadasPorCompra = gastoRepository.contarParcelasPorCompra(usuarioId).stream()
+                .collect(Collectors.toMap(
+                        GastoRepository.ParcelasPorCompra::getCompraId,
+                        GastoRepository.ParcelasPorCompra::getTotal));
+        compras.forEach(compra ->
+                compra.setParcelasLancadas(lancadasPorCompra.getOrDefault(compra.getId(), 0L).intValue()));
+        return compras;
     }
 
     @Transactional

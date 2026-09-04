@@ -114,13 +114,20 @@ public class GastoService {
         validar(dados);
         resolverCategoria(dados, usuarioId);
         validarOrcamento(dados.getOrcamentoId(), usuarioId);
-        existente.setDescricao(dados.getDescricao());
-        existente.setValor(dados.getValor());
+        // Parcela de compra parcelada: descrição, valor e data são definidos pela
+        // compra e não podem mudar aqui (quebrariam o "(k/N)", a soma das parcelas
+        // ou a sequência de meses). O frontend já trava esses campos; isto garante
+        // o mesmo por chamada direta à API. Categoria/subcategoria/orçamento seguem
+        // editáveis (recategorizar ou revincular a orçamento não quebra o parcelamento).
+        if (existente.getCompraParceladaId() == null) {
+            existente.setDescricao(dados.getDescricao());
+            existente.setValor(dados.getValor());
+            existente.setData(dados.getData() != null ? dados.getData() : existente.getData());
+        }
         existente.setCategoria(dados.getCategoria());
         existente.setSubcategoria(dados.getSubcategoria());
         existente.setCategoriaId(dados.getCategoriaId());
         existente.setSubcategoriaId(dados.getSubcategoriaId());
-        existente.setData(dados.getData() != null ? dados.getData() : existente.getData());
         existente.setOrcamentoId(dados.getOrcamentoId());
         return repository.save(existente);
     }

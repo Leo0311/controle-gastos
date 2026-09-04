@@ -96,6 +96,38 @@ class CompraParceladaServiceTest {
         return parcelas.stream().map(Gasto::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    private GastoRepository.ParcelasPorCompra contagem(int compraId, long total) {
+        GastoRepository.ParcelasPorCompra projecao = mock(GastoRepository.ParcelasPorCompra.class);
+        when(projecao.getCompraId()).thenReturn(compraId);
+        when(projecao.getTotal()).thenReturn(total);
+        return projecao;
+    }
+
+    private CompraParcelada compraComId(int id, int numeroParcelas) {
+        CompraParcelada c = new CompraParcelada();
+        c.setId(id);
+        c.setNumeroParcelas(numeroParcelas);
+        return c;
+    }
+
+    @Test
+    void listarTodos_preencheParcelasLancadas_incluindoParcelamentoIncompleto() {
+        // constrói os mocks de projeção ANTES do when(...) - Mockito não deixa
+        // stubar um mock dentro de outro stubbing ainda aberto.
+        GastoRepository.ParcelasPorCompra c1 = contagem(1, 3L);
+        GastoRepository.ParcelasPorCompra c2 = contagem(2, 2L);
+        when(repository.findAllByUsuarioIdOrderByDataCriacaoDesc(USUARIO))
+                .thenReturn(List.of(compraComId(1, 3), compraComId(2, 3), compraComId(3, 4)));
+        when(gastoRepository.contarParcelasPorCompra(USUARIO)).thenReturn(List.of(c1, c2));
+        // compra 3 não tem contagem nenhuma -> 0 parcelas
+
+        List<CompraParcelada> resultado = service.listarTodos(USUARIO);
+
+        assertThat(resultado.get(0).getParcelasLancadas()).isEqualTo(3);
+        assertThat(resultado.get(1).getParcelasLancadas()).isEqualTo(2);
+        assertThat(resultado.get(2).getParcelasLancadas()).isZero();
+    }
+
     @Test
     void rejeitaValorBaixoDemaisParaONumeroDeParcelasSemGravarNada() {
         assertThatThrownBy(() -> service.cadastrar(compra("0.03", 5), USUARIO))

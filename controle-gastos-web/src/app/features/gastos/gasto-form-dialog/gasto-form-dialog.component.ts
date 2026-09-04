@@ -93,6 +93,11 @@ export class GastoFormDialogComponent implements OnInit {
     .pipe(map((resultado) => resultado.matches));
 
   readonly editando: boolean;
+  // Editando uma parcela de compra parcelada: descrição, valor e data são
+  // definidos pela compra e ficam travados (mudar quebraria o "(k/N)", a soma das
+  // parcelas ou a sequência de meses). Categoria/subcategoria/orçamento seguem
+  // editáveis. O backend também ignora mudanças nesses 3 campos (GastoService.atualizar).
+  readonly ehParcela: boolean;
   readonly NOVA_CATEGORIA = NOVA_CATEGORIA;
   readonly NOVA_SUBCATEGORIA = NOVA_SUBCATEGORIA;
 
@@ -138,6 +143,7 @@ export class GastoFormDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) data: GastoFormDialogData
   ) {
     this.editando = !!data.gasto;
+    this.ehParcela = !!data.gasto?.compraParceladaId;
     // Editando um gasto existente: respeita o vínculo já salvo (inclusive se estiver em branco)
     // em vez de forçar uma nova sugestão automática.
     this.escolhaManualOrcamento = this.editando;
@@ -153,6 +159,11 @@ export class GastoFormDialogComponent implements OnInit {
         data: this.parseDataLocal(data.gasto.data),
         orcamentoId: data.gasto.orcamentoId ?? null
       });
+      if (this.ehParcela) {
+        this.form.controls.descricao.disable();
+        this.form.controls.valor.disable();
+        this.form.controls.data.disable();
+      }
     }
   }
 

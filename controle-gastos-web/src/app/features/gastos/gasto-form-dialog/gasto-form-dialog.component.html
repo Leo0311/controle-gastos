@@ -1,10 +1,13 @@
-<h2 mat-dialog-title>{{ editando ? 'Editar gasto' : 'Novo gasto' }}</h2>
+<h2 mat-dialog-title>{{ ehParcela ? 'Editar parcela' : (editando ? 'Editar gasto' : 'Novo gasto') }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="salvar()">
   <mat-dialog-content class="form-content">
     <mat-form-field appearance="outline">
       <mat-label>Descrição</mat-label>
       <input matInput formControlName="descricao" maxlength="150">
+      @if (ehParcela) {
+        <mat-hint>Descrição, valor e data vêm da compra parcelada e não são editáveis aqui.</mat-hint>
+      }
       @if (form.controls.descricao.hasError('required')) {
         <mat-error>Descrição é obrigatória.</mat-error>
       }

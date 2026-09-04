@@ -106,6 +106,16 @@
                 <span class="separador">·</span>
                 <span>Todo dia {{ parcelada.diaDoMes }}</span>
               </div>
+              <div class="linha-detalhes">
+                @if (parcelamentoIncompleto(parcelada)) {
+                  <span class="parcelas-incompletas" role="status">
+                    <mat-icon inline>warning</mat-icon>
+                    {{ parcelasLancadas(parcelada) }} de {{ parcelada.numeroParcelas }} parcelas — uma foi removida
+                  </span>
+                } @else {
+                  <span>{{ parcelasLancadas(parcelada) }} de {{ parcelada.numeroParcelas }} parcelas</span>
+                }
+              </div>
             </div>
 
             <button mat-icon-button (click)="excluirParcelada(parcelada)" aria-label="Excluir compra parcelada" title="Excluir">

@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -63,4 +64,13 @@ public class CompraParcelada {
 
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
+
+    // Quantos gastos estão realmente vinculados a esta compra hoje. Não é coluna
+    // (por isso @Transient) - preenchido só na listagem (CompraParceladaService.
+    // listarTodos) a partir de uma contagem agregada. Se ficar abaixo de
+    // numeroParcelas, o parcelamento está incompleto: uma parcela foi removida
+    // fora do fluxo, ou é dado anterior à trava de exclusão. Vem null nas demais
+    // respostas (POST) e é ignorado na desserialização, igual a GastoRecorrente.mesesGerar.
+    @Transient
+    private Integer parcelasLancadas;
 }
