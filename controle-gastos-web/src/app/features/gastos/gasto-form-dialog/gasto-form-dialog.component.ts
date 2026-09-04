@@ -221,7 +221,7 @@ export class GastoFormDialogComponent implements OnInit {
       definirHabilitado(this.form.controls.recorrente, !ativo);
       this.atualizarValidadoresDiaDoMes(!!ativo || !!this.form.controls.recorrente.value);
       const numeroParcelas = this.form.controls.numeroParcelas;
-      numeroParcelas.setValidators(ativo ? [Validators.required, Validators.min(2), Validators.max(60)] : []);
+      numeroParcelas.setValidators(ativo ? [Validators.required, Validators.min(2), Validators.max(120)] : []);
       numeroParcelas.updateValueAndValidity();
     });
   }

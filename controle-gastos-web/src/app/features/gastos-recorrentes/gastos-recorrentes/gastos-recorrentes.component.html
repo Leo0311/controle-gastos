@@ -40,6 +40,14 @@
                 <span class="separador">·</span>
                 <span>Todo dia {{ recorrente.diaDoMes }}</span>
               </div>
+              @if (!recorrente.ativo) {
+                <div class="linha-estado-pausado">
+                  Sem novos lançamentos
+                  @if (lancamentosFuturos(recorrente.id) > 0) {
+                    · {{ lancamentosFuturos(recorrente.id) }} lançamento{{ lancamentosFuturos(recorrente.id) > 1 ? 's' : '' }} futuro{{ lancamentosFuturos(recorrente.id) > 1 ? 's' : '' }} já gerado{{ lancamentosFuturos(recorrente.id) > 1 ? 's' : '' }}
+                  }
+                </div>
+              }
             </div>
 
             <button mat-icon-button [matMenuTriggerFor]="menuAcoes" aria-label="Mais ações">

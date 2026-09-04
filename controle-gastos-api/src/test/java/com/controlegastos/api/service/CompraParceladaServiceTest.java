@@ -82,10 +82,14 @@ class CompraParceladaServiceTest {
         return dados;
     }
 
+    @SuppressWarnings("unchecked")
     private List<Gasto> parcelasGeradas(int quantidadeEsperada) {
-        ArgumentCaptor<Gasto> captor = ArgumentCaptor.forClass(Gasto.class);
-        verify(gastoService, times(quantidadeEsperada)).cadastrarVinculadoAParcelada(captor.capture(), any());
-        return captor.getAllValues();
+        ArgumentCaptor<List<Gasto>> captor = ArgumentCaptor.forClass(List.class);
+        // as parcelas são persistidas de uma vez, num único salvarParcelas em lote
+        verify(gastoService).salvarParcelas(captor.capture(), any());
+        List<Gasto> parcelas = captor.getValue();
+        assertThat(parcelas).hasSize(quantidadeEsperada);
+        return parcelas;
     }
 
     private static BigDecimal somar(List<Gasto> parcelas) {
@@ -100,6 +104,28 @@ class CompraParceladaServiceTest {
 
         verify(repository, never()).save(any());
         verifyNoInteractions(gastoService);
+    }
+
+    @Test
+    void rejeitaMaisDe120ParcelasSemGravarNada() {
+        assertThatThrownBy(() -> service.cadastrar(compra("12100.00", 121), USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("entre 2 e 120");
+
+        verify(repository, never()).save(any());
+        verifyNoInteractions(gastoService);
+    }
+
+    @Test
+    void resolveCategoriaUmaVezSoIndependenteDoNumeroDeParcelas() {
+        service.cadastrar(compra("2400.00", 120), USUARIO);
+
+        List<Gasto> parcelas = parcelasGeradas(120);
+        assertThat(parcelas).allSatisfy(parcela -> assertThat(parcela.getCategoria()).isEqualTo("Compras"));
+
+        // o ponto da otimização: 1 resolução de categoria pra compra inteira, não 120
+        verify(categoriaRepository, times(1)).findByIdVisivel(any(), any());
+        verifyNoInteractions(subcategoriaRepository);
     }
 
     @Test

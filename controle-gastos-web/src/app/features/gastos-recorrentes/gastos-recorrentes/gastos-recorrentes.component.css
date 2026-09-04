@@ -208,6 +208,14 @@
   gap: 4px;
 }
 
+/* Explica o que "Pausado" significa na prática - o chip sozinho não diz que os
+   lançamentos futuros já gerados continuam valendo. */
+.linha-estado-pausado {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--texto-terciario);
+}
+
 .separador {
   color: var(--texto-terciario);
 }

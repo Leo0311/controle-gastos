@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS compras_parceladas (
     usuario_id      INT NOT NULL REFERENCES usuarios(id),
     descricao       VARCHAR(150) NOT NULL,
     valor_total     NUMERIC(12,2) NOT NULL CHECK (valor_total > 0),
-    numero_parcelas INT NOT NULL CHECK (numero_parcelas BETWEEN 2 AND 60),
+    numero_parcelas INT NOT NULL CHECK (numero_parcelas BETWEEN 2 AND 120),
     categoria_id    INT NOT NULL REFERENCES categorias(id),
     subcategoria_id INT REFERENCES subcategorias(id),
     orcamento_id    INT REFERENCES orcamentos(id) ON DELETE SET NULL,
@@ -303,6 +303,15 @@ CREATE INDEX IF NOT EXISTS idx_gastos_compra_parcelada ON gastos (compra_parcela
 -- lançadas, só desvinculando-as. Idempotente: não há mais nada a apagar depois da
 -- primeira execução, já que excluir() nunca mais grava ativa = FALSE.
 DELETE FROM compras_parceladas WHERE ativa = FALSE;
+
+-- Migração: o teto de parcelas subiu de 60 para 120 (cobre financiamentos de ~10
+-- anos, não só carro). O CREATE TABLE acima já nasce com o limite novo; este bloco
+-- reajusta o CHECK em bancos que já tinham a tabela. DROP IF EXISTS + ADD sempre
+-- deixa o mesmo estado final, então é idempotente; e como só alarga a faixa
+-- (2..60 -> 2..120), nenhum dado existente passa a violar. Manter em sincronia com
+-- CompraParceladaService.validar (mesmo 2..120).
+ALTER TABLE compras_parceladas DROP CONSTRAINT IF EXISTS compras_parceladas_numero_parcelas_check;
+ALTER TABLE compras_parceladas ADD CONSTRAINT compras_parceladas_numero_parcelas_check CHECK (numero_parcelas BETWEEN 2 AND 120);
 
 -- ============================================================================
 -- Expansão das categorias/subcategorias padrão do sistema: além das

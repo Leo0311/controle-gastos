@@ -93,6 +93,13 @@ export class GastosRecorrentesComponent implements OnInit {
   private categoriasPorId = new Map<number, Categoria>();
   private subcategoriasPorId = new Map<number, Subcategoria>();
 
+  // Quantos gastos futuros (data >= hoje) já foram pré-gerados por cada recorrência.
+  // Vem da MESMA leitura de gastos que a aba "Próximas contas" já faz em
+  // carregarCalendario() - nenhum request a mais. Usado no card das recorrências
+  // pausadas (o "Pausado" sozinho não diz que os lançamentos já gerados continuam)
+  // e no diálogo de confirmação ao pausar.
+  private lancamentosFuturosPorRecorrente = new Map<number, number>();
+
   ngOnInit(): void {
     this.categoriaService.listarVisiveis().subscribe({
       next: (categorias) => { this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c])); },
@@ -113,6 +120,7 @@ export class GastosRecorrentesComponent implements OnInit {
     this.gastoService.listarTodos().subscribe({
       next: (gastos) => {
         this.calendario = this.agruparProximasContas(gastos);
+        this.recalcularLancamentosFuturos(gastos);
         this.carregandoCalendario = false;
       },
       error: () => {
@@ -148,6 +156,24 @@ export class GastosRecorrentesComponent implements OnInit {
       });
     }
     return [...grupos.values()];
+  }
+
+  // Conta, por recorrência, os gastos com data >= hoje já vinculados a ela (os
+  // pré-gerados pelo horizonte "gerar próximos meses"). Reusa a lista que
+  // carregarCalendario já baixou - sem request novo.
+  private recalcularLancamentosFuturos(gastos: Gasto[]): void {
+    const hoje = this.hojeIso();
+    const mapa = new Map<number, number>();
+    for (const gasto of gastos) {
+      if (gasto.gastoRecorrenteId != null && gasto.data >= hoje) {
+        mapa.set(gasto.gastoRecorrenteId, (mapa.get(gasto.gastoRecorrenteId) ?? 0) + 1);
+      }
+    }
+    this.lancamentosFuturosPorRecorrente = mapa;
+  }
+
+  lancamentosFuturos(recorrenteId: number | undefined): number {
+    return recorrenteId != null ? (this.lancamentosFuturosPorRecorrente.get(recorrenteId) ?? 0) : 0;
   }
 
   private hojeIso(): string {
@@ -271,10 +297,49 @@ export class GastosRecorrentesComponent implements OnInit {
   }
 
   alternarAtivo(recorrente: GastoRecorrente): void {
+    // Reativar é inócuo (volta a gerar daqui pra frente); pausar tem uma
+    // consequência que o chip sozinho não comunica, então confirma antes.
+    if (recorrente.ativo) {
+      this.confirmarPausa(recorrente);
+    } else {
+      this.executarAlternarAtivo(recorrente);
+    }
+  }
+
+  private confirmarPausa(recorrente: GastoRecorrente): void {
+    const futuros = this.lancamentosFuturos(recorrente.id);
+    const consequencia = futuros === 0
+      ? 'Nenhum lançamento futuro foi pré-gerado ainda, então nada muda nas outras telas. Para encerrar de '
+        + 'vez, use Excluir (que mantém o histórico dos meses passados).'
+      : (futuros === 1
+          ? 'Há 1 lançamento futuro já gerado (de hoje em diante) que continua'
+          : `Há ${futuros} lançamentos futuros já gerados (de hoje em diante) que continuam`)
+        + ' na lista de Gastos, no Dashboard e em "Próximas contas" - pausar não remove '
+        + (futuros === 1 ? 'esse lançamento' : 'nenhum deles')
+        + '. Para remover também os lançamentos futuros, use Excluir, que apaga os lançamentos a partir de hoje '
+        + 'e mantém o histórico dos meses passados.';
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'Pausar recorrência',
+        mensagem: `Pausar "${recorrente.descricao}" só impede a geração de NOVOS lançamentos daqui pra frente. `
+          + consequencia
+      }
+    });
+    ref.afterClosed().subscribe((confirmado) => {
+      if (confirmado) {
+        this.executarAlternarAtivo(recorrente);
+      }
+    });
+  }
+
+  private executarAlternarAtivo(recorrente: GastoRecorrente): void {
     this.service.alternarAtivo(recorrente.id!).subscribe({
       next: (atualizado) => {
         this.mostrarSucesso(atualizado.ativo ? 'Recorrência reativada.' : 'Recorrência pausada.');
         this.carregar();
+        // reativar pode lançar o gasto do mês corrente; recarrega o contador e a
+        // aba "Próximas contas" pra refletir na hora.
+        this.carregarCalendario();
       },
       error: (erro) => this.mostrarErro(this.mensagemErro(erro))
     });

@@ -20,6 +20,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -40,14 +41,17 @@ public class CompraParceladaService {
     @Transactional
     public CompraParcelada cadastrar(CompraParcelada dados, Integer usuarioId) {
         validar(dados);
-        validarCategoria(dados, usuarioId);
+        // Resolve categoria/subcategoria/orçamento uma vez só, aqui - antes de
+        // qualquer escrita. gerarParcelas reaproveita os nomes já resolvidos em
+        // todas as N parcelas, em vez de o GastoService revalidar por parcela.
+        CategoriaResolvida categoria = resolverCategoria(dados, usuarioId);
         validarOrcamento(dados.getOrcamentoId(), usuarioId);
         dados.setId(null);
         dados.setUsuarioId(usuarioId);
         dados.setAtiva(true);
         dados.setDataCriacao(LocalDateTime.now());
         CompraParcelada salva = repository.save(dados);
-        gerarParcelas(salva, usuarioId);
+        gerarParcelas(salva, categoria, usuarioId);
         return salva;
     }
 
@@ -74,12 +78,13 @@ public class CompraParceladaService {
     // do mês quando o dia configurado chega. Divide valorTotal em centavos (evita erro
     // de arredondamento de ponto flutuante) e ajusta a ÚLTIMA parcela pra soma bater
     // exatamente com valorTotal, sem perder nem sobrar centavo.
-    private void gerarParcelas(CompraParcelada compra, Integer usuarioId) {
+    private void gerarParcelas(CompraParcelada compra, CategoriaResolvida categoria, Integer usuarioId) {
         long totalCentavos = totalEmCentavos(compra.getValorTotal());
         int numeroParcelas = compra.getNumeroParcelas();
         long parcelaBaseCentavos = totalCentavos / numeroParcelas;
 
         LocalDate referencia = mesDaPrimeiraParcela(compra.getDiaDoMes());
+        List<Gasto> parcelas = new ArrayList<>(numeroParcelas);
         for (int i = 0; i < numeroParcelas; i++) {
             YearMonth mesParcela = YearMonth.from(referencia).plusMonths(i);
             int dia = Math.min(compra.getDiaDoMes(), mesParcela.lengthOfMonth());
@@ -92,12 +97,15 @@ public class CompraParceladaService {
             gasto.setDescricao(compra.getDescricao() + " (" + (i + 1) + "/" + numeroParcelas + ")");
             gasto.setValor(BigDecimal.valueOf(valorCentavos, 2));
             gasto.setCategoriaId(compra.getCategoriaId());
+            gasto.setCategoria(categoria.categoriaNome());
             gasto.setSubcategoriaId(compra.getSubcategoriaId());
+            gasto.setSubcategoria(categoria.subcategoriaNome());
             gasto.setOrcamentoId(compra.getOrcamentoId());
             gasto.setData(data);
             gasto.setCompraParceladaId(compra.getId());
-            gastoService.cadastrarVinculadoAParcelada(gasto, usuarioId);
+            parcelas.add(gasto);
         }
+        gastoService.salvarParcelas(parcelas, usuarioId);
     }
 
     // Converte o valor total (reais) para centavos inteiros - evita erro de ponto
@@ -126,11 +134,16 @@ public class CompraParceladaService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Compra parcelada não encontrada com ID " + id));
     }
 
-    private void validarCategoria(CompraParcelada dados, Integer usuarioId) {
+    // Nomes de categoria/subcategoria já resolvidos, pra gerarParcelas gravar em cada
+    // parcela sem o GastoService ter que buscar de novo (subcategoriaNome é null
+    // quando a compra não tem subcategoria).
+    private record CategoriaResolvida(String categoriaNome, String subcategoriaNome) { }
+
+    private CategoriaResolvida resolverCategoria(CompraParcelada dados, Integer usuarioId) {
         Categoria categoria = categoriaRepository.findByIdVisivel(dados.getCategoriaId(), usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Categoria inválida ou não pertence ao usuário."));
         if (dados.getSubcategoriaId() == null) {
-            return;
+            return new CategoriaResolvida(categoria.getNome(), null);
         }
         Subcategoria subcategoria = subcategoriaRepository
                 .findByIdVisivel(dados.getSubcategoriaId(), usuarioId)
@@ -138,6 +151,7 @@ public class CompraParceladaService {
         if (!subcategoria.getCategoriaId().equals(categoria.getId())) {
             throw new IllegalArgumentException("Subcategoria não pertence à categoria selecionada.");
         }
+        return new CategoriaResolvida(categoria.getNome(), subcategoria.getNome());
     }
 
     private void validarOrcamento(Integer orcamentoId, Integer usuarioId) {
@@ -158,8 +172,8 @@ public class CompraParceladaService {
         if (dados.getCategoriaId() == null) {
             throw new IllegalArgumentException("Categoria não pode ser vazia.");
         }
-        if (dados.getNumeroParcelas() == null || dados.getNumeroParcelas() < 2 || dados.getNumeroParcelas() > 60) {
-            throw new IllegalArgumentException("Número de parcelas deve estar entre 2 e 60.");
+        if (dados.getNumeroParcelas() == null || dados.getNumeroParcelas() < 2 || dados.getNumeroParcelas() > 120) {
+            throw new IllegalArgumentException("Número de parcelas deve estar entre 2 e 120.");
         }
         // Cada parcela precisa fechar em pelo menos 1 centavo - senão a divisão em
         // centavos (ver gerarParcelas) zera as parcelas base, o CHECK (valor > 0) do

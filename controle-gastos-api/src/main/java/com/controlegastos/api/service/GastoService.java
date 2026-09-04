@@ -76,10 +76,25 @@ public class GastoService {
         return salvar(gasto, usuarioId);
     }
 
-    // Usado só por CompraParceladaService pra criar cada parcela já vinculada à compra
-    // de origem (gasto.compraParceladaId) - nunca exposto diretamente via endpoint público.
-    public Gasto cadastrarVinculadoAParcelada(Gasto gasto, Integer usuarioId) {
-        return salvar(gasto, usuarioId);
+    // Persiste em lote as parcelas de uma compra parcelada. Categoria, subcategoria
+    // (nomes já preenchidos em cada Gasto) e orçamento foram resolvidos e validados
+    // UMA única vez pelo chamador (CompraParceladaService.cadastrar), então aqui NÃO
+    // se repete a resolução por parcela - antes era 1 findByIdVisivel de categoria (+
+    // 1 de subcategoria, + 1 de orçamento) para cada uma das N parcelas. A validação
+    // dos campos básicos roda para TODAS as parcelas antes de qualquer escrita, pra
+    // uma parcela inválida não deixar meia compra gravada. Nunca exposto via endpoint.
+    public List<Gasto> salvarParcelas(List<Gasto> parcelas, Integer usuarioId) {
+        parcelas.forEach(this::validar);
+        List<Gasto> salvos = new ArrayList<>(parcelas.size());
+        for (Gasto parcela : parcelas) {
+            parcela.setId(null);
+            parcela.setUsuarioId(usuarioId);
+            if (parcela.getData() == null) {
+                parcela.setData(LocalDate.now());
+            }
+            salvos.add(repository.save(parcela));
+        }
+        return salvos;
     }
 
     private Gasto salvar(Gasto gasto, Integer usuarioId) {
