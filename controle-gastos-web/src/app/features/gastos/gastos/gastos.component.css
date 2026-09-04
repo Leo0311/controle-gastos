@@ -52,6 +52,19 @@
   color: var(--texto-secundario);
 }
 
+.botao-filtros-mobile {
+  display: none;
+}
+
+/* Linha própria (mobile e desktop) - some quando o filtro já está no padrão (ver
+   podeLimparFiltros) em vez de ocupar espaço sem função. */
+.linha-limpar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+  color: var(--texto-secundario);
+}
+
 .filtros-periodo {
   display: flex;
   align-items: baseline;
@@ -77,6 +90,73 @@
    CDK tem espaço pra abrir pra baixo normalmente (antes, colado no rodapé fixo,
    ele abria pra cima por cima dos outros campos). */
 @media (max-width: 599px) {
+  .titulo-filtros {
+    display: none;
+  }
+
+  /* Substitui o rótulo "FILTROS" - fechado por padrão, mostra o filtro ativo
+     (mês/ano, categoria ou "todo o histórico") pra dar pra saber o que está
+     sendo exibido sem precisar abrir o painel. */
+  .botao-filtros-mobile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    background: var(--fundo-superficie);
+    border: 1px solid var(--divisor-sutil);
+    border-radius: 8px;
+    color: var(--texto-pagina);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .rotulo-filtros-mobile {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .seta-filtros-mobile {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+
+  .seta-filtros-mobile.aberta {
+    transform: rotate(180deg);
+  }
+
+  /* Colapsa/expande a altura via grid-template-rows (0fr <-> 1fr) - anima suave
+     sem "chutar" um max-height fixo (que ou corta o conteúdo ou sobra vão) e sem
+     JS medindo altura. Fora deste media query (desktop) o painel não é grid, então
+     fica sempre visível na altura natural, independente de .aberto. */
+  .filtros-periodo-painel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.2s ease;
+  }
+
+  .filtros-periodo-painel.aberto {
+    grid-template-rows: 1fr;
+  }
+
+  .filtros-conteudo {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* O label flutuante do appearance="outline" (Mês) fica ~7px acima do campo -
+     sem esse respiro, o overflow:hidden acima corta o label. Direto em
+     .filtros-conteudo esse padding vazaria mesmo fechado (0fr zera a altura, mas
+     padding soma por fora) - aqui, no filho, ele fica dentro da área cortada. */
+  .filtros-conteudo > :first-child {
+    padding-top: 8px;
+  }
+
   .filtros-periodo {
     flex-direction: column;
     align-items: stretch;
@@ -97,27 +177,6 @@
   .btn-todos-meses {
     margin-top: -12px;
   }
-}
-
-.filtro-ativo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  margin-bottom: 16px;
-  background-color: var(--fundo-aviso);
-  color: var(--texto-aviso);
-  border-radius: 4px;
-  flex-wrap: wrap;
-}
-
-.filtro-ativo span {
-  /* flex-basis de 200px (em vez de 0) evita que o texto quebre em várias
-     linhas curtas cedo demais - ele só cede espaço quando realmente não
-     há mais lugar, e o botão "Ver todos os gastos" quebra para a linha
-     de baixo primeiro. */
-  flex: 1 1 200px;
-  min-width: 0;
 }
 
 .tabela-scroll {

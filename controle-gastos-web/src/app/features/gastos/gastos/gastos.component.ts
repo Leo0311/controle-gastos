@@ -95,6 +95,13 @@ export class GastosComponent implements OnInit {
   filtroAno: number | null = null;
   filtroCategoria: string | null = null;
 
+  // Painel de filtros no mobile (ver template/CSS) - fechado por padrão, pra não
+  // ocupar a tela toda antes do primeiro gasto aparecer. Abre sozinho quando o
+  // período/categoria filtrado não tem nenhum gasto (ver carregar()), que é
+  // justamente quando o usuário precisa mexer nele. No desktop não tem efeito -
+  // os filtros continuam sempre visíveis lá (CSS só reage a isso abaixo de 600px).
+  filtrosAbertos = false;
+
   // Refletem sempre filtroMes/filtroAno pra exibição nos <mat-select> - quando o
   // filtro de período está limpo ("ver todos os meses"), continuam mostrando o
   // mês/ano atual, pronto pra caso o usuário volte a filtrar por período.
@@ -213,16 +220,18 @@ export class GastosComponent implements OnInit {
     return orcamento.subcategoria ? `${nome} / ${orcamento.subcategoria}` : nome;
   }
 
-  // Só reflete a categoria agora: o período (mês/ano) já fica sempre visível nos
-  // <mat-select> no topo da tela, então repeti-lo aqui na faixa "Mostrando gastos
-  // de..." seria redundante - essa faixa só aparece pra deixar claro que veio de um
-  // clique de categoria no Dashboard (ver limparFiltro).
-  get descricaoFiltro(): string {
-    return this.filtroCategoria ?? '';
+  // Rótulo do botão de filtros no mobile (painel fechado) - precisa deixar claro
+  // o que está sendo mostrado sem o usuário ter que abrir o painel (ver
+  // filtrosAbertos). "Todo o histórico" cobre o caso de "ver todos os meses".
+  get rotuloFiltroMobile(): string {
+    const periodo = this.filtroMes && this.filtroAno
+      ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}`
+      : 'Todo o histórico';
+    return this.filtroCategoria ? `${periodo} · ${this.filtroCategoria}` : periodo;
   }
 
   // Mensagem do empty-state quando não há nenhum gasto no período/categoria
-  // selecionado - combina os dois, diferente de descricaoFiltro (só categoria).
+  // selecionado - combina os dois (mês/ano e categoria).
   get mensagemVazio(): string {
     const periodo = this.filtroAno
       ? (this.filtroMes ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`)
@@ -233,18 +242,41 @@ export class GastosComponent implements OnInit {
       : 'Nenhum gasto cadastrado ainda.';
   }
 
-  // Reset completo (categoria E período) - usado pelo botão "Ver todos os gastos" da
-  // faixa de filtro de categoria. Como não é mais a primeira carga, cair sem mes/ano
-  // na URL mostra literalmente tudo, sem reaplicar o padrão do mês atual.
-  limparFiltro(): void {
-    this.router.navigate(['/gastos']);
+  // true quando há algo fora do padrão pra "Limpar filtros" desfazer - mês/ano
+  // diferentes do atual, categoria selecionada, ou modo "ver todos os meses".
+  // Controla a visibilidade do botão nos dois layouts: no mobile ele fica dentro do
+  // painel colapsável; no desktop, sempre visível junto dos campos (sem painel). Em
+  // ambos, só aparece quando há algo pra limpar (ver template) - exceto no caso
+  // abaixo, onde "limpar" e "Ver mês atual" fariam exatamente a mesma coisa.
+  get podeLimparFiltros(): boolean {
+    // Modo histórico (sem período) E sem categoria: aqui "Ver mês atual" já reseta
+    // pro mês corrente sozinho (a categoria, sem filtro, não tem o que mudar) -
+    // mostrar as duas ações lado a lado no desktop seria redundante.
+    if (this.filtroMes === null && this.filtroAno === null && this.filtroCategoria === null) {
+      return false;
+    }
+    const hoje = new Date();
+    return this.filtroCategoria !== null
+      || this.filtroMes !== hoje.getMonth() + 1
+      || this.filtroAno !== hoje.getFullYear();
+  }
+
+  // Volta ao estado padrão (mês/ano atuais, sem categoria) de uma vez só - diferente
+  // de alternarFiltroMes(), que só afeta o período. No mobile não mexe em
+  // filtrosAbertos: o painel já não se fecha sozinho em nenhum outro fluxo (ver
+  // comentário em carregar()), então continua aberto aqui também, que é justamente
+  // o requisito.
+  limparFiltrosPainel(): void {
+    const hoje = new Date();
+    this.aplicarFiltro(hoje.getMonth() + 1, hoje.getFullYear(), null);
   }
 
   // Alterna entre "ver todos os meses" (sem filtro de período) e "ver mês atual"
   // (filtrado no mês corrente) - preservando a categoria (se houver) nos dois casos,
-  // diferente de limparFiltro(), que reseta tudo. Antes era um botão que só limpava o
-  // período e ficava desabilitado depois (sem jeito de voltar a filtrar por mês sem
-  // mexer nos <mat-select> de Mês/Ano); agora sempre alterna pro estado oposto.
+  // diferente de limparFiltrosPainel(), que reseta tudo. Antes era um botão que só
+  // limpava o período e ficava desabilitado depois (sem jeito de voltar a filtrar
+  // por mês sem mexer nos <mat-select> de Mês/Ano); agora sempre alterna pro estado
+  // oposto.
   get rotuloToggleMes(): string {
     return this.filtroMes || this.filtroAno ? 'Ver todos os meses' : 'Ver mês atual';
   }
@@ -312,6 +344,16 @@ export class GastosComponent implements OnInit {
           ? gastos.filter((g) => (g.categoria ?? '').trim().toLowerCase() === this.filtroCategoria!.trim().toLowerCase())
           : gastos;
         this.carregando = false;
+        // Sem gastos no período/categoria filtrado: abre o painel de filtros
+        // sozinho no mobile - é exatamente quando o usuário precisa mexer nele.
+        // Só ABRE automaticamente, nunca fecha sozinho: se fechasse a cada
+        // carregar() com resultado, o painel recolheria embaixo do dedo do
+        // usuário no meio de uma troca de Mês/Ano (cada <mat-select> já dispara
+        // onMesAnoChange -> carregar() na hora) antes dele terminar de ajustar
+        // os dois campos - fechar é sempre um toque explícito no botão.
+        if (this.gastos.length === 0) {
+          this.filtrosAbertos = true;
+        }
       },
       error: () => {
         // Limpa os gastos do filtro anterior antes de mostrar o erro, pra não

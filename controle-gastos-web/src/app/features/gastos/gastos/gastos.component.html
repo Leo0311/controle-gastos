@@ -37,6 +37,45 @@
 </div>
 
 <h3 class="titulo-filtros">Filtros</h3>
+
+<!-- Só existe visualmente no mobile (ver CSS) - no desktop os filtros continuam
+     sempre visíveis, sem esse botão. Fechado, o rótulo reflete a seleção atual
+     (mês/ano, categoria ou "todo o histórico") pra dar pra saber o que está sendo
+     mostrado sem abrir o painel; aberto, os campos logo abaixo já mostram tudo, então
+     o rótulo detalhado só repetiria a informação - fica só "Filtros". -->
+<button
+  type="button"
+  class="botao-filtros-mobile"
+  (click)="filtrosAbertos = !filtrosAbertos"
+  [attr.aria-expanded]="filtrosAbertos"
+>
+  <mat-icon>filter_list</mat-icon>
+  <span class="rotulo-filtros-mobile">{{ filtrosAbertos ? 'Filtros' : rotuloFiltroMobile }}</span>
+  <mat-icon class="seta-filtros-mobile" [class.aberta]="filtrosAbertos">expand_more</mat-icon>
+</button>
+
+<div class="filtros-periodo-painel" [class.aberto]="filtrosAbertos">
+<!-- Wrapper único: a animação de colapso (grid-template-rows 0fr<->1fr no pai) só
+     anima a altura de UM item de grid - com "Limpar filtros" e .filtros-periodo como
+     dois filhos diretos do pai, o segundo cairia numa linha implícita não animada e
+     nunca colapsaria. Juntar os dois aqui dentro mantém o pai com um filho só. -->
+<div class="filtros-conteudo">
+@if (podeLimparFiltros) {
+  <!-- Linha própria (mobile e desktop) em vez de item dentro de .filtros-periodo:
+       uma linha inteira aparece/some de uma vez, empurrando o que vem depois pra
+       baixo/cima - sem competir por espaço com os campos, então não há largura em
+       que ela "quebre" ou faça o conteúdo abaixo pular (era o que acontecia
+       colocando o botão dentro da faixa flex-wrap dos campos). Fica no topo,
+       longe do "Ver todos os meses"/"Ver mês atual" (fim da faixa) - são ações de
+       natureza diferente (redefinir vs. navegar pro histórico) e um botão texto
+       discreto não compete com o stroked-button daquele. -->
+  <div class="linha-limpar">
+    <button mat-button class="btn-limpar-filtros" (click)="limparFiltrosPainel()">
+      <mat-icon>filter_alt_off</mat-icon>
+      Limpar filtros
+    </button>
+  </div>
+}
 <div class="filtros-periodo">
   <mat-form-field appearance="outline">
     <mat-label>Mês</mat-label>
@@ -76,14 +115,8 @@
     {{ rotuloToggleMes }}
   </button>
 </div>
-
-@if (descricaoFiltro) {
-  <div class="filtro-ativo">
-    <mat-icon>filter_alt</mat-icon>
-    <span>Mostrando gastos de {{ descricaoFiltro }}</span>
-    <button mat-button (click)="limparFiltro()">Ver todos os gastos</button>
-  </div>
-}
+</div>
+</div>
 
 @if (carregando) {
   <div class="carregando">
