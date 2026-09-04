@@ -20,13 +20,15 @@
     align-items: stretch;
   }
 
-  .acoes-cabecalho {
-    flex-direction: column;
-    align-items: stretch;
+  /* Os dois botões lado a lado, não empilhados em largura total: "Planilha"
+     colapsa pra só o ícone (o rótulo some), "Novo gasto" mantém o texto e ocupa
+     o resto - fica claro quem é a ação principal. */
+  .acoes-cabecalho .rotulo-planilha {
+    display: none;
   }
 
-  .acoes-cabecalho button {
-    width: 100%;
+  .acoes-cabecalho .btn-novo-gasto {
+    flex: 1;
   }
 }
 
@@ -62,11 +64,11 @@
   margin-top: 4px;
 }
 
-/* No mobile os filtros empilham em largura total e o "Filtrar por categoria"
-   sobe pro topo da faixa (order: -1). Antes ele era o último controle, colado no
-   rodapé fixo: sem espaço abaixo, o overlay do CDK abria pra cima, por cima do
-   próprio campo e dos selects de Mês/Ano. No topo, o painel abre normalmente
-   pra baixo. */
+/* No mobile os filtros empilham em largura total, na MESMA ordem do desktop
+   (Mês, Ano, Categoria, alternar mês). O "Filtrar por categoria" já não é mais o
+   último controle - o botão de alternar vem depois dele -, então o overlay do
+   CDK tem espaço pra abrir pra baixo normalmente (antes, colado no rodapé fixo,
+   ele abria pra cima por cima dos outros campos). */
 @media (max-width: 599px) {
   .filtros-periodo {
     flex-direction: column;
@@ -80,8 +82,13 @@
   }
 
   .campo-filtro-categoria {
-    order: -1;
     min-width: 0;
+  }
+
+  /* Puxa o botão pra dentro do subscript vazio do campo de cima, pra ele encostar
+     na faixa de filtros em vez de flutuar num vão abaixo dela. */
+  .btn-todos-meses {
+    margin-top: -12px;
   }
 }
 

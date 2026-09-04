@@ -3,10 +3,11 @@
   <div class="acoes-cabecalho">
     <!-- As 3 ações de planilha (exportar / modelo / importar) ficam agrupadas num
          único menu "Planilha", secundário - assim só o "Novo gasto" tem destaque de
-         ação primária, e no mobile são 2 botões em vez de 4 empilhados. -->
-    <button mat-stroked-button [matMenuTriggerFor]="menuPlanilha">
+         ação primária. No mobile o rótulo "Planilha" some (fica só o ícone), pra os
+         dois botões caberem lado a lado com o "Novo gasto" em evidência. -->
+    <button mat-stroked-button class="btn-planilha" [matMenuTriggerFor]="menuPlanilha" aria-label="Ações de planilha">
       <mat-icon>grid_on</mat-icon>
-      Planilha
+      <span class="rotulo-planilha">Planilha</span>
     </button>
     <mat-menu #menuPlanilha="matMenu">
       <button mat-menu-item (click)="exportarTodos()">
@@ -28,7 +29,7 @@
     </mat-menu>
     <input #inputArquivo type="file" accept=".xlsx" class="input-arquivo-oculto" (change)="onArquivoSelecionado($event)">
 
-    <button mat-raised-button color="primary" (click)="novoGasto()">
+    <button mat-raised-button color="primary" class="btn-novo-gasto" (click)="novoGasto()">
       <mat-icon>add</mat-icon>
       Novo gasto
     </button>
