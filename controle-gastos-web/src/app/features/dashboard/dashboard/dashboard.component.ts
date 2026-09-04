@@ -36,10 +36,18 @@ import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog
 // bem tanto sobre o fundo claro quanto sobre o escuro.
 const COR_BARRA = '#2e7f9b';
 
+// Azul-petróleo da identidade visual (--acento-primario em styles.scss), não o
+// COR_BARRA fixo: a primeira fatia da pizza precisa combinar com o resto da UI
+// (aba ativa, botão primário, ...), que troca de tom entre os temas - por isso,
+// diferente do resto da paleta (fixa nos dois temas), ELA é theme-aware e a
+// pizza é remontada ao trocar de tema (ver assinatura de escuro$ em ngOnInit).
+const AZUL_PETROLEO_CLARO = '#1f6f8b';
+const AZUL_PETROLEO_ESCURO = '#6fbbd4';
+
 // Paleta "retrô" das fatias da pizza (base ColorBrewer Dark2). Categoria não tem
 // cor semântica - estas só precisam ser distinguíveis entre si. A COR É ATRIBUÍDA
 // POR IDENTIDADE DE CATEGORIA, não por posição no gráfico: cada categoria fica com
-// CORES_CATEGORIAS[posição dela na lista de categorias do usuário], então a mesma
+// coresCategorias(escuro)[posição dela na lista de categorias do usuário], então a mesma
 // categoria tem sempre a mesma cor - independente do mês, do filtro ou de itens
 // ocultos na legenda (ver montarPizza).
 //
@@ -52,8 +60,7 @@ const COR_BARRA = '#2e7f9b';
 //   - ocre  #A6761D -> #8f5e28 e tijolo #B03A2E -> #8C2F2F: senão tijolo e ocre
 //     ficavam idênticos para deuteranopes (ΔE ~1).
 //   - coral e lavanda adicionados: nenhum par novo pior que os que já existiam.
-const CORES_CATEGORIAS = [
-  COR_BARRA, // teal (= cor da barra)
+const CORES_CATEGORIAS_RESTANTES = [
   '#D95F02', // laranja queimado
   '#E6A817', // mostarda
   '#7570B3', // violeta
@@ -65,6 +72,13 @@ const CORES_CATEGORIAS = [
   '#D1495B', // carmim
   '#E17055', // coral
   '#8A9BC9'  // lavanda
+];
+
+// A primeira posição é o azul-petróleo da identidade (theme-aware); as demais
+// mantêm sempre a mesma cor/ordem, independente do tema.
+const coresCategorias = (escuro: boolean): string[] => [
+  escuro ? AZUL_PETROLEO_ESCURO : AZUL_PETROLEO_CLARO,
+  ...CORES_CATEGORIAS_RESTANTES
 ];
 
 // Fatias de gastos legados sem categoria gerida (categoriaId nulo, ex. gravados
@@ -154,6 +168,12 @@ export class DashboardComponent implements OnInit {
   // gasto.categoria (texto puro) no filtro do dialog de detalhe.
   private nomesCategoriaPizza: string[] = [];
 
+  // Tema atual e último resumo/categorias carregados - guardados pra remontar a
+  // pizza (cor da 1ª fatia) quando o tema mudar sem esperar um novo carregar().
+  private escuro = false;
+  private ultimoResumoPorCategoria: CategoriaTotal[] = [];
+  private ultimasCategoriasCarregadas: Categoria[] = [];
+
   constructor(
     private readonly gastoService: GastoService,
     private readonly metaService: MetaService,
@@ -169,10 +189,15 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     // Reconstrói as opções dos gráficos (cor do texto/eixos/grade) sempre que
-    // o tema mudar, pra nunca ficarem ilegíveis no dark mode.
+    // o tema mudar, pra nunca ficarem ilegíveis no dark mode. A pizza também é
+    // remontada: sua 1ª fatia é o azul-petróleo da identidade, que troca de tom
+    // entre os temas (ver coresCategorias) - sem isso ela ficaria com a cor do
+    // tema anterior até o próximo carregar().
     this.temaService.escuro$.subscribe((escuro) => {
+      this.escuro = escuro;
       this.pizzaOptions = this.construirPizzaOptions(escuro);
       this.barrasOptions = this.construirBarrasOptions(escuro);
+      this.pizzaData = this.montarPizza(this.ultimoResumoPorCategoria, this.ultimasCategoriasCarregadas);
     });
 
     this.carregar();
@@ -234,6 +259,8 @@ export class DashboardComponent implements OnInit {
 
         this.categoriasPorId = new Map(categorias.map(c => [c.id!, c]));
         this.nomesCategoriaPizza = resumo.porCategoria.map(c => c.categoria);
+        this.ultimoResumoPorCategoria = resumo.porCategoria;
+        this.ultimasCategoriasCarregadas = categorias;
         this.pizzaData = this.montarPizza(resumo.porCategoria, categorias);
 
         this.barrasData = this.periodoDestaque === 'mes'
@@ -259,10 +286,11 @@ export class DashboardComponent implements OnInit {
     porCategoria: CategoriaTotal[],
     categorias: Categoria[]
   ): ChartData<'doughnut', number[], string> {
+    const paleta = coresCategorias(this.escuro);
     const corPorCategoriaId = new Map<number, string>();
     categorias.forEach((c, i) => {
       if (c.id != null) {
-        corPorCategoriaId.set(c.id, CORES_CATEGORIAS[i % CORES_CATEGORIAS.length]);
+        corPorCategoriaId.set(c.id, paleta[i % paleta.length]);
       }
     });
     const corDe = (categoriaId: number | null): string =>
