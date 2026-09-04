@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, inject, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, inject, OnDestroy, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -7,10 +8,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { AuthService } from './services/auth.service';
 import { TemaService } from './services/tema.service';
 import { PwaInstalacaoService } from './services/pwa-instalacao.service';
+import { AtualizacaoService } from './services/atualizacao.service';
 import { InfoDialogComponent } from './shared/info-dialog/info-dialog.component';
 
 const NOMES_MESES = [
@@ -53,7 +56,8 @@ const AMORTECIMENTO_VISUAL = 0.4;
   standalone: true,
   imports: [
     AsyncPipe, RouterOutlet, RouterLink, RouterLinkActive,
-    MatToolbarModule, MatTabsModule, MatIconModule, MatButtonModule, MatMenuModule, MatDialogModule
+    MatToolbarModule, MatTabsModule, MatIconModule, MatButtonModule, MatMenuModule, MatDialogModule,
+    MatSnackBarModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
@@ -64,8 +68,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly temaService = inject(TemaService);
   private readonly pwaInstalacaoService = inject(PwaInstalacaoService);
+  private readonly atualizacaoService = inject(AtualizacaoService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly usuario$ = this.authService.usuario$;
   readonly temaEscuro$ = this.temaService.escuro$;
@@ -93,6 +100,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     const hoje = new Date();
     const texto = `${NOMES_MESES[hoje.getMonth()]} de ${hoje.getFullYear()}`;
     this.mesAnoAtual = texto.charAt(0).toUpperCase() + texto.slice(1);
+
+    // Um só aviso por versão nova detectada - novaVersaoDisponivel$ já só emite
+    // uma vez por versão (ver AtualizacaoService), então isso não reabre em loop
+    // mesmo se o usuário dispensar sem clicar em "Atualizar".
+    this.atualizacaoService.novaVersaoDisponivel$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.avisarNovaVersao());
   }
 
   ngAfterViewInit(): void {
@@ -134,19 +148,38 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       return;
     }
     // Sem prompt nativo disponível: só resta mostrar instruções manuais, e só faz
-    // sentido no iOS Safari (nos demais casos o botão nem aparece sem prompt nativo -
-    // ver PwaInstalacaoService.podeInstalar$).
-    if (this.pwaInstalacaoService.ehIOS) {
+    // sentido no iOS Safari e no Android sem beforeinstallprompt (nos demais casos
+    // o botão nem aparece - ver PwaInstalacaoService.podeInstalar$).
+    const mensagem = this.mensagemInstalacaoManual();
+    if (mensagem) {
       this.dialog.open(InfoDialogComponent, {
-        data: {
-          titulo: 'Instalar o app',
-          mensagem: 'No Safari, toque no ícone de Compartilhar (o quadrado com uma seta '
-            + 'para cima) e depois em "Adicionar à Tela de Início".'
-        },
+        data: { titulo: 'Instalar o app', mensagem },
         width: '360px',
         maxWidth: '95vw'
       });
     }
+  }
+
+  private mensagemInstalacaoManual(): string | null {
+    if (this.pwaInstalacaoService.ehIOS) {
+      return 'No Safari, toque no ícone de Compartilhar (o quadrado com uma seta '
+        + 'para cima) e depois em "Adicionar à Tela de Início".';
+    }
+    if (this.pwaInstalacaoService.ehAndroid) {
+      // Sem citar o nome exato da opção - varia entre versões do Chrome
+      // ("Instalar app", "Instalar e criar atalho", "Adicionar à tela inicial"...).
+      return 'Toque no menu (⋮) do Chrome e procure pela opção de instalar o app '
+        + 'ou adicionar à tela inicial.';
+    }
+    return null;
+  }
+
+  // Aviso não-bloqueante: fica na tela até o usuário agir, sem duração automática -
+  // um cadastro ou uma importação de planilha em andamento não pode ser perdido por
+  // um reload disparado sozinho, então quem decide quando recarregar é o usuário.
+  private avisarNovaVersao(): void {
+    const referencia = this.snackBar.open('Uma nova versão do app está disponível.', 'Atualizar');
+    referencia.onAction().subscribe(() => this.atualizacaoService.ativarNovaVersao());
   }
 
   // Getter (não uma propriedade fixada uma vez) porque o Router não expõe algo como

@@ -22,6 +22,13 @@ export class PwaInstalacaoService {
   // disparar um prompt nativo (que lá não existe).
   readonly ehIOS = this.detectarIOS();
 
+  // O Chrome também suprime beforeinstallprompt por um bom tempo depois que o
+  // usuário instala e desinstala o app - mesmo com o app instalável (manifest
+  // válido), o evento simplesmente não dispara mais e o botão nunca apareceria.
+  // Tratamento igual ao do iOS: o botão aparece sempre, e o clique cai nas
+  // instruções manuais quando não há prompt nativo capturado (ver instalarApp()).
+  readonly ehAndroid = this.detectarAndroid();
+
   constructor() {
     if (this.jaInstalado()) {
       // Rodando como app instalado (display-mode: standalone, ou navigator.standalone
@@ -42,7 +49,7 @@ export class PwaInstalacaoService {
       this.podeInstalarSubject.next(false);
     });
 
-    if (this.ehIOS) {
+    if (this.ehIOS || this.ehAndroid) {
       this.podeInstalarSubject.next(true);
     }
   }
@@ -58,7 +65,7 @@ export class PwaInstalacaoService {
     }
     const prompt = this.deferredPrompt;
     this.deferredPrompt = null;
-    this.podeInstalarSubject.next(this.ehIOS);
+    this.podeInstalarSubject.next(this.ehIOS || this.ehAndroid);
     await prompt.prompt();
     await prompt.userChoice;
     return true;
@@ -72,5 +79,9 @@ export class PwaInstalacaoService {
   private detectarIOS(): boolean {
     const janelaComMSStream = window as Window & { MSStream?: unknown };
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !janelaComMSStream.MSStream;
+  }
+
+  private detectarAndroid(): boolean {
+    return /Android/.test(navigator.userAgent);
   }
 }
