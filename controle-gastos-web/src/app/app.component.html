@@ -1,6 +1,11 @@
 <mat-toolbar>
-  <mat-icon class="logo-icone">account_balance_wallet</mat-icon>
-  <span class="titulo">Controle de Gastos</span>
+  <!-- Ícone + título como um logo clicável, convenção padrão de canto superior
+       esquerdo - navega pro Dashboard. No mobile só o ícone aparece (título
+       escondido via CSS), mas o link/área de toque é a mesma dos dois. -->
+  <a routerLink="/dashboard" class="marca" aria-label="Ir para o Dashboard">
+    <mat-icon class="logo-icone">account_balance_wallet</mat-icon>
+    <span class="titulo">Controle de Gastos</span>
+  </a>
   <span class="espaco"></span>
   @if (usuario$ | async; as usuario) {
     <span class="mes-ano-atual">{{ mesAnoAtual }}</span>
