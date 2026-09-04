@@ -538,15 +538,26 @@ export class GastosComponent implements OnInit {
       return;
     }
 
+    // Cobre a leitura/parsing do .xlsx (pode levar um tempo perceptível) até a
+    // revisão abrir - reaproveita o mesmo spinner do carregamento da lista (ver
+    // trio carregando/erro/vazio no template), que fica escondido atrás do diálogo
+    // assim que ele abrir. Continua ligado por toda a importação (ver
+    // resolverCategoriasEProsseguir e cia.) - cada etapa intermediária ou desliga
+    // explicitamente (erro/cancelamento) ou termina chamando carregar(), que já
+    // cuida de desligar sozinho.
+    this.carregando = true;
+
     let linhas: LinhaImportacao[];
     try {
       linhas = await lerPlanilhaGastos(arquivo);
     } catch {
+      this.carregando = false;
       this.mostrarErro('Não foi possível ler o arquivo. Verifique se é uma planilha .xlsx válida.');
       return;
     }
 
     if (linhas.length === 0) {
+      this.carregando = false;
       this.mostrarErro('A planilha não tem nenhuma linha de dados para importar.');
       return;
     }
@@ -558,6 +569,9 @@ export class GastosComponent implements OnInit {
 
     ref.afterClosed().subscribe((linhasConfirmadas) => {
       if (!linhasConfirmadas || linhasConfirmadas.length === 0) {
+        // Usuário cancelou a revisão - desliga o loading, senão fica preso na tela
+        // (nada mais vai chamar carregar() pra desligá-lo).
+        this.carregando = false;
         return;
       }
       this.resolverCategoriasEProsseguir(linhasConfirmadas);
@@ -614,7 +628,12 @@ export class GastosComponent implements OnInit {
   private resolverCategoriasEProsseguir(linhas: LinhaImportacao[]): void {
     this.resolverCategorias(linhas)
       .then(() => this.prepararAtualizacao(linhas))
-      .catch(() => this.mostrarErro('Não foi possível preparar as categorias desta planilha para importação.'));
+      .catch(() => {
+        // Falha de rede ao criar categoria/subcategoria nova - aborta aqui, então
+        // ninguém mais vai chamar carregar() pra desligar o loading.
+        this.carregando = false;
+        this.mostrarErro('Não foi possível preparar as categorias desta planilha para importação.');
+      });
   }
 
   private prepararAtualizacao(linhas: LinhaImportacao[]): void {
