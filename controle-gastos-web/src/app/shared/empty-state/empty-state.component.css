@@ -21,3 +21,11 @@
   margin: 0;
   font-size: 15px;
 }
+
+.empty-state-acao:empty {
+  display: none;
+}
+
+.empty-state-acao {
+  margin-top: 8px;
+}

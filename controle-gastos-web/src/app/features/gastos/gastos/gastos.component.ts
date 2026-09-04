@@ -231,6 +231,13 @@ export class GastosComponent implements OnInit {
       : 'Nenhum gasto cadastrado ainda.';
   }
 
+  // Rótulo do botão de ação no empty-state: "Cadastrar primeiro gasto" quando a
+  // mensagem é a genérica "Nenhum gasto cadastrado ainda." (mesma condição que
+  // mensagemVazio); "Novo gasto" quando é um empty-state de filtro.
+  get rotuloAcaoVazio(): string {
+    return !this.filtroAno && !this.filtroCategoria ? 'Cadastrar primeiro gasto' : 'Novo gasto';
+  }
+
   // Reset completo (categoria E período) - usado pelo botão "Ver todos os gastos" da
   // faixa de filtro de categoria. Como não é mais a primeira carga, cair sem mes/ano
   // na URL mostra literalmente tudo, sem reaplicar o padrão do mês atual.

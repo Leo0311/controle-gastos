@@ -1,4 +1,7 @@
 <div class="empty-state">
   <mat-icon>{{ icon }}</mat-icon>
   <p>{{ mensagem }}</p>
+  <!-- Slot opcional de ação: telas que passam um botão (ex: "Novo gasto" em Gastos)
+       o veem aqui; quem não passa nada não ganha espaço extra (ver .css :empty). -->
+  <div class="empty-state-acao"><ng-content select="[empty-state-acao]"></ng-content></div>
 </div>

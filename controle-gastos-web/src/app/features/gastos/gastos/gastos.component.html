@@ -1,30 +1,31 @@
 <div class="cabecalho">
   <h2>Gastos</h2>
   <div class="acoes-cabecalho">
-    <button mat-stroked-button [matMenuTriggerFor]="menuExportar" [disabled]="gastos.length === 0">
-      <mat-icon>download</mat-icon>
-      Exportar XLSX
+    <!-- As 3 ações de planilha (exportar / modelo / importar) ficam agrupadas num
+         único menu "Planilha", secundário - assim só o "Novo gasto" tem destaque de
+         ação primária, e no mobile são 2 botões em vez de 4 empilhados. -->
+    <button mat-stroked-button [matMenuTriggerFor]="menuPlanilha">
+      <mat-icon>grid_on</mat-icon>
+      Planilha
     </button>
-    <mat-menu #menuExportar="matMenu">
+    <mat-menu #menuPlanilha="matMenu">
       <button mat-menu-item (click)="exportarTodos()">
         <mat-icon>list</mat-icon>
         <span>Exportar todos os gastos</span>
       </button>
-      <button mat-menu-item (click)="exportarExibidos()">
+      <button mat-menu-item (click)="exportarExibidos()" [disabled]="gastos.length === 0">
         <mat-icon>filter_list</mat-icon>
         <span>Exportar gastos exibidos</span>
       </button>
+      <button mat-menu-item (click)="baixarModeloImportacao()">
+        <mat-icon>download</mat-icon>
+        <span>Baixar modelo de importação</span>
+      </button>
+      <button mat-menu-item (click)="importarPlanilha()">
+        <mat-icon>upload_file</mat-icon>
+        <span>Importar planilha</span>
+      </button>
     </mat-menu>
-
-    <button mat-stroked-button (click)="baixarModeloImportacao()">
-      <mat-icon>grid_on</mat-icon>
-      Baixar modelo de importação
-    </button>
-
-    <button mat-stroked-button (click)="importarPlanilha()">
-      <mat-icon>upload_file</mat-icon>
-      Importar planilha
-    </button>
     <input #inputArquivo type="file" accept=".xlsx" class="input-arquivo-oculto" (change)="onArquivoSelecionado($event)">
 
     <button mat-raised-button color="primary" (click)="novoGasto()">
@@ -54,8 +55,6 @@
     </mat-select>
   </mat-form-field>
 
-  <button mat-button (click)="alternarFiltroMes()">{{ rotuloToggleMes }}</button>
-
   @if (opcoesCategoriaFiltro.length > 0) {
     <mat-form-field appearance="outline" class="campo-filtro-categoria">
       <mat-label>Filtrar por categoria</mat-label>
@@ -67,6 +66,14 @@
       </mat-select>
     </mat-form-field>
   }
+
+  <!-- Alterna entre o mês atual e todo o histórico. Fica no fim da faixa de filtros
+       (não mais solto entre os campos) e como botão contornado com ícone, pra ler
+       como um controle de filtro e não como um link perdido. -->
+  <button mat-stroked-button class="btn-todos-meses" (click)="alternarFiltroMes()">
+    <mat-icon>{{ filtroMes || filtroAno ? 'calendar_month' : 'today' }}</mat-icon>
+    {{ rotuloToggleMes }}
+  </button>
 </div>
 
 @if (descricaoFiltro) {
@@ -84,10 +91,12 @@
 } @else if (erro) {
   <app-erro-carregamento oQue="os gastos" (tentarNovamente)="carregar()"></app-erro-carregamento>
 } @else if (gastos.length === 0) {
-  <app-empty-state
-    icon="receipt_long"
-    [mensagem]="mensagemVazio"
-  ></app-empty-state>
+  <app-empty-state icon="receipt_long" [mensagem]="mensagemVazio">
+    <button empty-state-acao mat-raised-button color="primary" (click)="novoGasto()">
+      <mat-icon>add</mat-icon>
+      {{ rotuloAcaoVazio }}
+    </button>
+  </app-empty-state>
 } @else {
   <!-- Desktop: tabela tradicional (some abaixo de 600px - ver .css). -->
   <div class="tabela-scroll mat-elevation-z2">

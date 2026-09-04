@@ -55,6 +55,13 @@
   min-width: 180px;
 }
 
+/* Os mat-form-field outline reservam ~22px de subscript abaixo do box; alinhar o
+   botão pelo topo (e descê-lo um tico) o deixa na mesma linha visual dos campos. */
+.btn-todos-meses {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
 /* No mobile os filtros empilham em largura total e o "Filtrar por categoria"
    sobe pro topo da faixa (order: -1). Antes ele era o último controle, colado no
    rodapé fixo: sem espaço abaixo, o overlay do CDK abria pra cima, por cima do
