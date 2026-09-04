@@ -206,4 +206,31 @@ class CompraParceladaServiceTest {
                 .orElseThrow(() -> new AssertionError("esperava um mês de 30 dias no horizonte de 60 parcelas"));
         assertThat(mesDe30Dias.getDayOfMonth()).isEqualTo(30);
     }
+
+    @Test
+    void geraMesesConsecutivosSemBuraco_inclusiveNaViradaDeAno() {
+        // 14 parcelas: qualquer mês de início cobre pelo menos uma virada Dez -> Jan
+        // (13+ meses consecutivos sempre contêm um Dezembro seguido de um Janeiro).
+        service.cadastrar(compra("1400.00", 14), USUARIO);
+
+        List<YearMonth> meses = parcelasGeradas(14).stream()
+                .map(gasto -> YearMonth.from(gasto.getData()))
+                .toList();
+
+        assertThat(meses).doesNotHaveDuplicates();
+        for (int i = 1; i < meses.size(); i++) {
+            // cada parcela é exatamente 1 mês depois da anterior: sem pulo, sem repetição
+            assertThat(meses.get(i))
+                    .as("parcela %d deve ser o mês seguinte à parcela %d", i + 1, i)
+                    .isEqualTo(meses.get(i - 1).plusMonths(1));
+        }
+
+        boolean cruzaVirada = false;
+        for (int i = 1; i < meses.size(); i++) {
+            if (meses.get(i - 1).getMonthValue() == 12 && meses.get(i).getMonthValue() == 1) {
+                cruzaVirada = true;
+            }
+        }
+        assertThat(cruzaVirada).as("14 parcelas devem cobrir uma virada de ano (Dez -> Jan)").isTrue();
+    }
 }
