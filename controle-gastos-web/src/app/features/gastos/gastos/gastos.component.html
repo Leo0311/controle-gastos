@@ -92,12 +92,7 @@
 } @else if (erro) {
   <app-erro-carregamento oQue="os gastos" (tentarNovamente)="carregar()"></app-erro-carregamento>
 } @else if (gastos.length === 0) {
-  <app-empty-state icon="receipt_long" [mensagem]="mensagemVazio">
-    <button empty-state-acao mat-raised-button color="primary" (click)="novoGasto()">
-      <mat-icon>add</mat-icon>
-      {{ rotuloAcaoVazio }}
-    </button>
-  </app-empty-state>
+  <app-empty-state icon="receipt_long" [mensagem]="mensagemVazio"></app-empty-state>
 } @else {
   <!-- Desktop: tabela tradicional (some abaixo de 600px - ver .css). -->
   <div class="tabela-scroll mat-elevation-z2">
