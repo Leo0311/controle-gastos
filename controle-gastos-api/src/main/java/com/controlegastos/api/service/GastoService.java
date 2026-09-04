@@ -147,6 +147,16 @@ public class GastoService {
 
     public void excluir(Integer id, Integer usuarioId) {
         Gasto existente = buscarPorId(id, usuarioId);
+        // Excluir uma parcela isolada deixaria o parcelamento permanentemente
+        // incoerente (some do extrato, mas a compra continua marcada com o número
+        // original de parcelas). Só a compra parcelada inteira pode ser removida -
+        // via CompraParceladaService.excluir, que apaga as parcelas futuras em
+        // bloco e mantém as já vencidas como histórico.
+        if (existente.getCompraParceladaId() != null) {
+            throw new IllegalArgumentException(
+                    "Esta é uma parcela de uma compra parcelada e não pode ser excluída sozinha. "
+                    + "Para desfazer, exclua a compra parcelada inteira na aba \"Parceladas\" (tela Recorrentes).");
+        }
         repository.delete(existente);
     }
 

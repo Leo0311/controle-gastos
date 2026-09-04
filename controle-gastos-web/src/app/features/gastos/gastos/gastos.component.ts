@@ -446,27 +446,14 @@ export class GastosComponent implements OnInit {
   }
 
   excluir(gasto: Gasto): void {
-    // Parcela de uma compra parcelada: excluir só ela deixa o parcelamento
-    // incoerente (some do extrato, mas a compra continua marcada com o número
-    // original de parcelas, sem sinal de que falta uma). O aviso aponta o caminho
-    // certo pra quem quer desfazer tudo. Gasto de recorrência não entra aqui: não
-    // há contrato de "N parcelas" pra quebrar, e o mês corrente é relançado sozinho
-    // no próximo load (lancarPendentes) - ver excluir() da recorrência pra remover
-    // de vez a série.
-    const ehParcela = gasto.compraParceladaId != null;
+    // Parcela de compra parcelada não é excluível sozinha (deixaria o parcelamento
+    // incoerente) - o botão/menu de excluir nem aparece nesse caso, e o backend
+    // rejeita. Este método só roda para gasto avulso.
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
-      data: ehParcela
-        ? {
-            titulo: 'Excluir uma parcela',
-            mensagem: `"${gasto.descricao}" é uma das parcelas de uma compra parcelada. Excluir só ela deixa o `
-              + 'parcelamento incompleto — some do extrato, mas a compra continua marcada com o número original '
-              + 'de parcelas, sem indicar que falta uma. Se a intenção é desfazer a compra toda, cancele e use a '
-              + 'aba "Parceladas" (tela Recorrentes) para excluir a compra parcelada inteira.'
-          }
-        : {
-            titulo: 'Excluir gasto',
-            mensagem: `Tem certeza que deseja excluir "${gasto.descricao}"?`
-          }
+      data: {
+        titulo: 'Excluir gasto',
+        mensagem: `Tem certeza que deseja excluir "${gasto.descricao}"?`
+      }
     });
 
     ref.afterClosed().subscribe((confirmado) => {

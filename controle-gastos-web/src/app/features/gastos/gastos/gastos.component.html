@@ -149,10 +149,19 @@
               <mat-icon>edit</mat-icon>
               <span>Editar</span>
             </button>
-            <button mat-menu-item (click)="excluir(gasto)">
-              <mat-icon color="warn">delete</mat-icon>
-              <span>Excluir</span>
-            </button>
+            @if (gasto.compraParceladaId) {
+              <!-- Parcela não é excluível sozinha (deixaria o parcelamento incoerente);
+                   a remoção é pela compra parcelada inteira, na aba Parceladas. -->
+              <button mat-menu-item disabled>
+                <mat-icon>block</mat-icon>
+                <span>Parcela: exclua a compra em Parceladas</span>
+              </button>
+            } @else {
+              <button mat-menu-item (click)="excluir(gasto)">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>Excluir</span>
+              </button>
+            }
           </mat-menu>
         </td>
       </ng-container>
@@ -209,7 +218,8 @@
           @if (gasto.compraParceladaId) {
             <p class="linha-detalhe">
               <span class="cartao-marca" role="img" aria-label="Compra parcelada">💳</span>
-              <span>Parcela de uma compra parcelada.</span>
+              <span>Parcela de uma compra parcelada. Para removê-la, exclua a compra inteira na aba
+                <strong>Parceladas</strong> (tela Recorrentes) — uma parcela sozinha não pode ser excluída.</span>
             </p>
           }
           <div class="cartao-acoes">
@@ -217,10 +227,12 @@
               <mat-icon>edit</mat-icon>
               Editar
             </button>
-            <button mat-stroked-button (click)="excluir(gasto)">
-              <mat-icon color="warn">delete</mat-icon>
-              Excluir
-            </button>
+            @if (!gasto.compraParceladaId) {
+              <button mat-stroked-button (click)="excluir(gasto)">
+                <mat-icon color="warn">delete</mat-icon>
+                Excluir
+              </button>
+            }
           </div>
         </div>
       </mat-expansion-panel>
