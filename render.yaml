@@ -2,8 +2,10 @@
 #
 # A API (controle-gastos-api) NÃO está no Render - roda numa VM da Oracle Cloud
 # (systemd + nginx, deploy manual; ver CLAUDE.md). Por isso este blueprint só
-# descreve o frontend. O controle-gastos-api/Dockerfile continua no repo de
-# propósito: é o caminho de volta pro Render como Web Service se a VM der problema.
+# descreve o frontend. O controle-gastos-api/Dockerfile (que existia como
+# caminho de volta pro Render como Web Service, caso a VM desse problema) foi
+# removido em setembro de 2026: um arquivo de deploy que ninguém builda apodrece
+# sem aviso - continua no histórico do Git se um dia for preciso voltar a ele.
 services:
   - type: web
     name: controle-gastos-web

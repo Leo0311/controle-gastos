@@ -50,3 +50,11 @@ recorrente por categoria" que as parcelas e recorrências consumam.
 **Relacionado:** `verificarOrcamentoExcedido` não roda no fluxo de compra
 parcelada (só no de gasto avulso) — some do problema, já que o vínculo em si é
 questionável.
+
+---
+
+## Pendências abertas em setembro de 2026
+
+- **Endpoint órfão `GET /api/categorias/com-gastos`** (`CategoriaController.listarComGastos`) — ficou sem chamador quando o filtro de categoria em Gastos passou a derivar as opções de `gastosDoPeriodo` no próprio cliente; nenhum arquivo em `controle-gastos-web` referencia esse endpoint hoje.
+- **~16 specs de frontend falhando no baseline** (`ng test`) — `should create` autogerados sem os providers necessários; mascaram falhas novas porque a contagem de falhas não muda quando um teste de verdade quebra (comparar o conjunto de specs que falha, não o número — ver skill `ambiente-local`).
+- **Avisos do manifest do PWA** (`controle-gastos-web/public/manifest.json`) — falta o campo `screenshots` (usado pelos navegadores pra mostrar uma prévia rica no prompt de instalação), e os ícones declaram `"purpose": "maskable any"` combinado numa entrada só, quando o recomendado é um conjunto separado por propósito (um ícone maskable bom tem padding extra que um ícone `any` não deveria ter).
