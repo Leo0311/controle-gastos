@@ -134,6 +134,10 @@ const NOMES_MESES_COMPLETO = [
     EmptyStateComponent,
     ErroCarregamentoComponent
   ],
+  // CurrencyPipe em "imports" só registra o pipe pro template - não basta pra
+  // injetar no construtor (usado nos tooltips dos gráficos, ver
+  // construirPizzaOptions/construirBarrasOptions). Precisa também estar aqui.
+  providers: [CurrencyPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -185,7 +189,12 @@ export class DashboardComponent implements OnInit {
     private readonly gastoRecorrenteService: GastoRecorrenteService,
     private readonly temaService: TemaService,
     private readonly snackBar: MatSnackBar,
-    private readonly dialog: MatDialog
+    private readonly dialog: MatDialog,
+    // Mesmo CurrencyPipe usado no template (ver imports) - reaproveitado aqui via
+    // injeção porque os tooltips do Chart.js são montados em callback JS puro, sem
+    // acesso à sintaxe de pipe do template. Já sai formatado igual ao resto do app
+    // (BRL, locale pt-BR) sem precisar declarar moeda/locale de novo.
+    private readonly currencyPipe: CurrencyPipe
   ) {
     const anoAtual = new Date().getFullYear();
     this.anos = Array.from({ length: 6 }, (_, i) => anoAtual - 2 + i);
@@ -489,7 +498,12 @@ export class DashboardComponent implements OnInit {
           alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
         }
       },
-      plugins: { legend: { position: 'bottom', labels: { color: corTexto } } }
+      plugins: {
+        legend: { position: 'bottom', labels: { color: corTexto } },
+        // Sem isso o Chart.js mostra o valor cru (ex. "500") em vez de "R$ 500,00"
+        // como o resto do app (ver formatarMoeda).
+        tooltip: { callbacks: { label: (contexto) => `${contexto.label}: ${this.formatarMoeda(contexto.parsed)}` } }
+      }
     };
   }
 
@@ -505,12 +519,23 @@ export class DashboardComponent implements OnInit {
           alvo.style.cursor = elementos.length > 0 ? 'pointer' : 'default';
         }
       },
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        // Mesmo motivo do tooltip da pizza acima - sem isso mostrava "Total gasto: 700"
+        // em vez de "Total gasto: R$ 700,00".
+        tooltip: { callbacks: { label: (contexto) => `${contexto.dataset.label}: ${this.formatarMoeda(contexto.parsed.y ?? 0)}` } }
+      },
       scales: {
         y: { beginAtZero: true, ticks: { color: corTexto }, grid: { color: corGrade } },
         x: { ticks: { color: corTexto }, grid: { color: corGrade } }
       }
     };
+  }
+
+  // Mesma formatação usada no resto do app (ver CurrencyPipe injetado) - centraliza
+  // aqui porque os dois tooltips acima precisam dela.
+  private formatarMoeda(valor: number): string {
+    return this.currencyPipe.transform(valor, 'BRL') ?? '';
   }
 
   private formatarData(data: Date): string {
