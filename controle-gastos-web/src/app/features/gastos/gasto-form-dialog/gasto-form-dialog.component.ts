@@ -148,9 +148,11 @@ export class GastoFormDialogComponent implements OnInit {
     orcamentoId: [null as number | null],
     recorrente: [false],
     parcelado: [false],
-    // "Dia do mês" só no modo recorrente; "Data da 1ª parcela" só no modo parcela
-    // (padrão hoje, aceita retroativo dentro da janela). Validators reativos abaixo.
+    // "Dia do mês" e "Gerar para os próximos meses" só no modo recorrente; "Data da
+    // 1ª parcela" só no modo parcela (padrão hoje, aceita retroativo dentro da
+    // janela). Validators reativos abaixo.
     diaDoMes: [new Date().getDate() as number | null],
+    mesesGerar: [12 as number | null],
     dataPrimeiraParcela: [new Date() as Date | null],
     numeroParcelas: [null as number | null]
   });
@@ -250,6 +252,7 @@ export class GastoFormDialogComponent implements OnInit {
     this.form.controls.recorrente.valueChanges.subscribe((ativo) => {
       definirHabilitado(this.form.controls.parcelado, !ativo);
       this.atualizarValidadoresDiaDoMes(!!ativo);
+      this.atualizarValidadoresMesesGerar(!!ativo);
     });
     this.form.controls.parcelado.valueChanges.subscribe((ativo) => {
       definirHabilitado(this.form.controls.recorrente, !ativo);
@@ -291,6 +294,16 @@ export class GastoFormDialogComponent implements OnInit {
     const diaDoMes = this.form.controls.diaDoMes;
     diaDoMes.setValidators(ativo ? [Validators.required, Validators.min(1), Validators.max(31)] : []);
     diaDoMes.updateValueAndValidity();
+  }
+
+  // "Gerar para os próximos meses" só vale (e só é validado) no modo recorrente -
+  // o backend exige 1 a 12 (GastoRecorrenteService.validar). Sem isto, criar um
+  // recorrente por este diálogo mandava mesesGerar nulo e a API respondia 400 já
+  // fora do diálogo, na tela de Gastos.
+  private atualizarValidadoresMesesGerar(ativo: boolean): void {
+    const mesesGerar = this.form.controls.mesesGerar;
+    mesesGerar.setValidators(ativo ? [Validators.required, Validators.min(1), Validators.max(12)] : []);
+    mesesGerar.updateValueAndValidity();
   }
 
   onCategoriaChange(evento: MatSelectChange): void {
@@ -402,7 +415,8 @@ export class GastoFormDialogComponent implements OnInit {
         categoriaId: valores.categoriaId!,
         subcategoriaId: valores.subcategoriaId ?? null,
         diaDoMes: valores.diaDoMes!,
-        orcamentoId: valores.orcamentoId ?? null
+        orcamentoId: valores.orcamentoId ?? null,
+        mesesGerar: valores.mesesGerar!
       };
       this.dialogRef.close({ tipo: 'recorrente', recorrente } satisfies GastoFormResultado);
       return;

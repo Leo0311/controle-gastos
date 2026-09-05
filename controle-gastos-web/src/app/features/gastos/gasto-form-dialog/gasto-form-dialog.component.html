@@ -107,6 +107,19 @@
           <mat-error>Dia do mês deve estar entre 1 e 31.</mat-error>
         }
       </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Gerar para os próximos meses</mat-label>
+        <input matInput type="number" min="1" max="12" formControlName="mesesGerar">
+        <mat-hint>Lança já os gastos desses meses (a partir do atual), pra aparecerem no Dashboard/Análises sem
+          esperar cada mês chegar. A recorrência segue lançando os meses seguintes normalmente depois.</mat-hint>
+        @if (form.controls.mesesGerar.hasError('required')) {
+          <mat-error>Informe quantos meses gerar.</mat-error>
+        }
+        @if (form.controls.mesesGerar.hasError('min') || form.controls.mesesGerar.hasError('max')) {
+          <mat-error>Deve estar entre 1 e 12.</mat-error>
+        }
+      </mat-form-field>
     }
 
     @if (!editando && form.controls.parcelado.value) {
