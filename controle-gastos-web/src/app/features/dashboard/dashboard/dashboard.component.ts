@@ -46,10 +46,15 @@ const AZUL_PETROLEO_ESCURO = '#6fbbd4';
 
 // Paleta "retrô" das fatias da pizza (base ColorBrewer Dark2). Categoria não tem
 // cor semântica - estas só precisam ser distinguíveis entre si. A COR É ATRIBUÍDA
-// POR IDENTIDADE DE CATEGORIA, não por posição no gráfico: cada categoria fica com
-// coresCategorias(escuro)[posição dela na lista de categorias do usuário], então a mesma
-// categoria tem sempre a mesma cor - independente do mês, do filtro ou de itens
-// ocultos na legenda (ver montarPizza).
+// POR POSIÇÃO NO GRÁFICO, não por identidade de categoria: a fatia de maior gasto
+// (índice 0 de porCategoria, já ordenado) sempre usa coresCategorias(escuro)[0] -
+// o azul-petróleo da identidade -, a segunda maior usa [1], e assim por diante
+// (ver montarPizza). Troca consciente: a mesma categoria pode sair com cor
+// diferente de um mês pro outro (ex.: "Lazer" sai azul num mês só com Lazer, mas
+// laranja num mês em que "Alimentação" também aparece e vem na frente) - o que é
+// estável é a REGRA posição->cor, não o par categoria->cor. Antes era o oposto
+// (cor fixa por categoria): o azul só aparecia quando a categoria na 1ª posição
+// da lista do usuário tinha gasto naquele mês, o que podia sumir por meses.
 //
 // São 12 cores (as 10 pedidas + coral e lavanda): as 11 categorias padrão do
 // sistema cabem sem repetir cor. Da 13ª categoria em diante, as cores se repetem.
@@ -168,11 +173,10 @@ export class DashboardComponent implements OnInit {
   // gasto.categoria (texto puro) no filtro do dialog de detalhe.
   private nomesCategoriaPizza: string[] = [];
 
-  // Tema atual e último resumo/categorias carregados - guardados pra remontar a
-  // pizza (cor da 1ª fatia) quando o tema mudar sem esperar um novo carregar().
+  // Tema atual e último resumo carregado - guardados pra remontar a pizza (cor
+  // da 1ª fatia) quando o tema mudar sem esperar um novo carregar().
   private escuro = false;
   private ultimoResumoPorCategoria: CategoriaTotal[] = [];
-  private ultimasCategoriasCarregadas: Categoria[] = [];
 
   constructor(
     private readonly gastoService: GastoService,
@@ -197,7 +201,7 @@ export class DashboardComponent implements OnInit {
       this.escuro = escuro;
       this.pizzaOptions = this.construirPizzaOptions(escuro);
       this.barrasOptions = this.construirBarrasOptions(escuro);
-      this.pizzaData = this.montarPizza(this.ultimoResumoPorCategoria, this.ultimasCategoriasCarregadas);
+      this.pizzaData = this.montarPizza(this.ultimoResumoPorCategoria);
     });
 
     this.carregar();
@@ -260,8 +264,7 @@ export class DashboardComponent implements OnInit {
         this.categoriasPorId = new Map(categorias.map(c => [c.id!, c]));
         this.nomesCategoriaPizza = resumo.porCategoria.map(c => c.categoria);
         this.ultimoResumoPorCategoria = resumo.porCategoria;
-        this.ultimasCategoriasCarregadas = categorias;
-        this.pizzaData = this.montarPizza(resumo.porCategoria, categorias);
+        this.pizzaData = this.montarPizza(resumo.porCategoria);
 
         this.barrasData = this.periodoDestaque === 'mes'
           ? this.construirBarrasDiarias(totaisDiarios)
@@ -278,23 +281,19 @@ export class DashboardComponent implements OnInit {
   }
 
   // Monta o gráfico de pizza a partir do resumo do mês (já ordenado por gasto
-  // decrescente) e da lista de categorias do usuário. A cor de cada fatia vem da
-  // POSIÇÃO da categoria nessa lista - não da posição no gráfico - então a mesma
-  // categoria fica sempre com a mesma cor. A primeira fatia (maior gasto) sai do
-  // anel (offset), sem cor especial.
-  private montarPizza(
-    porCategoria: CategoriaTotal[],
-    categorias: Categoria[]
-  ): ChartData<'doughnut', number[], string> {
+  // decrescente). A cor de cada fatia vem da POSIÇÃO dela nesse resumo - não da
+  // identidade da categoria - então a fatia de maior gasto é sempre o azul-petróleo
+  // da identidade (ver coresCategorias), a segunda maior é sempre a próxima cor da
+  // paleta, etc. "Sem categoria" (dado legado) fica de fora dessa contagem: usa a
+  // cor neutra fixa e não consome posição da paleta, senão uma linha antiga sem
+  // categoria gerida deslocaria a cor de todas as categorias reais depois dela. A
+  // primeira fatia (maior gasto) também sai do anel (offset), sem cor especial além
+  // da posição - o azul-petróleo e o destaque geométrico sempre coincidem.
+  private montarPizza(porCategoria: CategoriaTotal[]): ChartData<'doughnut', number[], string> {
     const paleta = coresCategorias(this.escuro);
-    const corPorCategoriaId = new Map<number, string>();
-    categorias.forEach((c, i) => {
-      if (c.id != null) {
-        corPorCategoriaId.set(c.id, paleta[i % paleta.length]);
-      }
-    });
-    const corDe = (categoriaId: number | null): string =>
-      (categoriaId != null && corPorCategoriaId.get(categoriaId)) || COR_SEM_CATEGORIA;
+    let indicePaleta = 0;
+    const cores = porCategoria.map(c =>
+      c.categoriaId != null ? paleta[indicePaleta++ % paleta.length] : COR_SEM_CATEGORIA);
 
     return {
       labels: porCategoria.map(c => {
@@ -303,8 +302,8 @@ export class DashboardComponent implements OnInit {
       }),
       datasets: [{
         data: porCategoria.map(c => c.total),
-        backgroundColor: porCategoria.map(c => corDe(c.categoriaId)),
-        hoverBackgroundColor: porCategoria.map(c => clarear(corDe(c.categoriaId), 0.18)),
+        backgroundColor: cores,
+        hoverBackgroundColor: cores.map(c => clarear(c, 0.18)),
         // porCategoria[0] é o maior gasto: fica sempre "pra fora" do anel. No hover,
         // qualquer fatia ganha +OFFSET_HOVER por cima do offset de repouso dela.
         offset: porCategoria.map((_, i) => (i === 0 ? OFFSET_FATIA_MAIOR : 0)),
