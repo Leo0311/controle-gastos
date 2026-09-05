@@ -252,20 +252,26 @@ números mágicos coincidindo por convenção.
 
 ### M4 — Cobertura de teste desigual: Orçamentos e o fluxo de autenticação sem nenhum teste
 
-> **Status: ✅ Resolvido em 2026-09-05** (a maior lacuna — Orçamentos).
-> Criado `OrcamentoServiceTest` (Mockito puro, mesmo padrão dos existentes) com
-> **32 testes**: os quatro ramos de `validar()`, os quatro de `resolverCategoria()`,
-> a checagem de duplicidade (sentinela `SEM_ID` no create, auto-exclusão pelo
-> próprio id no update, mensagens distintas geral × subcategoria), o escopo por
-> usuário em `atualizar`/`excluir` (404), e os três status de `orcamentosDoMes()`
-> nas fronteiras — limiar exato de 80%, `completo` com escalas de `BigDecimal`
-> diferentes, e o vínculo por `orcamento_id` da agregação do R3. Suíte de backend:
-> 44 → 76 testes, todos verdes.
+> **Status: ✅ Resolvido em 2026-09-05** (Orçamentos + fluxo de auth).
+> - `OrcamentoServiceTest` — **32 testes**: os quatro ramos de `validar()`, os
+>   quatro de `resolverCategoria()`, a checagem de duplicidade (sentinela `SEM_ID`
+>   no create, auto-exclusão pelo próprio id no update, mensagens distintas
+>   geral × subcategoria), o escopo por usuário em `atualizar`/`excluir` (404), e
+>   os três status de `orcamentosDoMes()` nas fronteiras — limiar exato de 80%,
+>   `completo` com escalas de `BigDecimal` diferentes, e o vínculo por
+>   `orcamento_id` da agregação do R3.
+> - `UsuarioServiceTest` — **24 testes**: normalização e unicidade de e-mail no
+>   cadastro, verificação de senha e mensagem genérica no login (incl. senha nula
+>   sem chamar o encoder, e-mail nulo sem NPE), o silêncio deliberado de
+>   `esqueciSenha` para e-mail inexistente e o engolir de `MailException`, a
+>   validade/expiração do token de redefinição e o incremento de `tokenVersion`
+>   que desloga os JWTs antigos, mais `atualizarRenda`.
 >
-> **Ainda em aberto dentro do M4** (fora de Orçamentos): `UsuarioServiceTest`
-> (fluxo de auth), `CategoriaServiceTest`/`SubcategoriaServiceTest` (`buscarPropria`),
-> e o `atualizar`/`catch` de `GastoRecorrenteService`. São itens separados —
-> a parte prioritária (Orçamentos) está fechada.
+> Suíte de backend: 44 → 100 testes, todos verdes.
+>
+> **Ainda em aberto dentro do M4:** `CategoriaServiceTest`/`SubcategoriaServiceTest`
+> (`buscarPropria`) e o `atualizar`/`catch` de `GastoRecorrenteService`. Itens
+> separados — as duas partes prioritárias (Orçamentos e auth) estão fechadas.
 
 **Onde:** `controle-gastos-api/src/test/java/.../service/` — 7 arquivos, 36
 métodos `@Test` no total (a auditoria pediu pra eu contar: são 36, não 34 nem
@@ -567,9 +573,10 @@ prioritária (Orçamentos, `OrcamentoServiceTest`); os testes de auth/categoria
 que ele também menciona seguem em aberto.
 
 **Status em 2026-09-05: 5 de 14 achados resolvidos** (R1, R2, R3, M1, M4 —
-primeira leva de correções mais o `OrcamentoServiceTest`, tudo implementado e
-testado; ver o status em cada achado acima). Faltam 9: M2, M3, M5, M6, M7, M8,
-C1, C2 — e o resto da cobertura de teste que o M4 cita fora de Orçamentos.
+primeira leva de correções mais `OrcamentoServiceTest` e `UsuarioServiceTest`,
+tudo implementado e testado; suíte de backend 44 → 100 testes; ver o status em
+cada achado acima). Faltam 9: M2, M3, M5, M6, M7, M8, C1, C2 — e o resto da
+cobertura de teste que o M4 cita (categorias, `atualizar` de recorrentes).
 
 ## Se fosse minha decisão
 
@@ -580,9 +587,9 @@ Nesta ordem:
    corrompia dado real silenciosamente, numa ação que o usuário nem escolhe
    fazer (roda sozinha ao abrir a tela).
 3. ~~**R3** (N+1 de orçamentos)~~ — ✅ feito.
-4. ~~**M4**, começando por `OrcamentoServiceTest`~~ — ✅ feito (32 testes; suíte
-   44 → 76). Falta o restante que o M4 cita: `UsuarioServiceTest` (auth),
-   `CategoriaServiceTest`/`SubcategoriaServiceTest`.
+4. ~~**M4** — `OrcamentoServiceTest` (32) + `UsuarioServiceTest` (24)~~ — ✅ feito
+   (suíte 44 → 100). Falta o restante que o M4 cita:
+   `CategoriaServiceTest`/`SubcategoriaServiceTest` e o `atualizar` de recorrentes.
 5. Os complexos (**C1**, **C2**) eu deixaria pra quando aparecer sinal real de
    dor (usuário com muitos gastos reclamando de lentidão, ou a próxima vez que
    alguém precisar mexer no fluxo de importação) — são as mudanças mais
