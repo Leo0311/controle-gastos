@@ -1,5 +1,6 @@
 package com.controlegastos.api.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -97,5 +99,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(OrcamentoInvalidoException.class)
     public ResponseEntity<Map<String, String>> tratarOrcamentoInvalido(OrcamentoInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("erro", e.getMessage()));
+    }
+
+    // Rede de segurança: qualquer exceção sem handler específico acima (conexão com
+    // o banco caindo no meio de um request, um parâmetro malformado que nem chega a
+    // virar IllegalArgumentException, etc.) caía no handler default do Spring Boot,
+    // que devolve um formato diferente ({"error": "Internal Server Error", ...}) do
+    // {"erro": "..."} usado no resto da API - auditoria 2026-09, achado R2. Loga a
+    // exceção INTEIRA (mensagem + stack trace) só no log do servidor; o cliente
+    // recebe deliberadamente uma mensagem genérica, sem nenhum detalhe interno.
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> tratarErroInesperado(Exception e) {
+        log.error("Erro inesperado não tratado por um handler específico", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("erro", "Ocorreu um erro inesperado."));
     }
 }
