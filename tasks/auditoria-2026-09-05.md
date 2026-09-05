@@ -466,6 +466,22 @@ item próprio nos complexos).
 
 ### C1 — `GET /api/gastos` sem paginação, e a tela "Ver todos os meses" carrega tudo de uma vez
 
+> **Status: ✅ Resolvido em 2026-09-05.** Feito exatamente como o "como corrigir"
+> propõe: novo `GET /api/gastos/pagina?page=&size=&mes=&ano=&categoriaId=`
+> (`GastoService.listarPaginado` + `GastoRepository.buscarPagina` com `Pageable`,
+> ordenação `data desc, id desc` montada no servidor, `size` limitado a 200,
+> DTO enxuto `{conteudo, pagina, totalPaginas, totalItens, ultima}`).
+> `GET /api/gastos` (sem paginação) **fica intacto** — export e checagem de
+> duplicata da importação seguem usando ele. Na tela, `carregar()` passou a
+> chamar o endpoint paginado (mês/ano/categoria viram filtro do servidor, não
+> mais filtro client-side), com botão **"Carregar mais"** que anexa a próxima
+> página; o dropdown "Filtrar por categoria" passou a vir de
+> `GET /api/categorias/com-gastos` — o que **também tira esse endpoint da lista
+> de órfãos** (ver seção de itens abertos). +8 testes de service
+> (`GastoServiceTest`, 149 no total); verificado no navegador (desktop + 375px)
+> com 65 gastos semeados. **API precisa de redeploy manual na VM** (mudou `.java`;
+> sem mudança de schema).
+
 **Onde:** `controle-gastos-api/.../controller/GastoController.java` (`listarTodos`)
 → `GastoService.listarTodos` → `GastoRepository.findAllByUsuarioIdOrderByDataDescIdDesc`
 (sem `Pageable` em nenhum ponto da cadeia). No frontend, chamado direto por
@@ -556,9 +572,10 @@ Pra não deixar por omissão, como pedido:
   checar: nenhuma ocorrência de `innerHTML`, `[innerHTML]` ou
   `bypassSecurityTrust` em todo o frontend. Angular escapa interpolação por
   padrão e o projeto não abre nenhuma exceção a isso.
-- **Componentes/services mortos no frontend** — além do endpoint já conhecido
-  (`GET /api/categorias/com-gastos`, já registrado em
-  `tasks/divida-tecnica.md`), não encontrei outro componente ou service sem
+- **Componentes/services mortos no frontend** — o endpoint `GET /api/categorias/com-gastos`
+  (antes órfão, registrado em `tasks/divida-tecnica.md`) **voltou a ter uso** na
+  correção do C1 (alimenta o dropdown "Filtrar por categoria"). Fora ele, não
+  encontrei outro componente ou service sem
   nenhuma referência (`selector` não usado em template nem classe nunca
   importada).
 - **Transações em escrita múltipla** — toda operação que grava em mais de uma
@@ -575,7 +592,7 @@ Pra não deixar por omissão, como pedido:
 | Categoria | Rápido | Médio | Complexo | Total |
 |---|---|---|---|---|
 | 1. Segurança | 2 (R1 ✅, R2 ✅) | 2 (M1 ✅, M2) | 0 | 4 |
-| 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1) | 2 |
+| 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1 ✅) | 2 |
 | 3. Robustez | 0 | 3 (M1 ✅*, M6, M7) | 0 | 3 |
 | 4. Qualidade de código | 0 | 2 (M5, M8) | 1 (C2) | 3 |
 | 5. Cobertura de teste | 0 | 1 (M4 ✅) | 0 | 1 |
@@ -585,12 +602,12 @@ Pra não deixar por omissão, como pedido:
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
 também citado no topo) — contado uma vez só no total.
 
-**Status em 2026-09-05: 5 de 14 achados resolvidos** (R1, R2, R3, M1, M4 —
-primeira leva de correções mais a bateria de testes de service
+**Status em 2026-09-05: 6 de 14 achados resolvidos** (R1, R2, R3, M1, M4, C1 —
+primeira leva de correções, a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
-`SubcategoriaServiceTest`), tudo implementado e testado; suíte de backend
-44 → 141 testes; ver o status em cada achado acima). Faltam: M2, M3, M5, M6, M7,
-M8, C1, C2 (e R4, validação de e-mail).
+`SubcategoriaServiceTest`) e a paginação de `GET /api/gastos`; tudo implementado
+e testado; suíte de backend 44 → 149 testes; ver o status em cada achado acima).
+Faltam: M2, M3, M5, M6, M7, M8, C2 (e R4, validação de e-mail).
 
 ## Se fosse minha decisão
 
@@ -604,7 +621,7 @@ Nesta ordem:
 4. ~~**M4** — `OrcamentoServiceTest` (32), `UsuarioServiceTest` (24),
    `CategoriaServiceTest` (22), `SubcategoriaServiceTest` (14),
    `GastoRecorrenteServiceTest` (+5)~~ — ✅ feito, completo (suíte 44 → 141).
-5. Os complexos (**C1**, **C2**) eu deixaria pra quando aparecer sinal real de
-   dor (usuário com muitos gastos reclamando de lentidão, ou a próxima vez que
-   alguém precisar mexer no fluxo de importação) — são as mudanças mais
-   arriscadas desta lista e não têm urgência hoje.
+5. ~~**C1** (paginação de `GET /api/gastos`)~~ — ✅ feito. **C2** (extrair a
+   orquestração de importação) eu deixaria pra a próxima vez que alguém precisar
+   mexer no fluxo de importação — é a mudança mais arriscada da lista e não tem
+   urgência hoje.

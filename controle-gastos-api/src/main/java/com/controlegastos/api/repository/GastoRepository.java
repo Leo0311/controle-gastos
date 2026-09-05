@@ -1,6 +1,8 @@
 package com.controlegastos.api.repository;
 
 import com.controlegastos.api.model.Gasto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,24 @@ import java.util.Optional;
 public interface GastoRepository extends JpaRepository<Gasto, Integer> {
 
     List<Gasto> findAllByUsuarioIdOrderByDataDescIdDesc(Integer usuarioId);
+
+    // Página de gastos do usuário para a listagem da tela (achado C1 da auditoria
+    // 2026-09-05: "Ver todos os meses" trazia a tabela inteira numa resposta só).
+    // Os três filtros são opcionais: categoriaId nulo = todas; inicio/fim nulos =
+    // todo o histórico (a tela deriva inicio/fim de mês/ano no service). A ordenação
+    // (data desc, id desc) vem no Pageable, montado no service - não do cliente.
+    // O CAST(:inicio AS date) é o que deixa o Postgres inferir o tipo do parâmetro
+    // quando ele chega nulo (senão: "could not determine data type of parameter").
+    @Query("SELECT g FROM Gasto g WHERE g.usuarioId = :usuarioId "
+            + "AND (:categoriaId IS NULL OR g.categoriaId = :categoriaId) "
+            + "AND (CAST(:inicio AS date) IS NULL OR g.data >= :inicio) "
+            + "AND (CAST(:fim AS date) IS NULL OR g.data <= :fim)")
+    Page<Gasto> buscarPagina(
+            @Param("usuarioId") Integer usuarioId,
+            @Param("categoriaId") Integer categoriaId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim,
+            Pageable pageable);
 
     Optional<Gasto> findByIdAndUsuarioId(Integer id, Integer usuarioId);
 

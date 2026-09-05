@@ -1,5 +1,6 @@
 package com.controlegastos.api.service;
 
+import com.controlegastos.api.dto.GastoPaginaDTO;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.repository.CategoriaRepository;
@@ -7,14 +8,23 @@ import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -194,5 +204,100 @@ class GastoServiceTest {
         assertThat(salvo.getDescricao()).isEqualTo("Cafe da tarde");
         assertThat(salvo.getValor()).isEqualByComparingTo("15.00");
         assertThat(salvo.getData()).isEqualTo(LocalDate.of(2026, 9, 5));
+    }
+
+    // ---------- listarPaginado() - achado C1 da auditoria 2026-09-05 ----------
+
+    private Page<Gasto> paginaComUmGasto() {
+        return new PageImpl<>(List.of(new Gasto()), PageRequest.of(0, 50), 1);
+    }
+
+    @Test
+    void listarPaginado_semAnoBuscaTodoOHistorico_semJanelaDeData() {
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
+
+        service.listarPaginado(USUARIO, null, null, null, 0, 50);
+
+        verify(repository).buscarPagina(eq(USUARIO), isNull(), isNull(), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void listarPaginado_comMesEAnoDerivaAJanelaDoMes() {
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
+
+        service.listarPaginado(USUARIO, 2, 2024, null, 0, 50);
+
+        // fevereiro de 2024 é bissexto -> 29 dias.
+        verify(repository).buscarPagina(
+                eq(USUARIO), isNull(),
+                eq(LocalDate.of(2024, 2, 1)), eq(LocalDate.of(2024, 2, 29)), any(Pageable.class));
+    }
+
+    @Test
+    void listarPaginado_soComAnoDerivaAJanelaDoAnoInteiro() {
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
+
+        service.listarPaginado(USUARIO, null, 2025, null, 0, 50);
+
+        verify(repository).buscarPagina(
+                eq(USUARIO), isNull(),
+                eq(LocalDate.of(2025, 1, 1)), eq(LocalDate.of(2025, 12, 31)), any(Pageable.class));
+    }
+
+    @Test
+    void listarPaginado_repassaOCategoriaId() {
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
+
+        service.listarPaginado(USUARIO, null, null, 7, 0, 50);
+
+        verify(repository).buscarPagina(eq(USUARIO), eq(7), isNull(), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void listarPaginado_rejeitaMesInvalido() {
+        assertThatThrownBy(() -> service.listarPaginado(USUARIO, 13, 2025, null, 0, 50))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Mês inválido");
+    }
+
+    @Test
+    void listarPaginado_ordenaPorDataDescIdDescEClampaOTamanho() {
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+
+        service.listarPaginado(USUARIO, null, null, null, 3, 5000);
+
+        verify(repository).buscarPagina(any(), any(), any(), any(), captor.capture());
+        Pageable pageable = captor.getValue();
+        assertThat(pageable.getPageNumber()).isEqualTo(3);
+        assertThat(pageable.getPageSize()).isEqualTo(200); // teto
+        assertThat(pageable.getSort()).isEqualTo(
+                Sort.by(Sort.Order.desc("data"), Sort.Order.desc("id")));
+    }
+
+    @Test
+    void listarPaginado_tamanhoInvalidoCaiNoPadrao() {
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+
+        service.listarPaginado(USUARIO, null, null, null, 0, 0);
+
+        verify(repository).buscarPagina(any(), any(), any(), any(), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(50);
+    }
+
+    @Test
+    void listarPaginado_mapeiaOsCamposDoPage() {
+        Gasto g = new Gasto();
+        Page<Gasto> pagina = new PageImpl<>(List.of(g), PageRequest.of(1, 50), 120);
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(pagina);
+
+        GastoPaginaDTO dto = service.listarPaginado(USUARIO, null, null, null, 1, 50);
+
+        assertThat(dto.conteudo()).containsExactly(g);
+        assertThat(dto.pagina()).isEqualTo(1);
+        assertThat(dto.totalItens()).isEqualTo(120);
+        assertThat(dto.totalPaginas()).isEqualTo(3);
+        assertThat(dto.ultima()).isFalse();
     }
 }

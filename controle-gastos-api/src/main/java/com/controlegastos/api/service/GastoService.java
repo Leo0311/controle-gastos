@@ -3,6 +3,7 @@ package com.controlegastos.api.service;
 import com.controlegastos.api.dto.CategoriaTotalDTO;
 import com.controlegastos.api.dto.ComparacaoCategoriaDTO;
 import com.controlegastos.api.dto.ComparacaoMensalDTO;
+import com.controlegastos.api.dto.GastoPaginaDTO;
 import com.controlegastos.api.dto.RankingCategoriaDTO;
 import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.RankingSubcategoriaDTO;
@@ -19,6 +20,10 @@ import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -37,6 +42,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class GastoService {
+
+    private static final int PAGINA_TAMANHO_PADRAO = 50;
+    private static final int PAGINA_TAMANHO_MAXIMO = 200;
 
     private final GastoRepository repository;
     private final OrcamentoRepository orcamentoRepository;
@@ -58,6 +66,40 @@ public class GastoService {
 
     public List<Gasto> listarTodos(Integer usuarioId) {
         return repository.findAllByUsuarioIdOrderByDataDescIdDesc(usuarioId);
+    }
+
+    // Listagem paginada da tela de Gastos (achado C1 da auditoria 2026-09-05).
+    // mes/ano/categoriaId são filtros opcionais - a tela passa só o que estiver
+    // ativo. A janela de datas é derivada aqui (mês -> 1º/último dia; só ano -> jan
+    // a dez; nenhum -> todo o histórico), pra o repositório receber só inicio/fim.
+    // Ordenação (data desc, id desc) montada aqui, nunca vinda do cliente.
+    public GastoPaginaDTO listarPaginado(
+            Integer usuarioId, Integer mes, Integer ano, Integer categoriaId, int pagina, int tamanho) {
+        LocalDate inicio = null;
+        LocalDate fim = null;
+        if (ano != null) {
+            if (ano <= 0) {
+                throw new IllegalArgumentException("Ano inválido.");
+            }
+            if (mes != null) {
+                validarMesAno(mes, ano);
+                inicio = LocalDate.of(ano, mes, 1);
+                fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
+            } else {
+                inicio = LocalDate.of(ano, 1, 1);
+                fim = LocalDate.of(ano, 12, 31);
+            }
+        }
+
+        int paginaSegura = Math.max(pagina, 0);
+        int tamanhoSeguro = tamanho < 1 ? PAGINA_TAMANHO_PADRAO : Math.min(tamanho, PAGINA_TAMANHO_MAXIMO);
+        Pageable pageable = PageRequest.of(paginaSegura, tamanhoSeguro,
+                Sort.by(Sort.Order.desc("data"), Sort.Order.desc("id")));
+
+        Page<Gasto> resultado = repository.buscarPagina(usuarioId, categoriaId, inicio, fim, pageable);
+        return new GastoPaginaDTO(
+                resultado.getContent(), resultado.getNumber(), resultado.getTotalPages(),
+                resultado.getTotalElements(), resultado.isLast());
     }
 
     public Gasto buscarPorId(Integer id, Integer usuarioId) {

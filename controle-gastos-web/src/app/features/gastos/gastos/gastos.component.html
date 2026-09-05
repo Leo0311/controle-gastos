@@ -98,10 +98,10 @@
   @if (opcoesCategoriaFiltro.length > 0) {
     <mat-form-field appearance="outline" class="campo-filtro-categoria">
       <mat-label>Filtrar por categoria</mat-label>
-      <mat-select [(ngModel)]="filtroCategoria" (selectionChange)="onCategoriaFiltroChange()">
+      <mat-select [(ngModel)]="filtroCategoriaId" (selectionChange)="onCategoriaFiltroChange()">
         <mat-option [value]="null">Todas</mat-option>
         @for (c of opcoesCategoriaFiltro; track c.id) {
-          <mat-option [value]="c.nome">{{ c.emoji }} {{ c.nome }}</mat-option>
+          <mat-option [value]="c.id">{{ c.emoji }} {{ c.nome }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
@@ -282,4 +282,13 @@
       </mat-expansion-panel>
     }
   </div>
+
+  @if (temMais) {
+    <div class="carregar-mais">
+      <button mat-stroked-button (click)="carregarMais()" [disabled]="carregandoMais">
+        <mat-icon>{{ carregandoMais ? 'hourglass_top' : 'expand_more' }}</mat-icon>
+        {{ carregandoMais ? 'Carregando…' : 'Carregar mais' }}
+      </button>
+    </div>
+  }
 }

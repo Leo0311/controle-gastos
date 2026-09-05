@@ -377,3 +377,15 @@
   font-size: 13px;
   vertical-align: middle;
 }
+
+.carregar-mais {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.carregar-mais button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

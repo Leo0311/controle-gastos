@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../core/api.constants';
-import { Gasto, Resumo, TotalDiario, TotalMensal } from '../models/gasto.model';
+import { Gasto, PaginaGastos, Resumo, TotalDiario, TotalMensal } from '../models/gasto.model';
 import { ComparacaoMensal, RankingCategorias } from '../models/analise.model';
 
 @Injectable({
@@ -17,6 +17,30 @@ export class GastoService {
 
   listarTodos(): Observable<Gasto[]> {
     return this.http.get<Gasto[]>(this.baseUrl);
+  }
+
+  // Listagem paginada da tela de Gastos. mes/ano/categoriaId são filtros
+  // opcionais; só entram na query string quando definidos.
+  listarPaginado(opcoes: {
+    page: number;
+    size?: number;
+    mes?: number | null;
+    ano?: number | null;
+    categoriaId?: number | null;
+  }): Observable<PaginaGastos> {
+    let params = new HttpParams()
+      .set('page', opcoes.page)
+      .set('size', opcoes.size ?? 50);
+    if (opcoes.mes) {
+      params = params.set('mes', opcoes.mes);
+    }
+    if (opcoes.ano) {
+      params = params.set('ano', opcoes.ano);
+    }
+    if (opcoes.categoriaId) {
+      params = params.set('categoriaId', opcoes.categoriaId);
+    }
+    return this.http.get<PaginaGastos>(`${this.baseUrl}/pagina`, { params });
   }
 
   buscarPorId(id: number): Observable<Gasto> {

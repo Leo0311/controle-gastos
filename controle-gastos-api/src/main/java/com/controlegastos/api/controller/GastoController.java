@@ -1,6 +1,7 @@
 package com.controlegastos.api.controller;
 
 import com.controlegastos.api.dto.ComparacaoMensalDTO;
+import com.controlegastos.api.dto.GastoPaginaDTO;
 import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.ResumoDTO;
 import com.controlegastos.api.dto.TotalDiarioDTO;
@@ -37,6 +38,20 @@ public class GastoController {
     @GetMapping
     public List<Gasto> listarTodos(@AuthenticationPrincipal UsuarioPrincipal usuario) {
         return service.listarTodos(usuario.usuarioId());
+    }
+
+    // Listagem paginada da tela de Gastos (achado C1). Os filtros mes/ano/categoriaId
+    // são opcionais. GET /api/gastos (acima) continua devolvendo tudo, para export,
+    // importação e demais consumidores que precisam do histórico completo.
+    @GetMapping("/pagina")
+    public GastoPaginaDTO listarPaginado(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) Integer categoriaId,
+            @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.listarPaginado(usuario.usuarioId(), mes, ano, categoriaId, page, size);
     }
 
     @GetMapping("/{id}")

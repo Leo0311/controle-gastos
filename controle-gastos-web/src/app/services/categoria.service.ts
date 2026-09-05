@@ -18,6 +18,12 @@ export class CategoriaService {
     return this.http.get<Categoria[]>(this.baseUrl);
   }
 
+  // Só as categorias visíveis com pelo menos um gasto cadastrado (qualquer
+  // período) - alimenta o dropdown "Filtrar por categoria" da tela de Gastos.
+  listarComGastos(): Observable<Categoria[]> {
+    return this.http.get<Categoria[]>(`${this.baseUrl}/com-gastos`);
+  }
+
   criar(categoria: Categoria): Observable<Categoria> {
     return this.http.post<Categoria>(this.baseUrl, categoria);
   }

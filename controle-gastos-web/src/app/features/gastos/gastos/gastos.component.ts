@@ -88,12 +88,21 @@ export class GastosComponent implements OnInit {
   // pra não parecer "sem gastos" quando na verdade a API caiu (ver carregar()).
   erro = false;
 
+  // Paginação da listagem (achado C1 da auditoria): a tela carrega uma página por
+  // vez via GET /api/gastos/pagina e o botão "Carregar mais" anexa a seguinte.
+  private readonly tamanhoPagina = 50;
+  private paginaAtual = 0;
+  temMais = false;
+  carregandoMais = false;
+
   readonly meses = NOMES_MESES_COMPLETO.map((nome, i) => ({ valor: i + 1, nome }));
   readonly anos: number[];
 
   filtroMes: number | null = null;
   filtroAno: number | null = null;
-  filtroCategoria: string | null = null;
+  // ID da categoria filtrada (o filtro é aplicado no servidor, ver carregar()) -
+  // null = "Todas".
+  filtroCategoriaId: number | null = null;
 
   // Painel de filtros no mobile (ver template/CSS) - fechado por padrão, pra não
   // ocupar a tela toda antes do primeiro gasto aparecer. Abre sozinho quando o
@@ -113,16 +122,11 @@ export class GastosComponent implements OnInit {
   // (verTodosOsMeses), não "aplique o padrão do mês atual" de novo.
   private primeiraCarga = true;
 
-  // Opções do <mat-select> de filtro por categoria - derivadas de gastosDoPeriodo
-  // (ver atualizarOpcoesCategoriaFiltro), não de uma chamada à parte: só entram
-  // categorias com gasto no período ATUAL, diferente de todasCategorias (usada na
-  // importação/emoji da tabela, que precisa de todas, mesmo sem gasto ainda).
+  // Opções do <mat-select> de filtro por categoria - carregadas de
+  // GET /api/categorias/com-gastos (categorias com pelo menos um gasto, qualquer
+  // período), separado de todasCategorias (usada na importação/emoji da tabela,
+  // que precisa de todas, mesmo sem gasto ainda). Recarregado a cada carregar().
   opcoesCategoriaFiltro: Categoria[] = [];
-
-  // Gastos do período (mês/ano) selecionado, ANTES do filtro de categoria - fonte
-  // de opcoesCategoriaFiltro. Precisa ser antes do filtro pra não fazer a lista de
-  // categorias murchar pra uma opção só assim que o usuário escolhe uma.
-  private gastosDoPeriodo: Gasto[] = [];
 
   private todasCategorias: Categoria[] = [];
   private todasSubcategorias: Subcategoria[] = [];
@@ -185,7 +189,8 @@ export class GastosComponent implements OnInit {
 
       this.mesSelecionado = this.filtroMes ?? new Date().getMonth() + 1;
       this.anoSelecionado = this.filtroAno ?? new Date().getFullYear();
-      this.filtroCategoria = params.get('categoria');
+      const categoriaIdParam = Number(params.get('categoriaId'));
+      this.filtroCategoriaId = Number.isInteger(categoriaIdParam) && categoriaIdParam > 0 ? categoriaIdParam : null;
       this.carregar();
     });
 
@@ -220,6 +225,18 @@ export class GastosComponent implements OnInit {
     return orcamento.subcategoria ? `${nome} / ${orcamento.subcategoria}` : nome;
   }
 
+  // Nome da categoria filtrada (para rótulos/mensagens) - o filtro guarda só o ID.
+  // Busca em opcoesCategoriaFiltro e cai em categoriasPorId (ambas podem ainda não
+  // ter chegado no primeiro carregamento).
+  get nomeCategoriaFiltro(): string | null {
+    if (this.filtroCategoriaId === null) {
+      return null;
+    }
+    const categoria = this.opcoesCategoriaFiltro.find((c) => c.id === this.filtroCategoriaId)
+      ?? this.categoriasPorId.get(this.filtroCategoriaId);
+    return categoria?.nome ?? null;
+  }
+
   // Rótulo do botão de filtros no mobile (painel fechado) - precisa deixar claro
   // o que está sendo mostrado sem o usuário ter que abrir o painel (ver
   // filtrosAbertos). "Todo o histórico" cobre o caso de "ver todos os meses".
@@ -227,7 +244,8 @@ export class GastosComponent implements OnInit {
     const periodo = this.filtroMes && this.filtroAno
       ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}`
       : 'Todo o histórico';
-    return this.filtroCategoria ? `${periodo} · ${this.filtroCategoria}` : periodo;
+    const categoria = this.nomeCategoriaFiltro;
+    return categoria ? `${periodo} · ${categoria}` : periodo;
   }
 
   // Mensagem do empty-state quando não há nenhum gasto no período/categoria
@@ -236,7 +254,7 @@ export class GastosComponent implements OnInit {
     const periodo = this.filtroAno
       ? (this.filtroMes ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`)
       : '';
-    const partes = [periodo, this.filtroCategoria].filter((p): p is string => !!p);
+    const partes = [periodo, this.nomeCategoriaFiltro].filter((p): p is string => !!p);
     return partes.length > 0
       ? `Nenhum gasto encontrado para ${partes.join(' · ')}.`
       : 'Nenhum gasto cadastrado ainda.';
@@ -252,11 +270,11 @@ export class GastosComponent implements OnInit {
     // Modo histórico (sem período) E sem categoria: aqui "Ver mês atual" já reseta
     // pro mês corrente sozinho (a categoria, sem filtro, não tem o que mudar) -
     // mostrar as duas ações lado a lado no desktop seria redundante.
-    if (this.filtroMes === null && this.filtroAno === null && this.filtroCategoria === null) {
+    if (this.filtroMes === null && this.filtroAno === null && this.filtroCategoriaId === null) {
       return false;
     }
     const hoje = new Date();
-    return this.filtroCategoria !== null
+    return this.filtroCategoriaId !== null
       || this.filtroMes !== hoje.getMonth() + 1
       || this.filtroAno !== hoje.getFullYear();
   }
@@ -283,22 +301,22 @@ export class GastosComponent implements OnInit {
 
   alternarFiltroMes(): void {
     if (this.filtroMes || this.filtroAno) {
-      this.aplicarFiltro(null, null, this.filtroCategoria);
+      this.aplicarFiltro(null, null, this.filtroCategoriaId);
     } else {
       const hoje = new Date();
-      this.aplicarFiltro(hoje.getMonth() + 1, hoje.getFullYear(), this.filtroCategoria);
+      this.aplicarFiltro(hoje.getMonth() + 1, hoje.getFullYear(), this.filtroCategoriaId);
     }
   }
 
   onMesAnoChange(): void {
-    this.aplicarFiltro(this.mesSelecionado, this.anoSelecionado, this.filtroCategoria);
+    this.aplicarFiltro(this.mesSelecionado, this.anoSelecionado, this.filtroCategoriaId);
   }
 
-  // filtroCategoria já foi atualizado pelo [(ngModel)] do <mat-select> antes desse
+  // filtroCategoriaId já foi atualizado pelo [(ngModel)] do <mat-select> antes desse
   // handler rodar - preserva o período (mês/ano) atual, incluindo "ver todos os
   // meses" (null), em vez de reaplicar o padrão do mês corrente.
   onCategoriaFiltroChange(): void {
-    this.aplicarFiltro(this.filtroMes, this.filtroAno, this.filtroCategoria);
+    this.aplicarFiltro(this.filtroMes, this.filtroAno, this.filtroCategoriaId);
   }
 
   // Atualiza o estado (e recarrega) diretamente, em vez de só navegar e confiar na
@@ -307,10 +325,10 @@ export class GastosComponent implements OnInit {
   // padrão do mês atual aplicado só internamente), o Router não dispara uma nova
   // navegação, e a assinatura nunca reagiria. A chamada a router.navigate() abaixo só
   // mantém a URL compartilhável/refletindo o filtro atual, sem ser a fonte da verdade.
-  private aplicarFiltro(mes: number | null, ano: number | null, categoria: string | null): void {
+  private aplicarFiltro(mes: number | null, ano: number | null, categoriaId: number | null): void {
     this.filtroMes = mes;
     this.filtroAno = ano;
-    this.filtroCategoria = categoria;
+    this.filtroCategoriaId = categoriaId;
     this.mesSelecionado = mes ?? new Date().getMonth() + 1;
     this.anoSelecionado = ano ?? new Date().getFullYear();
     this.carregar();
@@ -322,27 +340,32 @@ export class GastosComponent implements OnInit {
     if (ano) {
       queryParams['ano'] = ano;
     }
-    if (categoria) {
-      queryParams['categoria'] = categoria;
+    if (categoriaId) {
+      queryParams['categoriaId'] = categoriaId;
     }
     this.router.navigate(['/gastos'], { queryParams, replaceUrl: true });
   }
 
+  // Carrega a 1ª página da listagem (mês/ano/categoria vão como filtro do
+  // servidor - ver GET /api/gastos/pagina). Chamado a cada troca de filtro e
+  // depois de cada criação/edição/exclusão/importação, sempre voltando pro topo.
   carregar(): void {
     this.carregando = true;
     this.erro = false;
+    this.paginaAtual = 0;
+    this.temMais = false;
+    this.carregarOpcoesCategoriaFiltro();
 
-    const origem$ = this.filtroAno
-      ? this.gastoService.listarPorPeriodo(...this.intervaloFiltro(this.filtroAno, this.filtroMes))
-      : this.gastoService.listarTodos();
-
-    origem$.subscribe({
-      next: (gastos) => {
-        this.gastosDoPeriodo = gastos;
-        this.atualizarOpcoesCategoriaFiltro();
-        this.gastos = this.filtroCategoria
-          ? gastos.filter((g) => (g.categoria ?? '').trim().toLowerCase() === this.filtroCategoria!.trim().toLowerCase())
-          : gastos;
+    this.gastoService.listarPaginado({
+      page: 0,
+      size: this.tamanhoPagina,
+      mes: this.filtroMes,
+      ano: this.filtroAno,
+      categoriaId: this.filtroCategoriaId
+    }).subscribe({
+      next: (pagina) => {
+        this.gastos = pagina.conteudo;
+        this.temMais = !pagina.ultima;
         this.carregando = false;
         // Sem gastos no período/categoria filtrado: abre o painel de filtros
         // sozinho no mobile - é exatamente quando o usuário precisa mexer nele.
@@ -359,59 +382,54 @@ export class GastosComponent implements OnInit {
         // Limpa os gastos do filtro anterior antes de mostrar o erro, pra não
         // ficar exibindo dados desatualizados com o filtro novo no topo.
         this.gastos = [];
-        this.gastosDoPeriodo = [];
-        this.opcoesCategoriaFiltro = [];
         this.carregando = false;
         this.erro = true;
       }
     });
   }
 
-  // Deriva as opções do filtro a partir de gastosDoPeriodo (sem chamada extra à
-  // API): só entram categorias com pelo menos um gasto no período atual - que já é
-  // o histórico inteiro quando "Ver todos os meses" está ativo (gastosDoPeriodo vem
-  // de listarTodos() nesse caso, ver carregar()). Em ordem alfabética: essa lista só
-  // existe depois que os gastos do período chegam, e esperar todasCategorias (que
-  // carrega à parte, em paralelo) pra ordenar pela preferência do usuário entraria
-  // em corrida com ela.
-  private atualizarOpcoesCategoriaFiltro(): void {
-    const porId = new Map<number, Categoria>();
-    for (const gasto of this.gastosDoPeriodo) {
-      if (gasto.categoriaId == null || porId.has(gasto.categoriaId)) {
-        continue;
+  // Botão "Carregar mais": busca a próxima página e ANEXA ao que já está na tela.
+  // Um erro aqui só mostra um aviso - não derruba a lista já carregada nem cai no
+  // estado de erro da tela inteira.
+  carregarMais(): void {
+    if (this.carregandoMais || !this.temMais) {
+      return;
+    }
+    this.carregandoMais = true;
+    this.gastoService.listarPaginado({
+      page: this.paginaAtual + 1,
+      size: this.tamanhoPagina,
+      mes: this.filtroMes,
+      ano: this.filtroAno,
+      categoriaId: this.filtroCategoriaId
+    }).subscribe({
+      next: (pagina) => {
+        this.paginaAtual += 1;
+        this.gastos = [...this.gastos, ...pagina.conteudo];
+        this.temMais = !pagina.ultima;
+        this.carregandoMais = false;
+      },
+      error: (erro) => {
+        this.carregandoMais = false;
+        this.mostrarErro(this.mensagemErro(erro));
       }
-      porId.set(gasto.categoriaId, this.categoriasPorId.get(gasto.categoriaId) ?? {
-        id: gasto.categoriaId,
-        nome: gasto.categoria ?? '',
-        emoji: ''
-      });
-    }
-    this.opcoesCategoriaFiltro = Array.from(porId.values())
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-
-    // A categoria filtrada deixou de ter gasto no período atual (ex: trocou de mês) -
-    // reseta pra "Todas" em vez de deixar a tela vazia sem explicação.
-    const categoriaAindaExiste = this.opcoesCategoriaFiltro.some((c) =>
-      c.nome.trim().toLowerCase() === this.filtroCategoria?.trim().toLowerCase());
-    if (this.filtroCategoria && !categoriaAindaExiste) {
-      this.filtroCategoria = null;
-    }
+    });
   }
 
-  private intervaloFiltro(ano: number, mes: number | null): [string, string] {
-    if (mes) {
-      const inicio = new Date(ano, mes - 1, 1);
-      const fim = new Date(ano, mes, 0);
-      return [this.formatarData(inicio), this.formatarData(fim)];
-    }
-    return [`${ano}-01-01`, `${ano}-12-31`];
-  }
-
-  private formatarData(data: Date): string {
-    const ano = data.getFullYear();
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const dia = String(data.getDate()).padStart(2, '0');
-    return `${ano}-${mes}-${dia}`;
+  // Opções do dropdown "Filtrar por categoria" - categorias com pelo menos um
+  // gasto (qualquer período). Recarregado a cada carregar() pra refletir uma
+  // categoria que ganhou seu primeiro gasto (ex: importação). Se a categoria
+  // filtrada sumiu da lista (foi excluída), reseta pra "Todas".
+  private carregarOpcoesCategoriaFiltro(): void {
+    this.categoriaService.listarComGastos().subscribe({
+      next: (categorias) => {
+        this.opcoesCategoriaFiltro = categorias;
+        if (this.filtroCategoriaId !== null && !categorias.some((c) => c.id === this.filtroCategoriaId)) {
+          this.filtroCategoriaId = null;
+        }
+      },
+      error: () => { /* dropdown auxiliar; sem ele o filtro por categoria só não aparece */ }
+    });
   }
 
   novoGasto(): void {

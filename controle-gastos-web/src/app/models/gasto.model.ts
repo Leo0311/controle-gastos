@@ -20,6 +20,16 @@ export interface Gasto {
   compraParceladaId?: number | null;
 }
 
+// Uma página da listagem da tela de Gastos (GET /api/gastos/pagina) - espelha o
+// GastoPaginaDTO do backend. `ultima` diz se o botão "Carregar mais" some.
+export interface PaginaGastos {
+  conteudo: Gasto[];
+  pagina: number;
+  totalPaginas: number;
+  totalItens: number;
+  ultima: boolean;
+}
+
 export interface CategoriaTotal {
   categoriaId: number | null;
   categoria: string;
