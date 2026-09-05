@@ -277,13 +277,14 @@ números mágicos coincidindo por convenção.
 >   qualquer operação, a restrição estrita de `findByIdAndUsuarioId`, a
 >   duplicidade checada contra a categoria do registro existente (não a do
 >   payload), e o bloqueio de exclusão por uso.
+> - `GastoRecorrenteServiceTest` — **+5 testes** (3 → 8): `atualizar` (404 fora do
+>   usuário, validação antes de alterar, cópia de campos + reaplicação da
+>   pré-geração pelo horizonte informado, idempotência ao reeditar) e o
+>   `catch (RuntimeException)` de `lancarParaMesFuturo` (recorrência com orçamento
+>   excluído não trava a edição).
 >
-> Suíte de backend: 44 → 136 testes, todos verdes. Todo o plano "como corrigir"
-> do M4 está feito.
->
-> **Sobra menor** (observação do bullet "Recorrentes", não do plano numerado):
-> `GastoRecorrenteService.atualizar` (reaplica `gerarProximosMeses`) e o
-> `catch (RuntimeException)` de `lancarParaMesFuturo` seguem sem teste dedicado.
+> Suíte de backend: 44 → 141 testes, todos verdes. Todo o M4 está feito —
+> plano numerado e a observação do bullet "Recorrentes".
 
 **Onde:** `controle-gastos-api/src/test/java/.../service/` — 7 arquivos, 36
 métodos `@Test` no total (a auditoria pediu pra eu contar: são 36, não 34 nem
@@ -295,11 +296,12 @@ orçamentos, importação):**
 - **Parceladas** — `CompraParceladaServiceTest`, 12 testes: cobre limites de
   valor/parcelas, arredondamento em centavos, datas retroativas, virada de ano,
   clamping de dia. **Bem coberto, sem problema encontrado aqui.**
-- **Recorrentes** — `GastoRecorrenteServiceTest`, só 3 testes: clamping de dia,
-  idempotência **sequencial** (não cobre a corrida do achado M1), e "não lança
-  antes do dia chegar". Não há teste para `atualizar` (reaplica
-  `gerarProximosMeses` ao editar), nem para o `catch (RuntimeException)` que
-  engole erro de recorrência quebrada em `lancarParaMesFuturo`.
+- **Recorrentes** — `GastoRecorrenteServiceTest`, 8 testes (era 3): clamping de
+  dia, idempotência sequencial, "não lança antes do dia chegar", mais os 5
+  adicionados em 2026-09-05 — `atualizar` (404, validação, cópia de campos +
+  reaplicação de `gerarProximosMeses`, idempotência ao reeditar) e o
+  `catch (RuntimeException)` de `lancarParaMesFuturo`. A corrida do M1 é coberta
+  à parte em `GastoRecorrenteConcorrenciaTest`. **Sem lacuna restante.**
 - **Orçamentos** — `OrcamentoService`: **zero testes.** Nenhuma cobertura para
   os três status financeiros (`ultrapassou`/`completo`/`proximoDoLimite`,
   incluindo o limiar de 80%), pra checagem de duplicidade
@@ -587,9 +589,8 @@ também citado no topo) — contado uma vez só no total.
 primeira leva de correções mais a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
 `SubcategoriaServiceTest`), tudo implementado e testado; suíte de backend
-44 → 136 testes; ver o status em cada achado acima). Faltam: M2, M3, M5, M6, M7,
-M8, C1, C2 (e R4, validação de e-mail), mais a sobra menor de teste em
-`GastoRecorrenteService.atualizar`.
+44 → 141 testes; ver o status em cada achado acima). Faltam: M2, M3, M5, M6, M7,
+M8, C1, C2 (e R4, validação de e-mail).
 
 ## Se fosse minha decisão
 
@@ -601,8 +602,8 @@ Nesta ordem:
    fazer (roda sozinha ao abrir a tela).
 3. ~~**R3** (N+1 de orçamentos)~~ — ✅ feito.
 4. ~~**M4** — `OrcamentoServiceTest` (32), `UsuarioServiceTest` (24),
-   `CategoriaServiceTest` (22), `SubcategoriaServiceTest` (14)~~ — ✅ feito
-   (suíte 44 → 136). Sobra menor: teste de `GastoRecorrenteService.atualizar`.
+   `CategoriaServiceTest` (22), `SubcategoriaServiceTest` (14),
+   `GastoRecorrenteServiceTest` (+5)~~ — ✅ feito, completo (suíte 44 → 141).
 5. Os complexos (**C1**, **C2**) eu deixaria pra quando aparecer sinal real de
    dor (usuário com muitos gastos reclamando de lentidão, ou a próxima vez que
    alguém precisar mexer no fluxo de importação) — são as mudanças mais

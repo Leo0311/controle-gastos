@@ -1,5 +1,6 @@
 package com.controlegastos.api.service;
 
+import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.model.GastoRecorrente;
@@ -18,10 +19,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -150,5 +154,78 @@ class GastoRecorrenteServiceTest {
 
         assertThat(lancados).isEmpty();
         verify(gastoService, times(0)).cadastrarVinculadoARecorrente(any(), any());
+    }
+
+    // ---------- atualizar() - reaplica gerarProximosMeses ao editar ----------
+
+    @Test
+    void atualizar_lancaNaoEncontradoQuandoRecorrenciaNaoEhDoUsuario() {
+        when(repository.findByIdAndUsuarioId(999, USUARIO)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.atualizar(999, recorrente(1, 3), USUARIO))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void atualizar_validaOsDadosNovosAntesDeAlterarOExistente() {
+        GastoRecorrente existente = recorrente(1, 3);
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));
+
+        GastoRecorrente invalido = recorrente(1, 3);
+        invalido.setValor(BigDecimal.ZERO);
+
+        assertThatThrownBy(() -> service.atualizar(RECORRENTE, invalido, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Valor deve ser maior que zero");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void atualizar_copiaCamposEReaplicaAPreGeracaoPeloHorizonteInformado() {
+        GastoRecorrente existente = recorrente(1, 1);
+        existente.setDescricao("Assinatura antiga");
+        existente.setValor(new BigDecimal("10.00"));
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));
+
+        GastoRecorrente dados = recorrente(1, 3);
+        dados.setDescricao("Assinatura nova");
+        dados.setValor(new BigDecimal("42.00"));
+
+        GastoRecorrente salvo = service.atualizar(RECORRENTE, dados, USUARIO);
+
+        assertThat(salvo.getDescricao()).isEqualTo("Assinatura nova");
+        assertThat(salvo.getValor()).isEqualByComparingTo("42.00");
+        // Mês corrente (dia 1, já chegou) + 2 meses futuros = 3 lançamentos pré-gerados.
+        assertThat(datasGeradas()).hasSize(3);
+    }
+
+    @Test
+    void atualizar_naoDuplicaOsMesesQueJaForamGerados() {
+        GastoRecorrente existente = recorrente(1, 3);
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));
+        // Todo mês do horizonte já tem o gasto lançado.
+        when(gastoRepository.existsByGastoRecorrenteIdAndDataBetween(any(), any(), any())).thenReturn(true);
+
+        service.atualizar(RECORRENTE, recorrente(1, 3), USUARIO);
+
+        verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
+    }
+
+    @Test
+    void atualizar_recorrenciaComProblemaNaoTravaAEdicao_catchDeLancarParaMesFuturo() {
+        GastoRecorrente existente = recorrente(1, 3);
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));
+        // Ex.: o orçamento vinculado foi excluído depois - cada tentativa de lançar
+        // um mês estoura, mas o catch (RuntimeException) da pré-geração engole.
+        when(gastoService.cadastrarVinculadoARecorrente(any(), any()))
+                .thenThrow(new RuntimeException("orçamento vinculado foi excluído"));
+
+        assertThatCode(() -> service.atualizar(RECORRENTE, recorrente(1, 3), USUARIO))
+                .doesNotThrowAnyException();
+
+        verify(repository).save(any());
     }
 }
