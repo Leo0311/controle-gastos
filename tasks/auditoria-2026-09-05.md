@@ -266,12 +266,24 @@ números mágicos coincidindo por convenção.
 >   `esqueciSenha` para e-mail inexistente e o engolir de `MailException`, a
 >   validade/expiração do token de redefinição e o incremento de `tokenVersion`
 >   que desloga os JWTs antigos, mais `atualizarRenda`.
+> - `CategoriaServiceTest` — **22 testes**: a proteção de `buscarPropria()`
+>   (categoria do sistema ou de outro usuário nunca é editável/excluível),
+>   normalização + duplicidade em `criar`/`atualizar`, bloqueio de exclusão por
+>   uso e cascata nas subcategorias, e a ordem de `reordenar()`/
+>   `ordenarPorPreferencia()` (ordem recebida, IDs inválidos/repetidos ignorados,
+>   categorias novas no fim na ordem padrão, reaproveitamento dos registros de
+>   posição).
+> - `SubcategoriaServiceTest` — **14 testes**: categoria-pai visível antes de
+>   qualquer operação, a restrição estrita de `findByIdAndUsuarioId`, a
+>   duplicidade checada contra a categoria do registro existente (não a do
+>   payload), e o bloqueio de exclusão por uso.
 >
-> Suíte de backend: 44 → 100 testes, todos verdes.
+> Suíte de backend: 44 → 136 testes, todos verdes. Todo o plano "como corrigir"
+> do M4 está feito.
 >
-> **Ainda em aberto dentro do M4:** `CategoriaServiceTest`/`SubcategoriaServiceTest`
-> (`buscarPropria`) e o `atualizar`/`catch` de `GastoRecorrenteService`. Itens
-> separados — as duas partes prioritárias (Orçamentos e auth) estão fechadas.
+> **Sobra menor** (observação do bullet "Recorrentes", não do plano numerado):
+> `GastoRecorrenteService.atualizar` (reaplica `gerarProximosMeses`) e o
+> `catch (RuntimeException)` de `lancarParaMesFuturo` seguem sem teste dedicado.
 
 **Onde:** `controle-gastos-api/src/test/java/.../service/` — 7 arquivos, 36
 métodos `@Test` no total (a auditoria pediu pra eu contar: são 36, não 34 nem
@@ -307,11 +319,12 @@ orçamentos, importação):**
   `rankingCategorias`/`comparacaoMensal` (cálculo de percentual, detecção de
   "categoria nova").
 
-**Como corrigir:** priorizar nessa ordem: (1) um teste de concorrência/idempotência
-pra M1 depois que a constraint existir; (2) `OrcamentoServiceTest` cobrindo os
-três status e duplicidade; (3) `UsuarioServiceTest` cobrindo o fluxo de auth
-inteiro; (4) `CategoriaServiceTest`/`SubcategoriaServiceTest` cobrindo
-`buscarPropria`.
+**Como corrigir:** priorizar nessa ordem: (1) ~~um teste de concorrência/idempotência
+pra M1 depois que a constraint existir~~ ✅ (`GastoRecorrenteConcorrenciaTest`);
+(2) ~~`OrcamentoServiceTest` cobrindo os três status e duplicidade~~ ✅;
+(3) ~~`UsuarioServiceTest` cobrindo o fluxo de auth inteiro~~ ✅;
+(4) ~~`CategoriaServiceTest`/`SubcategoriaServiceTest` cobrindo `buscarPropria`~~ ✅.
+Plano completo — ver o bloco de status no topo deste achado.
 
 **Custo:** médio (é trabalho de escrever testes Mockito seguindo o padrão já
 estabelecido pelos arquivos existentes, não precisa de infraestrutura nova).
@@ -563,20 +576,20 @@ Pra não deixar por omissão, como pedido:
 | 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1) | 2 |
 | 3. Robustez | 0 | 3 (M1 ✅*, M6, M7) | 0 | 3 |
 | 4. Qualidade de código | 0 | 2 (M5, M8) | 1 (C2) | 3 |
-| 5. Cobertura de teste | 0 | 1 (M4 ✅*) | 0 | 1 |
+| 5. Cobertura de teste | 0 | 1 (M4 ✅) | 0 | 1 |
 | **Total (achados únicos)** | **4** | **8** | **2** | **14** |
 
 *M1 aparece em Segurança/Robustez porque é simultaneamente uma corrida de
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
-também citado no topo) — contado uma vez só no total. *M4 marcado ✅ pela parte
-prioritária (Orçamentos, `OrcamentoServiceTest`); os testes de auth/categoria
-que ele também menciona seguem em aberto.
+também citado no topo) — contado uma vez só no total.
 
 **Status em 2026-09-05: 5 de 14 achados resolvidos** (R1, R2, R3, M1, M4 —
-primeira leva de correções mais `OrcamentoServiceTest` e `UsuarioServiceTest`,
-tudo implementado e testado; suíte de backend 44 → 100 testes; ver o status em
-cada achado acima). Faltam 9: M2, M3, M5, M6, M7, M8, C1, C2 — e o resto da
-cobertura de teste que o M4 cita (categorias, `atualizar` de recorrentes).
+primeira leva de correções mais a bateria de testes de service
+(`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
+`SubcategoriaServiceTest`), tudo implementado e testado; suíte de backend
+44 → 136 testes; ver o status em cada achado acima). Faltam: M2, M3, M5, M6, M7,
+M8, C1, C2 (e R4, validação de e-mail), mais a sobra menor de teste em
+`GastoRecorrenteService.atualizar`.
 
 ## Se fosse minha decisão
 
@@ -587,9 +600,9 @@ Nesta ordem:
    corrompia dado real silenciosamente, numa ação que o usuário nem escolhe
    fazer (roda sozinha ao abrir a tela).
 3. ~~**R3** (N+1 de orçamentos)~~ — ✅ feito.
-4. ~~**M4** — `OrcamentoServiceTest` (32) + `UsuarioServiceTest` (24)~~ — ✅ feito
-   (suíte 44 → 100). Falta o restante que o M4 cita:
-   `CategoriaServiceTest`/`SubcategoriaServiceTest` e o `atualizar` de recorrentes.
+4. ~~**M4** — `OrcamentoServiceTest` (32), `UsuarioServiceTest` (24),
+   `CategoriaServiceTest` (22), `SubcategoriaServiceTest` (14)~~ — ✅ feito
+   (suíte 44 → 136). Sobra menor: teste de `GastoRecorrenteService.atualizar`.
 5. Os complexos (**C1**, **C2**) eu deixaria pra quando aparecer sinal real de
    dor (usuário com muitos gastos reclamando de lentidão, ou a próxima vez que
    alguém precisar mexer no fluxo de importação) — são as mudanças mais
