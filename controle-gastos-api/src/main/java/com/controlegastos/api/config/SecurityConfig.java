@@ -1,6 +1,7 @@
 package com.controlegastos.api.config;
 
 import com.controlegastos.api.security.JwtAuthFilter;
+import com.controlegastos.api.security.RateLimitAutenticadoFilter;
 import com.controlegastos.api.security.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +47,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // Depois do JwtAuthFilter: já há um UsuarioPrincipal no contexto para
+                // a contagem por usuário dos endpoints de escrita pesada (achado M2).
+                .addFilterAfter(new RateLimitAutenticadoFilter(), JwtAuthFilter.class);
 
         return http.build();
     }

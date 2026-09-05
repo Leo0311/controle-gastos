@@ -210,6 +210,25 @@ acontecer. É mudança de schema — segue o procedimento da skill `banco-schema
 
 ### M2 — Rate limiting cobre só os 3 endpoints públicos de auth
 
+> **Status: ✅ Resolvido em 2026-09-05.** Novo `RateLimitAutenticadoFilter`
+> (irmão do `RateLimitFilter`, mas **por `usuarioId`**, não por IP), encaixado
+> depois do `JwtAuthFilter` na cadeia do Spring Security. Três buckets, janela
+> fixa em memória, resposta 429 no mesmo formato `{"erro": …}` + `Retry-After`:
+> - **gastos-escrita** (`POST /api/gastos` + `PUT /api/gastos/{id}` — as duas
+>   pontas do loop de importação): **400 / 10 s**. Folgado de propósito: a
+>   importação faz um request por linha, sequencial (o próximo só dispara quando
+>   o anterior volta), então nem planilha grande chega perto; um loop paralelo
+>   descontrolado fica capado em 40 req/s.
+> - **compras-parceladas** (`POST /api/compras-parceladas`, gera até 120 gastos
+>   por request): **20 / min**.
+> - **lancar-pendentes** (`POST /api/gastos-recorrentes/lancar-pendentes`, roda a
+>   cada carregamento de tela; 429 aqui é engolido em silêncio pelo frontend):
+>   **60 / min**.
+>
+> +9 testes (`RateLimitAutenticadoFilterTest`; 170 no total) e verificado com a
+> API no ar (429 no 61º `lancar-pendentes`, contagem por usuário, leitura e
+> outros endpoints intactos). **API precisa de redeploy manual na VM.**
+
 **Onde:** `controle-gastos-api/.../security/RateLimitFilter.java` — `CAMINHOS_LIMITADOS`
 lista só `/api/auth/login`, `/api/auth/cadastro`, `/api/auth/esqueci-senha`.
 
@@ -640,7 +659,7 @@ Pra não deixar por omissão, como pedido:
 
 | Categoria | Rápido | Médio | Complexo | Total |
 |---|---|---|---|---|
-| 1. Segurança | 3 (R1 ✅, R2 ✅, R4 ✅) | 2 (M1 ✅, M2) | 0 | 5 |
+| 1. Segurança | 3 (R1 ✅, R2 ✅, R4 ✅) | 2 (M1 ✅, M2 ✅) | 0 | 5 |
 | 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1 ✅) | 2 |
 | 3. Robustez | 0 | 3 (M1 ✅*, M6, M7 ✅) | 0 | 3 |
 | 4. Qualidade de código | 0 | 3 (M3 ✅, M5 ✅, M8) | 1 (C2) | 4 |
@@ -651,14 +670,15 @@ Pra não deixar por omissão, como pedido:
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
 também citado no topo) — contado uma vez só no total.
 
-**Status em 2026-09-05: 10 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M3, M4,
-M5, M7, C1 — primeira leva de correções, a bateria de testes de service
+**Status em 2026-09-05: 11 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M2, M3,
+M4, M5, M7, C1 — primeira leva de correções, a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
 `SubcategoriaServiceTest`), a paginação de `GET /api/gastos`, a regex de e-mail
 no cadastro, o log padronizado de falha de SMTP, a extração dos helpers
-duplicados do frontend pra `core/` e o `GET /api/config` que tira o drift de
-limites do parcelamento; tudo implementado e testado; suíte de backend
-44 → 161 testes; ver o status em cada achado acima). Faltam: M2, M6, M8, C2.
+duplicados do frontend pra `core/`, o `GET /api/config` que tira o drift de
+limites do parcelamento e o rate limit por usuário nos endpoints de escrita
+pesada; tudo implementado e testado; suíte de backend 44 → 170 testes; ver o
+status em cada achado acima). Faltam: M6, M8, C2.
 
 ## Se fosse minha decisão
 
@@ -678,6 +698,7 @@ Nesta ordem:
    versão mínima (o alerta de verdade fica com o monitoramento da VM).
 8. ~~**M5** (helpers duplicados do frontend → `core/`)~~ — ✅ feito.
 9. ~~**M3** (limites do parcelamento via `GET /api/config`)~~ — ✅ feito.
-10. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez
+10. ~~**M2** (rate limit por usuário nos endpoints de escrita pesada)~~ — ✅ feito.
+11. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez
     que alguém precisar mexer no fluxo de importação — é a mudança mais arriscada
-    da lista e não tem urgência hoje. **M2, M6, M8** seguem na fila.
+    da lista e não tem urgência hoje. **M6, M8** seguem na fila.
