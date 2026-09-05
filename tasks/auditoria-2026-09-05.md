@@ -137,8 +137,14 @@ dele.
 
 ### R4 — Validação de e-mail no cadastro é só `contains("@")`
 
-**Onde:** `controle-gastos-api/.../service/UsuarioService.java`, método
-`validarCadastro` (linha ~129).
+> **Status: ✅ Resolvido em 2026-09-05.** `validarCadastro` agora usa a regex
+> `^[^\s@]+@[^\s@]+\.[^\s@]+$` (constante `EMAIL_VALIDO`, no `.trim()` do valor) —
+> exatamente a proposta abaixo. `"a@"`, `"@@@"`, `"x@y"`, `"@example.com"` e
+> e-mail com espaço passam a dar 400 no cadastro. +10 casos em `UsuarioServiceTest`
+> (159 testes no total). **API precisa de redeploy manual na VM** (mudou `.java`).
+> Drift residual aceito: o `Validators.email` do formulário Angular aceita `a@b`
+> (sem ponto), que o backend agora rejeita — o backend é a autoridade e a
+> mensagem "E-mail inválido." é clara; ninguém se cadastra com `a@b`.
 
 **Por quê importa:** aceita `"a@"`, `"@@@"` ou `"x@y"` como e-mail válido. Não é
 um risco de segurança (o único efeito prático é o usuário nunca receber o link
@@ -591,23 +597,23 @@ Pra não deixar por omissão, como pedido:
 
 | Categoria | Rápido | Médio | Complexo | Total |
 |---|---|---|---|---|
-| 1. Segurança | 2 (R1 ✅, R2 ✅) | 2 (M1 ✅, M2) | 0 | 4 |
+| 1. Segurança | 3 (R1 ✅, R2 ✅, R4 ✅) | 2 (M1 ✅, M2) | 0 | 5 |
 | 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1 ✅) | 2 |
 | 3. Robustez | 0 | 3 (M1 ✅*, M6, M7) | 0 | 3 |
 | 4. Qualidade de código | 0 | 2 (M5, M8) | 1 (C2) | 3 |
 | 5. Cobertura de teste | 0 | 1 (M4 ✅) | 0 | 1 |
-| **Total (achados únicos)** | **4** | **8** | **2** | **14** |
+| **Total (achados únicos)** | **5** | **8** | **2** | **14** |
 
 *M1 aparece em Segurança/Robustez porque é simultaneamente uma corrida de
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
 também citado no topo) — contado uma vez só no total.
 
-**Status em 2026-09-05: 6 de 14 achados resolvidos** (R1, R2, R3, M1, M4, C1 —
+**Status em 2026-09-05: 7 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M4, C1 —
 primeira leva de correções, a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
-`SubcategoriaServiceTest`) e a paginação de `GET /api/gastos`; tudo implementado
-e testado; suíte de backend 44 → 149 testes; ver o status em cada achado acima).
-Faltam: M2, M3, M5, M6, M7, M8, C2 (e R4, validação de e-mail).
+`SubcategoriaServiceTest`), a paginação de `GET /api/gastos` e a regex de e-mail
+no cadastro; tudo implementado e testado; suíte de backend 44 → 159 testes; ver o
+status em cada achado acima). Faltam: M2, M3, M5, M6, M7, M8, C2.
 
 ## Se fosse minha decisão
 
@@ -621,7 +627,8 @@ Nesta ordem:
 4. ~~**M4** — `OrcamentoServiceTest` (32), `UsuarioServiceTest` (24),
    `CategoriaServiceTest` (22), `SubcategoriaServiceTest` (14),
    `GastoRecorrenteServiceTest` (+5)~~ — ✅ feito, completo (suíte 44 → 141).
-5. ~~**C1** (paginação de `GET /api/gastos`)~~ — ✅ feito. **C2** (extrair a
-   orquestração de importação) eu deixaria pra a próxima vez que alguém precisar
-   mexer no fluxo de importação — é a mudança mais arriscada da lista e não tem
-   urgência hoje.
+5. ~~**C1** (paginação de `GET /api/gastos`)~~ — ✅ feito.
+6. ~~**R4** (regex de e-mail no cadastro)~~ — ✅ feito, junto com a leva acima.
+7. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez que
+   alguém precisar mexer no fluxo de importação — é a mudança mais arriscada da
+   lista e não tem urgência hoje. **M2, M3, M5, M6, M7, M8** seguem na fila.

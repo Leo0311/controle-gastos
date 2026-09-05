@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,11 @@ import java.util.UUID;
 public class UsuarioService {
 
     private static final int TAMANHO_MINIMO_SENHA = 6;
+
+    // Só checa formato razoável (algo@algo.algo, sem espaço), não entrega - o
+    // objetivo (achado R4 da auditoria 2026-09-05) é barrar "a@", "@@@", "x@y" no
+    // cadastro, senão a conta é criada e o link de redefinição de senha nunca chega.
+    private static final Pattern EMAIL_VALIDO = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final UsuarioRepository repository;
     private final PasswordEncoder passwordEncoder;
@@ -126,7 +132,7 @@ public class UsuarioService {
         if (dados.nome() == null || dados.nome().isBlank()) {
             throw new IllegalArgumentException("Nome não pode ser vazio.");
         }
-        if (dados.email() == null || dados.email().isBlank() || !dados.email().contains("@")) {
+        if (dados.email() == null || !EMAIL_VALIDO.matcher(dados.email().trim()).matches()) {
             throw new IllegalArgumentException("E-mail inválido.");
         }
         if (dados.senha() == null || dados.senha().length() < TAMANHO_MINIMO_SENHA) {

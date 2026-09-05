@@ -13,6 +13,8 @@ import com.controlegastos.api.repository.UsuarioRepository;
 import com.controlegastos.api.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mail.MailSendException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -103,6 +105,24 @@ class UsuarioServiceTest {
         assertThatThrownBy(() -> service.cadastrar(dados))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("E-mail inválido");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "a@", "@@@", "x@y", "@example.com", "leo@exemplo", "leo @example.com", "leo@ex ample.com" })
+    void cadastrar_rejeitaEmailComFormatoImplausivel(String email) {
+        // Achado R4: o contains("@") de antes deixava passar "a@", "@@@", "x@y" -
+        // a conta era criada e o link de redefinição nunca chegava.
+        assertThatThrownBy(() -> service.cadastrar(new CadastroRequestDTO("Léo", email, "segredo123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("E-mail inválido");
+
+        verify(repository, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "leo@example.com", "  leo@example.com  ", "leo.cabral+tag@sub.example.co" })
+    void cadastrar_aceitaEmailComFormatoRazoavel(String email) {
+        assertThat(service.cadastrar(new CadastroRequestDTO("Léo", email, "segredo123"))).isNotNull();
     }
 
     @Test
