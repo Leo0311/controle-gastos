@@ -341,6 +341,23 @@ estabelecido pelos arquivos existentes, não precisa de infraestrutura nova).
 
 ### M5 — Cinco helpers idênticos copiados entre 4 a 7 componentes do frontend
 
+> **Status: ✅ Resolvido em 2026-09-05.** Extraído para `core/`:
+> - `notificacao.service.ts` — `sucesso(3s)` / `erro(5s)` / `mostrar(msg, ms)` /
+>   `mensagemDeErro(erro)`. Substitui as 7 cópias de `mensagemErro` e as 4 de
+>   `mostrarSucesso`/`mostrarErro`.
+> - `meses.ts` — `MESES_NOMES` / `MESES_ABREV` / `MESES_OPCOES`. Substitui as ~7
+>   declarações de array de mês, que já divergiam (completo, abreviado,
+>   minúsculo). O `app.component` usava a versão minúscula + `charAt(0).toUpperCase()`
+>   pra capitalizar; com `MESES_NOMES` já capitalizado, virou string direta.
+> - `categoria-emoji.ts` — `emojiDaCategoria(mapa, id)`. As 3 telas mantêm um
+>   `categoriaEmoji(id)` fino de uma linha que delega (só pro template chamar).
+>
+> Casos de snackbar fora do padrão (panelClass, ação, `ref` capturado) seguem
+> chamando `MatSnackBar` direto (`gastos`, `dashboard`, `app.component`). 13
+> arquivos tocados; `ng build` limpo; `ng test` inalterado (16 falhas de baseline,
+> mesmo conjunto). **Só frontend — vai ao ar no push.** Skill `frontend-angular`
+> atualizada.
+
 **Onde:** já documentado como dívida conhecida na skill `frontend-angular`, mas
 confirmei os números exatos:
 
@@ -612,7 +629,7 @@ Pra não deixar por omissão, como pedido:
 | 1. Segurança | 3 (R1 ✅, R2 ✅, R4 ✅) | 2 (M1 ✅, M2) | 0 | 5 |
 | 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1 ✅) | 2 |
 | 3. Robustez | 0 | 3 (M1 ✅*, M6, M7 ✅) | 0 | 3 |
-| 4. Qualidade de código | 0 | 2 (M5, M8) | 1 (C2) | 3 |
+| 4. Qualidade de código | 0 | 2 (M5 ✅, M8) | 1 (C2) | 3 |
 | 5. Cobertura de teste | 0 | 1 (M4 ✅) | 0 | 1 |
 | **Total (achados únicos)** | **5** | **8** | **2** | **14** |
 
@@ -620,13 +637,13 @@ Pra não deixar por omissão, como pedido:
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
 também citado no topo) — contado uma vez só no total.
 
-**Status em 2026-09-05: 8 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M4, M7,
-C1 — primeira leva de correções, a bateria de testes de service
+**Status em 2026-09-05: 9 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M4, M5,
+M7, C1 — primeira leva de correções, a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
 `SubcategoriaServiceTest`), a paginação de `GET /api/gastos`, a regex de e-mail
-no cadastro e o log padronizado de falha de SMTP; tudo implementado e testado;
-suíte de backend 44 → 160 testes; ver o status em cada achado acima). Faltam:
-M2, M3, M5, M6, M8, C2.
+no cadastro, o log padronizado de falha de SMTP e a extração dos helpers
+duplicados do frontend pra `core/`; tudo implementado e testado; suíte de backend
+44 → 160 testes; ver o status em cada achado acima). Faltam: M2, M3, M6, M8, C2.
 
 ## Se fosse minha decisão
 
@@ -644,6 +661,7 @@ Nesta ordem:
 6. ~~**R4** (regex de e-mail no cadastro)~~ — ✅ feito, junto com a leva acima.
 7. ~~**M7** (log padronizado de falha de SMTP no esqueci-senha)~~ — ✅ feito,
    versão mínima (o alerta de verdade fica com o monitoramento da VM).
-8. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez que
+8. ~~**M5** (helpers duplicados do frontend → `core/`)~~ — ✅ feito.
+9. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez que
    alguém precisar mexer no fluxo de importação — é a mudança mais arriscada da
-   lista e não tem urgência hoje. **M2, M3, M5, M6, M7, M8** seguem na fila.
+   lista e não tem urgência hoje. **M2, M3, M6, M8** seguem na fila.

@@ -15,11 +15,7 @@ import { TemaService } from './services/tema.service';
 import { PwaInstalacaoService } from './services/pwa-instalacao.service';
 import { AtualizacaoService } from './services/atualizacao.service';
 import { InfoDialogComponent } from './shared/info-dialog/info-dialog.component';
-
-const NOMES_MESES = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
-];
+import { MESES_NOMES } from './core/meses';
 
 // Mesma ordem das seções na bottom nav (ver app.component.html) - o swipe
 // horizontal navega por essa lista, incluindo /categorias e /gastos-recorrentes,
@@ -98,8 +94,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   constructor() {
     const hoje = new Date();
-    const texto = `${NOMES_MESES[hoje.getMonth()]} de ${hoje.getFullYear()}`;
-    this.mesAnoAtual = texto.charAt(0).toUpperCase() + texto.slice(1);
+    this.mesAnoAtual = `${MESES_NOMES[hoje.getMonth()]} de ${hoje.getFullYear()}`;
 
     // Um só aviso por versão nova detectada - novaVersaoDisponivel$ já só emite
     // uma vez por versão (ver AtualizacaoService), então isso não reabre em loop

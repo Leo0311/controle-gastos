@@ -9,11 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { GastoService } from '../../../services/gasto.service';
 import { Gasto } from '../../../models/gasto.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
-
-const NOMES_MESES_COMPLETO = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
+import { MESES_NOMES } from '../../../core/meses';
 
 export interface DashboardDetalheDialogData {
   mes: number | null;
@@ -72,7 +68,7 @@ export class DashboardDetalheDialogComponent implements OnInit {
     const periodo = this.data.dia
       ? `${String(this.data.dia).padStart(2, '0')}/${String(this.data.mes).padStart(2, '0')}/${this.data.ano}`
       : this.data.mes
-        ? `${NOMES_MESES_COMPLETO[this.data.mes - 1]}/${this.data.ano}`
+        ? `${MESES_NOMES[this.data.mes - 1]}/${this.data.ano}`
         : `${this.data.ano}`;
     return this.data.categoria ? `${periodo} · ${this.data.categoria}` : periodo;
   }

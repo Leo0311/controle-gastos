@@ -16,11 +16,8 @@ import { Categoria } from '../../../models/categoria.model';
 import { ComparacaoCategoria, RankingCategoria, RankingCategorias } from '../../../models/analise.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
-
-const NOMES_MESES_COMPLETO = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
+import { MESES_OPCOES } from '../../../core/meses';
+import { emojiDaCategoria } from '../../../core/categoria-emoji';
 
 // Categoria que sozinha consome esse percentual (ou mais) da renda mensal recebe
 // destaque visual de alerta - ver consomeMuitoDaRenda().
@@ -46,7 +43,7 @@ const LIMIAR_ALERTA_RENDA = 30;
 })
 export class AnalisesComponent implements OnInit {
 
-  readonly meses = NOMES_MESES_COMPLETO.map((nome, i) => ({ valor: i + 1, nome }));
+  readonly meses = MESES_OPCOES;
   readonly anos: number[];
 
   mes = new Date().getMonth() + 1;
@@ -119,7 +116,7 @@ export class AnalisesComponent implements OnInit {
   }
 
   categoriaEmoji(categoriaId: number | null): string {
-    return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
+    return emojiDaCategoria(this.categoriasPorId, categoriaId);
   }
 
   consomeMuitoDaRenda(categoria: RankingCategoria): boolean {

@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,6 +19,9 @@ import { OrcamentoFormDialogComponent, OrcamentoFormDialogData } from '../orcame
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
+import { NotificacaoService } from '../../../core/notificacao.service';
+import { MESES_OPCOES } from '../../../core/meses';
+import { emojiDaCategoria } from '../../../core/categoria-emoji';
 
 @Component({
   selector: 'app-orcamentos',
@@ -32,7 +34,6 @@ import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/err
     MatIconModule,
     MatMenuModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatProgressSpinnerModule,
     MatProgressBarModule,
     MatFormFieldModule,
@@ -47,12 +48,7 @@ export class OrcamentosComponent implements OnInit {
 
   readonly colunas = ['categoria', 'valorLimite', 'percentual', 'status', 'acoes'];
 
-  readonly meses = [
-    { valor: 1, nome: 'Janeiro' }, { valor: 2, nome: 'Fevereiro' }, { valor: 3, nome: 'Março' },
-    { valor: 4, nome: 'Abril' }, { valor: 5, nome: 'Maio' }, { valor: 6, nome: 'Junho' },
-    { valor: 7, nome: 'Julho' }, { valor: 8, nome: 'Agosto' }, { valor: 9, nome: 'Setembro' },
-    { valor: 10, nome: 'Outubro' }, { valor: 11, nome: 'Novembro' }, { valor: 12, nome: 'Dezembro' }
-  ];
+  readonly meses = MESES_OPCOES;
 
   readonly anos: number[];
 
@@ -71,7 +67,7 @@ export class OrcamentosComponent implements OnInit {
     private readonly orcamentoService: OrcamentoService,
     private readonly categoriaService: CategoriaService,
     private readonly dialog: MatDialog,
-    private readonly snackBar: MatSnackBar
+    private readonly notificacao: NotificacaoService
   ) {
     const anoAtual = new Date().getFullYear();
     this.anos = Array.from({ length: 6 }, (_, i) => anoAtual - 2 + i);
@@ -108,7 +104,7 @@ export class OrcamentosComponent implements OnInit {
   }
 
   categoriaEmoji(categoriaId: number | null): string {
-    return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
+    return emojiDaCategoria(this.categoriasPorId, categoriaId);
   }
 
   novoOrcamento(): void {
@@ -123,10 +119,10 @@ export class OrcamentosComponent implements OnInit {
       }
       this.orcamentoService.definir(resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Orçamento definido com sucesso!');
+          this.notificacao.sucesso('Orçamento definido com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -158,10 +154,10 @@ export class OrcamentosComponent implements OnInit {
       }
       this.orcamentoService.atualizar(orcamento.id, resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Orçamento atualizado com sucesso!');
+          this.notificacao.sucesso('Orçamento atualizado com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -216,24 +212,11 @@ export class OrcamentosComponent implements OnInit {
       }
       this.orcamentoService.excluir(orcamento.id).subscribe({
         next: () => {
-          this.mostrarSucesso('Orçamento excluído com sucesso!');
+          this.notificacao.sucesso('Orçamento excluído com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
-  }
-
-  private mensagemErro(erro: unknown): string {
-    const erroHttp = erro as { error?: { erro?: string } };
-    return erroHttp?.error?.erro ?? 'Ocorreu um erro inesperado.';
-  }
-
-  private mostrarSucesso(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 3000 });
-  }
-
-  private mostrarErro(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 5000 });
   }
 }

@@ -7,9 +7,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { AuthService } from '../../../services/auth.service';
+import { NotificacaoService } from '../../../core/notificacao.service';
 
 @Component({
   selector: 'app-login',
@@ -22,8 +22,7 @@ import { AuthService } from '../../../services/auth.service';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatProgressSpinnerModule
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
@@ -33,7 +32,7 @@ export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notificacao = inject(NotificacaoService);
 
   carregando = false;
   esconderSenha = true;
@@ -59,13 +58,8 @@ export class LoginComponent {
       },
       error: (erro) => {
         this.carregando = false;
-        this.snackBar.open(this.mensagemErro(erro), 'Fechar', { duration: 5000 });
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
       }
     });
-  }
-
-  private mensagemErro(erro: unknown): string {
-    const erroHttp = erro as { error?: { erro?: string } };
-    return erroHttp?.error?.erro ?? 'Ocorreu um erro inesperado.';
   }
 }

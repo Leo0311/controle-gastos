@@ -4,12 +4,12 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { forkJoin } from 'rxjs';
 
 import { CategoriaService } from '../../../services/categoria.service';
+import { NotificacaoService } from '../../../core/notificacao.service';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import {
   CategoriaFormDialogComponent,
@@ -36,7 +36,6 @@ import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/err
     MatButtonModule,
     MatIconModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatProgressSpinnerModule,
     MatChipsModule,
     EmptyStateComponent,
@@ -49,7 +48,7 @@ export class CategoriasComponent implements OnInit {
 
   private readonly categoriaService = inject(CategoriaService);
   private readonly dialog = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notificacao = inject(NotificacaoService);
 
   categorias: Categoria[] = [];
   private subcategoriasPorCategoria = new Map<number, Subcategoria[]>();
@@ -104,10 +103,10 @@ export class CategoriasComponent implements OnInit {
       }
       this.categoriaService.criar(resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Categoria criada com sucesso!');
+          this.notificacao.sucesso('Categoria criada com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -123,10 +122,10 @@ export class CategoriasComponent implements OnInit {
       }
       this.categoriaService.atualizar(categoria.id!, resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Categoria atualizada com sucesso!');
+          this.notificacao.sucesso('Categoria atualizada com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -148,7 +147,7 @@ export class CategoriasComponent implements OnInit {
       },
       error: (erro) => {
         this.categorias = ordemAnterior;
-        this.mostrarErro(this.mensagemErro(erro));
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
       }
     });
   }
@@ -167,7 +166,7 @@ export class CategoriasComponent implements OnInit {
       }
       this.categoriaService.excluir(categoria.id!).subscribe({
         next: () => {
-          this.mostrarSucesso('Categoria excluída com sucesso!');
+          this.notificacao.sucesso('Categoria excluída com sucesso!');
           this.carregar();
         },
         error: (erro) => this.mostrarErroExclusao(erro)
@@ -186,10 +185,10 @@ export class CategoriasComponent implements OnInit {
       }
       this.categoriaService.criarSubcategoria(categoria.id!, resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Subcategoria criada com sucesso!');
+          this.notificacao.sucesso('Subcategoria criada com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -205,10 +204,10 @@ export class CategoriasComponent implements OnInit {
       }
       this.categoriaService.atualizarSubcategoria(subcategoria.id!, resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Subcategoria atualizada com sucesso!');
+          this.notificacao.sucesso('Subcategoria atualizada com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -226,17 +225,12 @@ export class CategoriasComponent implements OnInit {
       }
       this.categoriaService.excluirSubcategoria(subcategoria.id!).subscribe({
         next: () => {
-          this.mostrarSucesso('Subcategoria excluída com sucesso!');
+          this.notificacao.sucesso('Subcategoria excluída com sucesso!');
           this.carregar();
         },
         error: (erro) => this.mostrarErroExclusao(erro)
       });
     });
-  }
-
-  private mensagemErro(erro: unknown): string {
-    const erroHttp = erro as { error?: { erro?: string } };
-    return erroHttp?.error?.erro ?? 'Ocorreu um erro inesperado.';
   }
 
   // Erro ao excluir categoria/subcategoria: o bloqueio "em uso" (400) traz um
@@ -245,7 +239,7 @@ export class CategoriasComponent implements OnInit {
   // continua no snackbar, como no resto da tela.
   private mostrarErroExclusao(erro: unknown): void {
     const status = (erro as { status?: number })?.status;
-    const mensagem = this.mensagemErro(erro);
+    const mensagem = this.notificacao.mensagemDeErro(erro);
     if (status === 400) {
       this.dialog.open<InfoDialogComponent, InfoDialogData>(InfoDialogComponent, {
         data: { titulo: 'Não foi possível excluir', mensagem },
@@ -253,15 +247,7 @@ export class CategoriasComponent implements OnInit {
         maxWidth: '95vw'
       });
     } else {
-      this.mostrarErro(mensagem);
+      this.notificacao.erro(mensagem);
     }
-  }
-
-  private mostrarSucesso(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 3000 });
-  }
-
-  private mostrarErro(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 5000 });
   }
 }

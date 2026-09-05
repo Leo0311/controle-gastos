@@ -7,7 +7,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
@@ -26,11 +25,8 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confi
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 import { AbasArrastaveisDirective } from '../../../shared/abas-arrastaveis.directive';
-
-const NOMES_MESES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
+import { NotificacaoService } from '../../../core/notificacao.service';
+import { MESES_NOMES } from '../../../core/meses';
 
 /** Um lançamento futuro (recorrente ou parcela) na aba "Próximas contas". */
 interface ItemCalendario {
@@ -60,7 +56,6 @@ interface GrupoMesCalendario {
     MatTabsModule,
     MatExpansionModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatProgressSpinnerModule,
     EmptyStateComponent,
     ErroCarregamentoComponent,
@@ -76,7 +71,7 @@ export class GastosRecorrentesComponent implements OnInit {
   private readonly categoriaService = inject(CategoriaService);
   private readonly gastoService = inject(GastoService);
   private readonly dialog = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notificacao = inject(NotificacaoService);
 
   recorrentes: GastoRecorrente[] = [];
   parceladas: CompraParcelada[] = [];
@@ -227,7 +222,7 @@ export class GastosRecorrentesComponent implements OnInit {
 
   private rotuloMes(chave: string): string {
     const [ano, mes] = chave.split('-').map(Number);
-    return `${NOMES_MESES[mes - 1]} de ${ano}`;
+    return `${MESES_NOMES[mes - 1]} de ${ano}`;
   }
 
   formatarDiaMes(data: string): string {
@@ -282,10 +277,10 @@ export class GastosRecorrentesComponent implements OnInit {
       }
       this.parceladaService.excluir(parcelada.id!).subscribe({
         next: () => {
-          this.mostrarSucesso('Compra parcelada excluída com sucesso!');
+          this.notificacao.sucesso('Compra parcelada excluída com sucesso!');
           this.carregarParceladas();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -310,10 +305,10 @@ export class GastosRecorrentesComponent implements OnInit {
       }
       this.service.cadastrar(resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Gasto recorrente cadastrado com sucesso!');
+          this.notificacao.sucesso('Gasto recorrente cadastrado com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -329,10 +324,10 @@ export class GastosRecorrentesComponent implements OnInit {
       }
       this.service.atualizar(recorrente.id!, resultado).subscribe({
         next: () => {
-          this.mostrarSucesso('Gasto recorrente atualizado com sucesso!');
+          this.notificacao.sucesso('Gasto recorrente atualizado com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -376,13 +371,13 @@ export class GastosRecorrentesComponent implements OnInit {
   private executarAlternarAtivo(recorrente: GastoRecorrente): void {
     this.service.alternarAtivo(recorrente.id!).subscribe({
       next: (atualizado) => {
-        this.mostrarSucesso(atualizado.ativo ? 'Recorrência reativada.' : 'Recorrência pausada.');
+        this.notificacao.sucesso(atualizado.ativo ? 'Recorrência reativada.' : 'Recorrência pausada.');
         this.carregar();
         // reativar pode lançar o gasto do mês corrente; recarrega o contador e a
         // aba "Próximas contas" pra refletir na hora.
         this.carregarCalendario();
       },
-      error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+      error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
     });
   }
 
@@ -401,24 +396,11 @@ export class GastosRecorrentesComponent implements OnInit {
       }
       this.service.excluir(recorrente.id!).subscribe({
         next: () => {
-          this.mostrarSucesso('Gasto recorrente excluído com sucesso!');
+          this.notificacao.sucesso('Gasto recorrente excluído com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
-  }
-
-  private mensagemErro(erro: unknown): string {
-    const erroHttp = erro as { error?: { erro?: string } };
-    return erroHttp?.error?.erro ?? 'Ocorreu um erro inesperado.';
-  }
-
-  private mostrarSucesso(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 3000 });
-  }
-
-  private mostrarErro(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 5000 });
   }
 }

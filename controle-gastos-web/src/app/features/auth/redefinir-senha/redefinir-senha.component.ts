@@ -7,9 +7,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { AuthService } from '../../../services/auth.service';
+import { NotificacaoService } from '../../../core/notificacao.service';
 
 function senhasIguaisValidator(control: AbstractControl): ValidationErrors | null {
   const novaSenha = control.get('novaSenha')?.value;
@@ -28,8 +28,7 @@ function senhasIguaisValidator(control: AbstractControl): ValidationErrors | nul
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatProgressSpinnerModule
   ],
   templateUrl: './redefinir-senha.component.html',
   styleUrl: './redefinir-senha.component.css'
@@ -39,7 +38,7 @@ export class RedefinirSenhaComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notificacao = inject(NotificacaoService);
 
   carregando = false;
   esconderSenha = true;
@@ -69,18 +68,13 @@ export class RedefinirSenhaComponent implements OnInit {
     this.authService.redefinirSenha(this.token, novaSenha!).subscribe({
       next: () => {
         this.carregando = false;
-        this.snackBar.open('Senha redefinida com sucesso. Faça login com a nova senha.', 'Fechar', { duration: 5000 });
+        this.notificacao.mostrar('Senha redefinida com sucesso. Faça login com a nova senha.');
         this.router.navigate(['/login']);
       },
       error: (erro) => {
         this.carregando = false;
-        this.snackBar.open(this.mensagemErro(erro), 'Fechar', { duration: 5000 });
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
       }
     });
-  }
-
-  private mensagemErro(erro: unknown): string {
-    const erroHttp = erro as { error?: { erro?: string } };
-    return erroHttp?.error?.erro ?? 'Ocorreu um erro inesperado.';
   }
 }

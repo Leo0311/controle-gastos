@@ -28,6 +28,7 @@ import {
   DashboardDetalheDialogComponent,
   DashboardDetalheDialogData
 } from '../dashboard-detalhe-dialog/dashboard-detalhe-dialog.component';
+import { MESES_ABREV, MESES_OPCOES } from '../../../core/meses';
 import { RendaFormDialogComponent, RendaFormDialogData } from '../renda-form-dialog/renda-form-dialog.component';
 import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog/meta-form-dialog.component';
 
@@ -108,13 +109,6 @@ const clarear = (hex: string, fracao: number): string => {
   return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
 };
 
-const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-const NOMES_MESES_COMPLETO = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -143,7 +137,7 @@ const NOMES_MESES_COMPLETO = [
 })
 export class DashboardComponent implements OnInit {
 
-  readonly meses = NOMES_MESES_COMPLETO.map((nome, i) => ({ valor: i + 1, nome }));
+  readonly meses = MESES_OPCOES;
   readonly anos: number[];
 
   mes = new Date().getMonth() + 1;
@@ -343,7 +337,7 @@ export class DashboardComponent implements OnInit {
       totalPorMes[mes - 1] += g.valor;
     });
     return {
-      labels: NOMES_MESES,
+      labels: MESES_ABREV,
       datasets: [{ label: 'Total gasto', data: totalPorMes, backgroundColor: COR_BARRA }]
     };
   }

@@ -48,11 +48,9 @@ import {
   AtualizacaoImportacao,
   DecisaoAtualizacao
 } from '../importar-atualizacao-dialog/importar-atualizacao-dialog.component';
-
-const NOMES_MESES_COMPLETO = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
+import { NotificacaoService } from '../../../core/notificacao.service';
+import { MESES_NOMES, MESES_OPCOES } from '../../../core/meses';
+import { emojiDaCategoria } from '../../../core/categoria-emoji';
 
 @Component({
   selector: 'app-gastos',
@@ -95,7 +93,7 @@ export class GastosComponent implements OnInit {
   temMais = false;
   carregandoMais = false;
 
-  readonly meses = NOMES_MESES_COMPLETO.map((nome, i) => ({ valor: i + 1, nome }));
+  readonly meses = MESES_OPCOES;
   readonly anos: number[];
 
   filtroMes: number | null = null;
@@ -146,6 +144,7 @@ export class GastosComponent implements OnInit {
     private readonly compraParceladaService: CompraParceladaService,
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar,
+    private readonly notificacao: NotificacaoService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {
@@ -207,7 +206,7 @@ export class GastosComponent implements OnInit {
   }
 
   categoriaEmoji(categoriaId: number | null | undefined): string {
-    return categoriaId ? (this.categoriasPorId.get(categoriaId)?.emoji ?? '') : '';
+    return emojiDaCategoria(this.categoriasPorId, categoriaId);
   }
 
   // Rótulo do orçamento vinculado a um gasto (ex: "Alimentação / Mercado"),
@@ -242,7 +241,7 @@ export class GastosComponent implements OnInit {
   // filtrosAbertos). "Todo o histórico" cobre o caso de "ver todos os meses".
   get rotuloFiltroMobile(): string {
     const periodo = this.filtroMes && this.filtroAno
-      ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}`
+      ? `${MESES_NOMES[this.filtroMes - 1]}/${this.filtroAno}`
       : 'Todo o histórico';
     const categoria = this.nomeCategoriaFiltro;
     return categoria ? `${periodo} · ${categoria}` : periodo;
@@ -252,7 +251,7 @@ export class GastosComponent implements OnInit {
   // selecionado - combina os dois (mês/ano e categoria).
   get mensagemVazio(): string {
     const periodo = this.filtroAno
-      ? (this.filtroMes ? `${NOMES_MESES_COMPLETO[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`)
+      ? (this.filtroMes ? `${MESES_NOMES[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`)
       : '';
     const partes = [periodo, this.nomeCategoriaFiltro].filter((p): p is string => !!p);
     return partes.length > 0
@@ -411,7 +410,7 @@ export class GastosComponent implements OnInit {
       },
       error: (erro) => {
         this.carregandoMais = false;
-        this.mostrarErro(this.mensagemErro(erro));
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
       }
     });
   }
@@ -449,30 +448,30 @@ export class GastosComponent implements OnInit {
       if (resultado.tipo === 'recorrente') {
         this.gastoRecorrenteService.cadastrar(resultado.recorrente).subscribe({
           next: () => {
-            this.mostrarSucesso('Gasto recorrente cadastrado com sucesso!');
+            this.notificacao.sucesso('Gasto recorrente cadastrado com sucesso!');
             this.carregar();
           },
-          error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+          error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
         });
         return;
       }
       if (resultado.tipo === 'parcelada') {
         this.compraParceladaService.cadastrar(resultado.parcelada).subscribe({
           next: (compra) => {
-            this.mostrarSucesso(`Compra parcelada cadastrada com sucesso! ${compra.numeroParcelas} parcelas lançadas.`);
+            this.notificacao.sucesso(`Compra parcelada cadastrada com sucesso! ${compra.numeroParcelas} parcelas lançadas.`);
             this.carregar();
           },
-          error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+          error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
         });
         return;
       }
       this.gastoService.cadastrar(resultado.gasto).subscribe({
         next: (gastoCriado) => {
-          this.mostrarSucesso('Gasto cadastrado com sucesso!');
+          this.notificacao.sucesso('Gasto cadastrado com sucesso!');
           this.carregar();
           this.verificarOrcamentoExcedido(gastoCriado);
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -526,11 +525,11 @@ export class GastosComponent implements OnInit {
       }
       this.gastoService.atualizar(gasto.id!, resultado.gasto).subscribe({
         next: (gastoAtualizado) => {
-          this.mostrarSucesso('Gasto atualizado com sucesso!');
+          this.notificacao.sucesso('Gasto atualizado com sucesso!');
           this.carregar();
           this.verificarOrcamentoExcedido(gastoAtualizado);
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -552,10 +551,10 @@ export class GastosComponent implements OnInit {
       }
       this.gastoService.excluir(gasto.id!).subscribe({
         next: () => {
-          this.mostrarSucesso('Gasto excluído com sucesso!');
+          this.notificacao.sucesso('Gasto excluído com sucesso!');
           this.carregar();
         },
-        error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
     });
   }
@@ -564,18 +563,18 @@ export class GastosComponent implements OnInit {
     this.gastoService.listarTodos().subscribe({
       next: (gastos) => {
         if (gastos.length === 0) {
-          this.mostrarErro('Nenhum gasto para exportar.');
+          this.notificacao.erro('Nenhum gasto para exportar.');
           return;
         }
         exportarGastosXlsx(gastos);
       },
-      error: (erro) => this.mostrarErro(this.mensagemErro(erro))
+      error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
     });
   }
 
   exportarExibidos(): void {
     if (this.gastos.length === 0) {
-      this.mostrarErro('Nenhum gasto para exportar.');
+      this.notificacao.erro('Nenhum gasto para exportar.');
       return;
     }
     exportarGastosXlsx(this.gastos);
@@ -612,13 +611,13 @@ export class GastosComponent implements OnInit {
       linhas = await lerPlanilhaGastos(arquivo);
     } catch {
       this.carregando = false;
-      this.mostrarErro('Não foi possível ler o arquivo. Verifique se é uma planilha .xlsx válida.');
+      this.notificacao.erro('Não foi possível ler o arquivo. Verifique se é uma planilha .xlsx válida.');
       return;
     }
 
     if (linhas.length === 0) {
       this.carregando = false;
-      this.mostrarErro('A planilha não tem nenhuma linha de dados para importar.');
+      this.notificacao.erro('A planilha não tem nenhuma linha de dados para importar.');
       return;
     }
 
@@ -692,7 +691,7 @@ export class GastosComponent implements OnInit {
         // Falha de rede ao criar categoria/subcategoria nova - aborta aqui, então
         // ninguém mais vai chamar carregar() pra desligar o loading.
         this.carregando = false;
-        this.mostrarErro('Não foi possível preparar as categorias desta planilha para importação.');
+        this.notificacao.erro('Não foi possível preparar as categorias desta planilha para importação.');
       });
   }
 
@@ -804,7 +803,7 @@ export class GastosComponent implements OnInit {
 
     ref.afterClosed().subscribe((confirmado) => {
       if (!confirmado) {
-        this.mostrarErro(
+        this.notificacao.erro(
           `${linhasSuspeitas.length} linha(s) com ID não encontrado foram ignoradas (não importadas).`
         );
         this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao, semAlteracao);
@@ -839,7 +838,7 @@ export class GastosComponent implements OnInit {
 
     ref.afterClosed().subscribe((confirmado) => {
       if (!confirmado) {
-        this.mostrarErro(
+        this.notificacao.erro(
           `${linhasPossivelEdicao.length} linha(s) que pareciam edições foram ignoradas (não importadas).`
         );
         this.prepararVinculoOrcamento(linhasNovas, semAlteracao);
@@ -913,7 +912,7 @@ export class GastosComponent implements OnInit {
 
   private mostrarResumoAtualizacao(sucesso: number, falha: number): void {
     if (falha === 0) {
-      this.mostrarSucesso(`${sucesso} gasto(s) atualizado(s) com sucesso!`);
+      this.notificacao.sucesso(`${sucesso} gasto(s) atualizado(s) com sucesso!`);
     } else {
       this.snackBar.open(
         `${sucesso} gasto(s) atualizado(s) com sucesso, ${falha} falharam.`,
@@ -1045,7 +1044,7 @@ export class GastosComponent implements OnInit {
 
   private mostrarResumoImportacao(sucesso: number, falha: number): void {
     if (falha === 0) {
-      this.mostrarSucesso(`${sucesso} gasto(s) importado(s) com sucesso!`);
+      this.notificacao.sucesso(`${sucesso} gasto(s) importado(s) com sucesso!`);
     } else {
       this.snackBar.open(
         `${sucesso} gasto(s) importado(s) com sucesso, ${falha} falharam.`,
@@ -1053,18 +1052,5 @@ export class GastosComponent implements OnInit {
         { duration: 6000 }
       );
     }
-  }
-
-  private mensagemErro(erro: unknown): string {
-    const erroHttp = erro as { error?: { erro?: string } };
-    return erroHttp?.error?.erro ?? 'Ocorreu um erro inesperado.';
-  }
-
-  private mostrarSucesso(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 3000 });
-  }
-
-  private mostrarErro(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', { duration: 5000 });
   }
 }
