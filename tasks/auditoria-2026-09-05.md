@@ -509,19 +509,16 @@ contagem mas é dado estático, não lógica):
 
 | Arquivo | Linhas | Justificado? |
 |---|---|---|
-| `gastos.component.ts` | 1052 | **Não** — CRUD da tela + toda a orquestração de importação (7 métodos encadeados: `resolverCategorias` → `prepararAtualizacao` → `confirmarAtualizacoes` → `confirmarLinhasSuspeitas` → `confirmarLinhasPossivelEdicao` → `prepararVinculoOrcamento` → `executarImportacao`) num componente só. É de longe o maior arquivo do repositório inteiro. |
+| `gastos.component.ts` | ~~1052~~ **587** (C2 ✅) | Resolvido no C2 — a orquestração de importação saiu pra `features/gastos/importacao/` (`classificar-linhas.ts` puro + `importacao-gastos.orquestrador.ts`). O que sobra é CRUD da tela + filtros/paginação, num tamanho normal. |
 | `dashboard.component.ts` | 547 | Parcialmente — 2 gráficos + cards + meta de economia; a lógica de cor da pizza (`coresCategorias`, `montarPizza`) já é auto-contida e daria pra extrair. |
 | `gasto-form-dialog.component.ts` | 518 | Sim — um forms com 3 modos (gasto/recorrente/parcelada) é inerentemente maior, mas está no limite. |
 | `dicionario-categorias.ts` | 470 | Sim — é uma tabela de dados (termos → categoria), não lógica; tamanho não é um problema de arquitetura aqui. |
 | `gastos-recorrentes.component.ts` | 424 | **Não** — 3 sub-telas num componente só: recorrentes, parceladas e "próximas contas" (calendário). Cada uma já é internamente coesa (métodos agrupados), então a extração em 3 componentes seria relativamente direta. |
 
-**Como corrigir:** os dois "não justificados" (`gastos.component.ts` e
-`gastos-recorrentes.component.ts`) são os candidatos reais. Pra
-`gastos.component.ts`: extrair a orquestração de importação inteira pra um
-`ImportacaoGastosService` ou orquestrador dedicado — é a maior parte do
-tamanho do arquivo. Pra `gastos-recorrentes.component.ts`: separar em 3
-componentes de aba (recorrentes / parceladas / próximas contas), cada um já
-quase pronto pela forma como os métodos estão agrupados hoje.
+**Como corrigir:** `gastos.component.ts` **já resolvido no C2** (orquestração de
+importação extraída; 1052 → 587 linhas). Sobra `gastos-recorrentes.component.ts`:
+separar em 3 componentes de aba (recorrentes / parceladas / próximas contas),
+cada um já quase pronto pela forma como os métodos estão agrupados hoje.
 
 **Custo:** médio pra `gastos-recorrentes.component.ts` (extração mecânica);
 **complexo** pra `gastos.component.ts` (ver C2 abaixo — a extração da
@@ -579,8 +576,21 @@ precisam continuar funcionando cada um do seu jeito depois da mudança.
 
 ### C2 — Extrair a orquestração de importação de `gastos.component.ts`
 
-**Onde:** `controle-gastos-web/.../gastos/gastos.component.ts`, os métodos
-citados no achado M8 (linhas ~608–930, quase 1/3 do arquivo).
+> **Status: ✅ Resolvido em 2026-09-05.** `gastos.component.ts` de **1052 → 587
+> linhas**. A lógica de decisão (novo/suspeita/edição/atualização + `gastoMudou`)
+> virou `features/gastos/importacao/classificar-linhas.ts` — funções puras, sem
+> Angular, com **13 testes** (`classificar-linhas.spec.ts`, roda sem TestBed). A
+> orquestração interativa (parse do .xlsx, os 5 diálogos, resolução/criação de
+> categorias, os dois loops sequenciais de request, todos os avisos) virou
+> `importacao-gastos.orquestrador.ts` (`@Injectable`) - `async importarDeArquivo`
+> achata a pirâmide de `afterClosed().subscribe(...)` com `await firstValueFrom`.
+> O componente só chama o orquestrador e, no sucesso, atualiza o mapa de
+> categorias (`categoriasAtualizadas` do resultado) e recarrega. Comportamento
+> preservado byte a byte (mesmos textos, mesma ordem de diálogos, mesma semântica
+> de cancelamento). `ng test` inalterado (16 falhas de baseline). **Verificado no
+> navegador** com planilha semeada cobrindo os 4 cenários + duplicata exata +
+> categoria nova, no caminho "confirmar tudo" e no de cancelamento. **Só
+> frontend — vai ao ar no push.**
 
 **Por quê importa:** é a maior concentração de lógica de negócio complexa do
 frontend inteiro — 7 métodos encadeados via callback de diálogo
@@ -662,7 +672,7 @@ Pra não deixar por omissão, como pedido:
 | 1. Segurança | 3 (R1 ✅, R2 ✅, R4 ✅) | 2 (M1 ✅, M2 ✅) | 0 | 5 |
 | 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1 ✅) | 2 |
 | 3. Robustez | 0 | 3 (M1 ✅*, M6, M7 ✅) | 0 | 3 |
-| 4. Qualidade de código | 0 | 3 (M3 ✅, M5 ✅, M8) | 1 (C2) | 4 |
+| 4. Qualidade de código | 0 | 3 (M3 ✅, M5 ✅, M8) | 1 (C2 ✅) | 4 |
 | 5. Cobertura de teste | 0 | 1 (M4 ✅) | 0 | 1 |
 | **Total (achados únicos)** | **5** | **8** | **2** | **14** |
 
@@ -670,15 +680,18 @@ Pra não deixar por omissão, como pedido:
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
 também citado no topo) — contado uma vez só no total.
 
-**Status em 2026-09-05: 11 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M2, M3,
-M4, M5, M7, C1 — primeira leva de correções, a bateria de testes de service
+**Status em 2026-09-05: 12 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M2, M3,
+M4, M5, M7, C1, C2 — primeira leva de correções, a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
 `SubcategoriaServiceTest`), a paginação de `GET /api/gastos`, a regex de e-mail
 no cadastro, o log padronizado de falha de SMTP, a extração dos helpers
 duplicados do frontend pra `core/`, o `GET /api/config` que tira o drift de
-limites do parcelamento e o rate limit por usuário nos endpoints de escrita
-pesada; tudo implementado e testado; suíte de backend 44 → 170 testes; ver o
-status em cada achado acima). Faltam: M6, M8, C2.
+limites do parcelamento, o rate limit por usuário nos endpoints de escrita
+pesada e a extração da orquestração de importação; tudo implementado e testado;
+suíte de backend 44 → 170 testes; ver o status em cada achado acima). Faltam:
+**M6** (idempotência de importação depende do frontend) e **M8** (componentes
+grandes — parcialmente atacado: `gastos.component.ts` caiu de 1052 pra 587 no
+C2; sobra `gastos-recorrentes.component.ts`). Nenhum estava na lista pedida.
 
 ## Se fosse minha decisão
 
@@ -699,6 +712,6 @@ Nesta ordem:
 8. ~~**M5** (helpers duplicados do frontend → `core/`)~~ — ✅ feito.
 9. ~~**M3** (limites do parcelamento via `GET /api/config`)~~ — ✅ feito.
 10. ~~**M2** (rate limit por usuário nos endpoints de escrita pesada)~~ — ✅ feito.
-11. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez
-    que alguém precisar mexer no fluxo de importação — é a mudança mais arriscada
-    da lista e não tem urgência hoje. **M6, M8** seguem na fila.
+11. ~~**C2** (extrair a orquestração de importação)~~ — ✅ feito, com verificação
+    manual dos 4 cenários no navegador. **M6** e **M8** (não pedidos) seguem na
+    fila; o C2 já resolveu a maior parte do M8.

@@ -12,7 +12,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { firstValueFrom } from 'rxjs';
 import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
@@ -20,7 +19,7 @@ import { GastoRecorrenteService } from '../../../services/gasto-recorrente.servi
 import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { Gasto } from '../../../models/gasto.model';
 import { Orcamento } from '../../../models/orcamento.model';
-import { Categoria, Subcategoria } from '../../../models/categoria.model';
+import { Categoria } from '../../../models/categoria.model';
 import {
   GastoFormDialogComponent,
   GastoFormDialogData,
@@ -30,24 +29,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confi
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 import { baixarModeloImportacaoGastos, exportarGastosXlsx } from '../../../core/xlsx-exporter';
-import { lerPlanilhaGastos, LinhaImportacao } from '../../../core/xlsx-importer';
-import {
-  ImportarRevisaoDialogComponent,
-  ImportarRevisaoDialogData
-} from '../importar-revisao-dialog/importar-revisao-dialog.component';
-import { ImportarProgressoDialogComponent } from '../importar-progresso-dialog/importar-progresso-dialog.component';
-import {
-  ImportarVinculoOrcamentoDialogComponent,
-  ImportarVinculoOrcamentoDialogData,
-  VinculoImportacao,
-  DecisaoVinculo
-} from '../importar-vinculo-orcamento-dialog/importar-vinculo-orcamento-dialog.component';
-import {
-  ImportarAtualizacaoDialogComponent,
-  ImportarAtualizacaoDialogData,
-  AtualizacaoImportacao,
-  DecisaoAtualizacao
-} from '../importar-atualizacao-dialog/importar-atualizacao-dialog.component';
+import { ImportacaoGastosOrquestrador } from '../importacao/importacao-gastos.orquestrador';
 import { NotificacaoService } from '../../../core/notificacao.service';
 import { MESES_NOMES, MESES_OPCOES } from '../../../core/meses';
 import { emojiDaCategoria } from '../../../core/categoria-emoji';
@@ -122,19 +104,15 @@ export class GastosComponent implements OnInit {
 
   // Opções do <mat-select> de filtro por categoria - carregadas de
   // GET /api/categorias/com-gastos (categorias com pelo menos um gasto, qualquer
-  // período), separado de todasCategorias (usada na importação/emoji da tabela,
-  // que precisa de todas, mesmo sem gasto ainda). Recarregado a cada carregar().
+  // período). Recarregado a cada carregar().
   opcoesCategoriaFiltro: Categoria[] = [];
 
-  private todasCategorias: Categoria[] = [];
-  private todasSubcategorias: Subcategoria[] = [];
+  // Emoji da categoria na tabela/cartão - populado no ngOnInit e reatualizado
+  // depois de uma importação (que pode criar categorias novas).
   private categoriasPorId = new Map<number, Categoria>();
   // Só pro rótulo "Orçamento: ..." nos detalhes do cartão (mobile) - o Gasto traz
   // orcamentoId, mas não o nome do orçamento vinculado.
   private orcamentosPorId = new Map<number, Orcamento>();
-  // Resultado da resolução texto -> categoria/subcategoria gerenciada da importação
-  // em andamento (ver resolverCategorias) - chave é chaveCategoria(categoria, subcategoria).
-  private categoriasResolvidas = new Map<string, { categoriaId: number; subcategoriaId: number | null }>();
 
   constructor(
     private readonly gastoService: GastoService,
@@ -145,6 +123,7 @@ export class GastosComponent implements OnInit {
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar,
     private readonly notificacao: NotificacaoService,
+    private readonly orquestradorImportacao: ImportacaoGastosOrquestrador,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {
@@ -154,15 +133,8 @@ export class GastosComponent implements OnInit {
 
   ngOnInit(): void {
     this.categoriaService.listarVisiveis().subscribe({
-      next: (categorias) => {
-        this.todasCategorias = categorias;
-        this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c]));
-      },
-      error: () => { /* usado só pro emoji na tabela e na importação; sem ela ainda funciona sem emoji */ }
-    });
-    this.categoriaService.listarTodasSubcategorias().subscribe({
-      next: (subcategorias) => { this.todasSubcategorias = subcategorias; },
-      error: () => { /* usado só na resolução de categoria durante a importação */ }
+      next: (categorias) => { this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c])); },
+      error: () => { /* usado só pro emoji na tabela; sem ela ainda funciona sem emoji */ }
     });
     this.orcamentoService.listarTodos().subscribe({
       next: (orcamentos) => { this.orcamentosPorId = new Map(orcamentos.map((o) => [o.id!, o])); },
@@ -592,465 +564,24 @@ export class GastosComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const arquivo = input.files?.[0] ?? null;
     input.value = '';
-
     if (!arquivo) {
       return;
     }
 
-    // Cobre a leitura/parsing do .xlsx (pode levar um tempo perceptível) até a
-    // revisão abrir - reaproveita o mesmo spinner do carregamento da lista (ver
-    // trio carregando/erro/vazio no template), que fica escondido atrás do diálogo
-    // assim que ele abrir. Continua ligado por toda a importação (ver
-    // resolverCategoriasEProsseguir e cia.) - cada etapa intermediária ou desliga
-    // explicitamente (erro/cancelamento) ou termina chamando carregar(), que já
-    // cuida de desligar sozinho.
+    // O spinner do trio carregando/erro/vazio cobre a leitura do .xlsx até o
+    // primeiro diálogo abrir; daí em diante os diálogos do orquestrador cobrem a
+    // tela. Todas as mensagens (linhas ignoradas, resumos, "já cadastrado") são
+    // do orquestrador - aqui só cuidamos do estado da lista.
     this.carregando = true;
+    const resultado = await this.orquestradorImportacao.importarDeArquivo(arquivo);
+    this.carregando = false;
 
-    let linhas: LinhaImportacao[];
-    try {
-      linhas = await lerPlanilhaGastos(arquivo);
-    } catch {
-      this.carregando = false;
-      this.notificacao.erro('Não foi possível ler o arquivo. Verifique se é uma planilha .xlsx válida.');
+    if (resultado.status !== 'ok') {
       return;
     }
-
-    if (linhas.length === 0) {
-      this.carregando = false;
-      this.notificacao.erro('A planilha não tem nenhuma linha de dados para importar.');
-      return;
-    }
-
-    const ref = this.dialog.open<ImportarRevisaoDialogComponent, ImportarRevisaoDialogData, LinhaImportacao[]>(
-      ImportarRevisaoDialogComponent,
-      { data: { linhas }, width: '760px', maxWidth: '95vw' }
-    );
-
-    ref.afterClosed().subscribe((linhasConfirmadas) => {
-      if (!linhasConfirmadas || linhasConfirmadas.length === 0) {
-        // Usuário cancelou a revisão - desliga o loading, senão fica preso na tela
-        // (nada mais vai chamar carregar() pra desligá-lo).
-        this.carregando = false;
-        return;
-      }
-      this.resolverCategoriasEProsseguir(linhasConfirmadas);
-    });
+    // A importação pode ter criado categorias - reflete o emoji delas na tabela.
+    this.categoriasPorId = new Map(resultado.categoriasAtualizadas.map((c) => [c.id!, c]));
+    this.carregar();
   }
 
-  // Categoria/subcategoria da planilha chegam como texto puro; aqui cada uma vira
-  // uma categoria/subcategoria gerenciada de verdade antes de prosseguir - criando
-  // uma privada nova quando o texto não bate (sem diferenciar maiúsculas/minúsculas)
-  // com nenhuma categoria já visível pro usuário, igual à migração feita no banco.
-  private async resolverCategorias(linhas: LinhaImportacao[]): Promise<void> {
-    const resolvidas = new Map<string, { categoriaId: number; subcategoriaId: number | null }>();
-    let categorias = this.todasCategorias;
-    let subcategorias = this.todasSubcategorias;
-
-    for (const linha of linhas) {
-      const chave = this.chaveCategoria(linha.categoria, linha.subcategoria);
-      if (resolvidas.has(chave)) {
-        continue;
-      }
-
-      let categoria = categorias.find((c) => c.nome.toLowerCase() === linha.categoria.trim().toLowerCase());
-      if (!categoria) {
-        categoria = await firstValueFrom(this.categoriaService.criar({ nome: linha.categoria.trim(), emoji: '📁' }));
-        categorias = [...categorias, categoria];
-      }
-
-      let subcategoriaId: number | null = null;
-      const nomeSub = linha.subcategoria?.trim();
-      if (nomeSub) {
-        let subcategoria = subcategorias.find((s) =>
-          s.categoriaId === categoria!.id && s.nome.toLowerCase() === nomeSub.toLowerCase());
-        if (!subcategoria) {
-          subcategoria = await firstValueFrom(
-            this.categoriaService.criarSubcategoria(categoria.id!, { nome: nomeSub, emoji: '📁' }));
-          subcategorias = [...subcategorias, subcategoria];
-        }
-        subcategoriaId = subcategoria.id!;
-      }
-
-      resolvidas.set(chave, { categoriaId: categoria.id!, subcategoriaId });
-    }
-
-    this.todasCategorias = categorias;
-    this.categoriasPorId = new Map(categorias.map((c) => [c.id!, c]));
-    this.todasSubcategorias = subcategorias;
-    this.categoriasResolvidas = resolvidas;
-  }
-
-  private chaveCategoria(categoria: string, subcategoria: string | null): string {
-    return `${categoria.trim().toLowerCase()}|${(subcategoria ?? '').trim().toLowerCase()}`;
-  }
-
-  private resolverCategoriasEProsseguir(linhas: LinhaImportacao[]): void {
-    this.resolverCategorias(linhas)
-      .then(() => this.prepararAtualizacao(linhas))
-      .catch(() => {
-        // Falha de rede ao criar categoria/subcategoria nova - aborta aqui, então
-        // ninguém mais vai chamar carregar() pra desligar o loading.
-        this.carregando = false;
-        this.notificacao.erro('Não foi possível preparar as categorias desta planilha para importação.');
-      });
-  }
-
-  private prepararAtualizacao(linhas: LinhaImportacao[]): void {
-    this.gastoService.listarTodos().subscribe({
-      next: (gastosAtuais) => {
-        const mapaGastos = new Map(gastosAtuais.map((g) => [g.id, g]));
-        const atualizacoes: AtualizacaoImportacao[] = [];
-        const linhasNovas: LinhaImportacao[] = [];
-        const linhasSuspeitas: LinhaImportacao[] = [];
-        const linhasPossivelEdicao: LinhaImportacao[] = [];
-        let semAlteracao = 0;
-
-        for (const linha of linhas) {
-          // Descrição, valor, categoria e data batem exatamente com um gasto já
-          // cadastrado - é a mesma planilha (ou os mesmos dados) sendo reimportada.
-          // Nunca cria como gasto novo aqui, com ou sem coluna ID e mesmo que o
-          // usuário confirme "importar mesmo assim" mais adiante: só avisa no final.
-          const duplicataExata = gastosAtuais.some((g) => !this.gastoMudou(g, linha));
-          if (duplicataExata) {
-            semAlteracao++;
-            continue;
-          }
-
-          if (linha.id != null) {
-            const existente = mapaGastos.get(linha.id);
-            if (!existente) {
-              // tinha ID, mas não corresponde a nenhum gasto atual - pode ser de uma
-              // exportação antiga ou o gasto já foi excluído; não cria sem perguntar
-              linhasSuspeitas.push(linha);
-              continue;
-            }
-            // duplicataExata já garantiu que os dados são diferentes dos de existente
-            atualizacoes.push({ linha, existente, atualizar: true });
-            continue;
-          }
-
-          // Sem ID: descrição e categoria batem com um gasto existente, mas valor
-          // ou data são diferentes - provavelmente é uma tentativa de EDITAR aquele gasto,
-          // mas sem ID não há como ter certeza de qual gasto é (nem atualizá-lo). Sem essa
-          // checagem, a linha seria criada como um gasto novo, duplicando o original.
-          const possivelEdicao = gastosAtuais.some((g) =>
-            g.descricao.trim().toLowerCase() === linha.descricao.trim().toLowerCase()
-            && (g.categoria ?? '').trim().toLowerCase() === linha.categoria.trim().toLowerCase()
-            && this.gastoMudou(g, linha)
-          );
-          if (possivelEdicao) {
-            linhasPossivelEdicao.push(linha);
-            continue;
-          }
-
-          linhasNovas.push(linha);
-        }
-
-        this.confirmarAtualizacoes(atualizacoes, linhasNovas, linhasSuspeitas, linhasPossivelEdicao, semAlteracao);
-      },
-      error: () => this.prepararVinculoOrcamento(linhas)
-    });
-  }
-
-  private confirmarAtualizacoes(
-    atualizacoes: AtualizacaoImportacao[],
-    linhasNovas: LinhaImportacao[],
-    linhasSuspeitas: LinhaImportacao[],
-    linhasPossivelEdicao: LinhaImportacao[],
-    semAlteracao: number
-  ): void {
-    if (atualizacoes.length === 0) {
-      this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao, semAlteracao);
-      return;
-    }
-
-    const ref = this.dialog.open<
-      ImportarAtualizacaoDialogComponent,
-      ImportarAtualizacaoDialogData,
-      DecisaoAtualizacao[]
-    >(ImportarAtualizacaoDialogComponent, { data: { atualizacoes }, width: '820px', maxWidth: '95vw' });
-
-    ref.afterClosed().subscribe((decisoes) => {
-      const decididas = decisoes ?? [];
-      const naoAtualizadas = atualizacoes.length - decididas.length;
-      this.executarAtualizacoes(decididas, () =>
-        this.confirmarLinhasSuspeitas(linhasNovas, linhasSuspeitas, linhasPossivelEdicao, semAlteracao + naoAtualizadas)
-      );
-    });
-  }
-
-  private confirmarLinhasSuspeitas(
-    linhasNovas: LinhaImportacao[],
-    linhasSuspeitas: LinhaImportacao[],
-    linhasPossivelEdicao: LinhaImportacao[],
-    semAlteracao: number
-  ): void {
-    if (linhasSuspeitas.length === 0) {
-      this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao, semAlteracao);
-      return;
-    }
-
-    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
-      data: {
-        titulo: 'ID não encontrado',
-        mensagem: `${linhasSuspeitas.length} linha(s) desta planilha têm um ID que não corresponde a nenhum `
-          + 'gasto seu atual (o gasto pode já ter sido excluído, ou esta planilha é de uma exportação antiga). '
-          + 'Os dados dessas linhas são diferentes de tudo que você já tem cadastrado, então não são uma '
-          + 'duplicata - mas, por causa do ID estranho, prefira conferir antes de confirmar. Deseja importar '
-          + 'estas linhas como gastos novos mesmo assim?'
-      }
-    });
-
-    ref.afterClosed().subscribe((confirmado) => {
-      if (!confirmado) {
-        this.notificacao.erro(
-          `${linhasSuspeitas.length} linha(s) com ID não encontrado foram ignoradas (não importadas).`
-        );
-        this.confirmarLinhasPossivelEdicao(linhasNovas, linhasPossivelEdicao, semAlteracao);
-        return;
-      }
-      this.confirmarLinhasPossivelEdicao([...linhasNovas, ...linhasSuspeitas], linhasPossivelEdicao, semAlteracao);
-    });
-  }
-
-  private confirmarLinhasPossivelEdicao(
-    linhasNovas: LinhaImportacao[],
-    linhasPossivelEdicao: LinhaImportacao[],
-    semAlteracao: number
-  ): void {
-    if (linhasPossivelEdicao.length === 0) {
-      this.prepararVinculoOrcamento(linhasNovas, semAlteracao);
-      return;
-    }
-
-    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
-      data: {
-        titulo: 'Isto parece uma edição, não um gasto novo',
-        mensagem: `${linhasPossivelEdicao.length} linha(s) têm a mesma descrição e categoria de um gasto já `
-          + 'cadastrado, mas com valor ou data diferentes - parece que você editou um gasto existente. Só que '
-          + 'esta planilha não tem a coluna ID, então não é possível ter certeza de qual gasto é (nem '
-          + 'atualizá-lo automaticamente): se confirmar, um gasto NOVO será criado, e o antigo continuará como '
-          + 'estava, duplicado. Para atualizar de verdade um gasto existente, cancele agora, clique em '
-          + '"Exportar XLSX" para gerar um arquivo com a coluna ID, edite esse arquivo (não o modelo de '
-          + 'importação) e reimporte-o. Deseja criar estas linhas como gastos novos mesmo assim?'
-      }
-    });
-
-    ref.afterClosed().subscribe((confirmado) => {
-      if (!confirmado) {
-        this.notificacao.erro(
-          `${linhasPossivelEdicao.length} linha(s) que pareciam edições foram ignoradas (não importadas).`
-        );
-        this.prepararVinculoOrcamento(linhasNovas, semAlteracao);
-        return;
-      }
-      this.prepararVinculoOrcamento([...linhasNovas, ...linhasPossivelEdicao], semAlteracao);
-    });
-  }
-
-  private gastoMudou(existente: Gasto, linha: LinhaImportacao): boolean {
-    return existente.descricao !== linha.descricao
-      || Math.abs(existente.valor - (linha.valor ?? 0)) > 0.001
-      || (existente.categoria ?? '').toLowerCase() !== linha.categoria.toLowerCase()
-      || (existente.subcategoria ?? '').toLowerCase() !== (linha.subcategoria ?? '').toLowerCase()
-      || existente.data !== linha.data;
-  }
-
-  private executarAtualizacoes(decisoes: DecisaoAtualizacao[], aposConcluir: () => void): void {
-    if (decisoes.length === 0) {
-      aposConcluir();
-      return;
-    }
-
-    const progressoRef = this.dialog.open(ImportarProgressoDialogComponent, {
-      disableClose: true,
-      width: '360px',
-      maxWidth: '95vw'
-    });
-    const instancia = progressoRef.componentInstance;
-    instancia.total = decisoes.length;
-    instancia.atual = 0;
-
-    let sucesso = 0;
-    let falha = 0;
-
-    const processarProxima = (indice: number): void => {
-      if (indice >= decisoes.length) {
-        progressoRef.close();
-        this.mostrarResumoAtualizacao(sucesso, falha);
-        aposConcluir();
-        return;
-      }
-
-      const decisao = decisoes[indice];
-      const resolvida = this.categoriasResolvidas.get(this.chaveCategoria(decisao.linha.categoria, decisao.linha.subcategoria));
-      const gasto: Gasto = {
-        descricao: decisao.linha.descricao,
-        valor: decisao.linha.valor!,
-        categoriaId: resolvida!.categoriaId,
-        subcategoriaId: resolvida!.subcategoriaId,
-        data: decisao.linha.data!,
-        orcamentoId: decisao.existente.orcamentoId ?? null
-      };
-
-      this.gastoService.atualizar(decisao.existente.id!, gasto).subscribe({
-        next: () => {
-          sucesso++;
-          instancia.atual = indice + 1;
-          processarProxima(indice + 1);
-        },
-        error: () => {
-          falha++;
-          instancia.atual = indice + 1;
-          processarProxima(indice + 1);
-        }
-      });
-    };
-
-    processarProxima(0);
-  }
-
-  private mostrarResumoAtualizacao(sucesso: number, falha: number): void {
-    if (falha === 0) {
-      this.notificacao.sucesso(`${sucesso} gasto(s) atualizado(s) com sucesso!`);
-    } else {
-      this.snackBar.open(
-        `${sucesso} gasto(s) atualizado(s) com sucesso, ${falha} falharam.`,
-        'Fechar',
-        { duration: 6000 }
-      );
-    }
-  }
-
-  private prepararVinculoOrcamento(linhas: LinhaImportacao[], semAlteracao = 0): void {
-    if (semAlteracao > 0) {
-      // Linhas com descrição, valor, categoria e data idênticos a um gasto já cadastrado
-      // (com ou sem coluna ID): nunca duplica, mas avisa para o usuário não achar que a
-      // importação "não fez nada".
-      this.snackBar.open(
-        semAlteracao === 1
-          ? 'Este dado já está cadastrado. Como não houve edição, nada foi atualizado.'
-          : `${semAlteracao} dado(s) desta planilha já estão cadastrados. Como não houve edição, nada foi atualizado.`,
-        'Fechar',
-        { duration: 5000 }
-      );
-    }
-
-    if (linhas.length === 0) {
-      this.carregar();
-      return;
-    }
-
-    this.orcamentoService.listarTodos().subscribe({
-      next: (orcamentos) => {
-        const vinculos = this.encontrarVinculosPossiveis(linhas, orcamentos);
-        if (vinculos.length === 0) {
-          this.executarImportacao(linhas);
-          return;
-        }
-
-        const ref = this.dialog.open<
-          ImportarVinculoOrcamentoDialogComponent,
-          ImportarVinculoOrcamentoDialogData,
-          DecisaoVinculo[]
-        >(ImportarVinculoOrcamentoDialogComponent, { data: { vinculos }, width: '760px', maxWidth: '95vw' });
-
-        ref.afterClosed().subscribe((decisoes) => {
-          const mapaVinculos = new Map((decisoes ?? []).map((d) => [d.linhaNumero, d.orcamentoId]));
-          this.executarImportacao(linhas, mapaVinculos);
-        });
-      },
-      error: () => this.executarImportacao(linhas)
-    });
-  }
-
-  private encontrarVinculosPossiveis(linhas: LinhaImportacao[], orcamentos: Orcamento[]): VinculoImportacao[] {
-    const vinculos: VinculoImportacao[] = [];
-    for (const linha of linhas) {
-      if (!linha.data) {
-        continue;
-      }
-      const [ano, mes] = linha.data.split('-').map(Number);
-      const opcoes = orcamentos
-        .filter((o) => o.mes === mes && o.ano === ano)
-        .sort((a, b) =>
-          (a.categoria ?? '').localeCompare(b.categoria ?? '')
-          || Number(!!a.subcategoria) - Number(!!b.subcategoria)
-          || (a.subcategoria ?? '').localeCompare(b.subcategoria ?? ''));
-      if (opcoes.length === 0) {
-        continue;
-      }
-      // Prioriza o orçamento específico da subcategoria da linha (já resolvida em
-      // resolverCategorias); só cai para o orçamento geral da categoria (sem
-      // subcategoria) se não houver um específico.
-      const resolvida = this.categoriasResolvidas.get(this.chaveCategoria(linha.categoria, linha.subcategoria));
-      const especifico = resolvida?.subcategoriaId
-        ? opcoes.find((o) => o.categoriaId === resolvida.categoriaId && o.subcategoriaId === resolvida.subcategoriaId)
-        : undefined;
-      const geral = opcoes.find((o) => o.categoriaId === resolvida?.categoriaId && !o.subcategoriaId);
-      vinculos.push({ linha, opcoes, orcamentoId: (especifico ?? geral)?.id ?? null });
-    }
-    return vinculos;
-  }
-
-  private executarImportacao(linhas: LinhaImportacao[], vinculos?: Map<number, number>): void {
-    const progressoRef = this.dialog.open(ImportarProgressoDialogComponent, {
-      disableClose: true,
-      width: '360px',
-      maxWidth: '95vw'
-    });
-    const instancia = progressoRef.componentInstance;
-    instancia.total = linhas.length;
-    instancia.atual = 0;
-
-    let sucesso = 0;
-    let falha = 0;
-
-    const processarProxima = (indice: number): void => {
-      if (indice >= linhas.length) {
-        progressoRef.close();
-        this.mostrarResumoImportacao(sucesso, falha);
-        this.carregar();
-        return;
-      }
-
-      const linha = linhas[indice];
-      const resolvida = this.categoriasResolvidas.get(this.chaveCategoria(linha.categoria, linha.subcategoria));
-      const gasto: Gasto = {
-        descricao: linha.descricao,
-        valor: linha.valor!,
-        categoriaId: resolvida!.categoriaId,
-        subcategoriaId: resolvida!.subcategoriaId,
-        data: linha.data!,
-        orcamentoId: vinculos?.get(linha.linha) ?? null
-      };
-
-      this.gastoService.cadastrar(gasto).subscribe({
-        next: () => {
-          sucesso++;
-          instancia.atual = indice + 1;
-          processarProxima(indice + 1);
-        },
-        error: () => {
-          falha++;
-          instancia.atual = indice + 1;
-          processarProxima(indice + 1);
-        }
-      });
-    };
-
-    processarProxima(0);
-  }
-
-  private mostrarResumoImportacao(sucesso: number, falha: number): void {
-    if (falha === 0) {
-      this.notificacao.sucesso(`${sucesso} gasto(s) importado(s) com sucesso!`);
-    } else {
-      this.snackBar.open(
-        `${sucesso} gasto(s) importado(s) com sucesso, ${falha} falharam.`,
-        'Fechar',
-        { duration: 6000 }
-      );
-    }
-  }
 }
