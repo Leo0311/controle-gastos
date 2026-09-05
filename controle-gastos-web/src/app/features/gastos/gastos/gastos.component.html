@@ -61,14 +61,14 @@
      nunca colapsaria. Juntar os dois aqui dentro mantém o pai com um filho só. -->
 <div class="filtros-conteudo">
 @if (podeLimparFiltros) {
-  <!-- Linha própria (mobile e desktop) em vez de item dentro de .filtros-periodo:
-       uma linha inteira aparece/some de uma vez, empurrando o que vem depois pra
-       baixo/cima - sem competir por espaço com os campos, então não há largura em
-       que ela "quebre" ou faça o conteúdo abaixo pular (era o que acontecia
-       colocando o botão dentro da faixa flex-wrap dos campos). Fica no topo,
-       longe do "Ver todos os meses"/"Ver mês atual" (fim da faixa) - são ações de
-       natureza diferente (redefinir vs. navegar pro histórico) e um botão texto
-       discreto não compete com o stroked-button daquele. -->
+  <!-- Só existe visualmente no mobile (ver CSS) - no desktop o equivalente fica
+       abaixo dos campos (ver .linha-limpar-desktop mais abaixo), não aqui em cima.
+       Linha própria em vez de item dentro de .filtros-periodo: uma linha inteira
+       aparece/some de uma vez, empurrando o que vem depois pra baixo/cima - sem
+       competir por espaço com os campos, então não há largura em que ela "quebre"
+       ou faça o conteúdo abaixo pular (era o que acontecia colocando o botão
+       dentro da faixa flex-wrap dos campos). Fica no topo, longe do "Ver todos os
+       meses" (fim da faixa) - são ações de natureza diferente. -->
   <div class="linha-limpar">
     <button mat-button class="btn-limpar-filtros" (click)="limparFiltrosPainel()">
       <mat-icon>filter_alt_off</mat-icon>
@@ -115,6 +115,22 @@
     {{ rotuloToggleMes }}
   </button>
 </div>
+
+@if (podeLimparFiltros) {
+  <!-- Só existe visualmente no desktop (ver CSS) - abaixo dos campos, encostado na
+       mesma margem esquerda do campo "Mês", com o mesmo estilo (mat-stroked-button)
+       do "Ver todos os meses"/"Ver mês atual" pra ler como parte do mesmo grupo de
+       controles, em vez de um link solto. Linha própria (fora de .filtros-periodo)
+       pelo mesmo motivo do comentário acima - não compete por espaço com os campos,
+       não quebra em nenhuma largura. No mobile o equivalente é .linha-limpar,
+       no topo do painel (ver acima). -->
+  <div class="linha-limpar-desktop">
+    <button mat-stroked-button class="btn-limpar-filtros" (click)="limparFiltrosPainel()">
+      <mat-icon>filter_alt_off</mat-icon>
+      Limpar filtros
+    </button>
+  </div>
+}
 </div>
 </div>
 

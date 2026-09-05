@@ -56,13 +56,18 @@
   display: none;
 }
 
-/* Linha própria (mobile e desktop) - some quando o filtro já está no padrão (ver
-   podeLimparFiltros) em vez de ocupar espaço sem função. */
+/* Só existe visualmente no mobile - dentro do painel colapsável (ver media query
+   abaixo). No desktop quem aparece é .linha-limpar-desktop. */
 .linha-limpar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 4px;
-  color: var(--texto-secundario);
+  display: none;
+}
+
+/* Abaixo dos campos, encostada na mesma margem esquerda do "Mês" - mesmo motivo de
+   .filtros-periodo/.linha-limpar-desktop serem irmãos, não aninhados: sem isso, um
+   padding-left num ficaria diferente do outro. Some quando o filtro já está no
+   padrão (ver podeLimparFiltros) em vez de ocupar espaço sem função. */
+.linha-limpar-desktop {
+  margin-top: 4px;
 }
 
 .filtros-periodo {
@@ -128,6 +133,19 @@
 
   .seta-filtros-mobile.aberta {
     transform: rotate(180deg);
+  }
+
+  .linha-limpar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+    color: var(--texto-secundario);
+  }
+
+  /* No mobile quem aparece é .linha-limpar, no topo do painel - este aqui é só do
+     desktop (abaixo dos campos). */
+  .linha-limpar-desktop {
+    display: none;
   }
 
   /* Colapsa/expande a altura via grid-template-rows (0fr <-> 1fr) - anima suave
