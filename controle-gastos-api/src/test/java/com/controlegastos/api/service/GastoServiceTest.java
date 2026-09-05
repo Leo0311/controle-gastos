@@ -1,6 +1,7 @@
 package com.controlegastos.api.service;
 
 import com.controlegastos.api.dto.GastoPaginaDTO;
+import com.controlegastos.api.exception.GastoDuplicadoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.repository.CategoriaRepository;
@@ -114,6 +115,53 @@ class GastoServiceTest {
         Gasto ultimaParcelaDoPiorCaso = gastoValido(LocalDate.now().plusMonths(121));
 
         assertThat(service.cadastrar(ultimaParcelaDoPiorCaso, USUARIO)).isNotNull();
+    }
+
+    // ---------- deduplicação da importação (achado M6) ----------
+
+    @Test
+    void cadastrar_comDeduplicar_recusaQuandoJaExisteGastoEquivalente() {
+        stubCategoriaValida();
+        Gasto gasto = gastoValido(LocalDate.of(2026, 9, 1));
+        when(repository.existeGastoEquivalente(
+                USUARIO, LocalDate.of(2026, 9, 1), gasto.getValor(), gasto.getDescricao()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.cadastrar(gasto, USUARIO, true))
+                .isInstanceOf(GastoDuplicadoException.class)
+                .hasMessageContaining("idêntico");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void cadastrar_comDeduplicar_salvaQuandoNaoHaEquivalente() {
+        stubCategoriaValida();
+        Gasto gasto = gastoValido(LocalDate.of(2026, 9, 1));
+        when(repository.existeGastoEquivalente(any(), any(), any(), any())).thenReturn(false);
+
+        assertThat(service.cadastrar(gasto, USUARIO, true)).isNotNull();
+        verify(repository).save(any(Gasto.class));
+    }
+
+    @Test
+    void cadastrar_comDeduplicar_semData_usaHojeNaChecagem() {
+        stubCategoriaValida();
+        when(repository.existeGastoEquivalente(any(), any(), any(), any())).thenReturn(false);
+
+        service.cadastrar(gastoValido(null), USUARIO, true);
+
+        verify(repository).existeGastoEquivalente(
+                eq(USUARIO), eq(LocalDate.now()), any(BigDecimal.class), eq("Gasto de teste"));
+    }
+
+    @Test
+    void cadastrar_semDeduplicar_naoConsultaEquivalenciaEPermiteGastoIgual() {
+        stubCategoriaValida();
+
+        assertThat(service.cadastrar(gastoValido(LocalDate.of(2026, 9, 1)), USUARIO)).isNotNull();
+
+        verify(repository, never()).existeGastoEquivalente(any(), any(), any(), any());
     }
 
     @Test

@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentType } from '@angular/cdk/portal';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -304,19 +305,46 @@ export class ImportacaoGastosOrquestrador {
     resolvidas: Map<string, CategoriaResolvida>,
     vinculos: Map<number, number>
   ): Promise<void> {
-    const { sucesso, falha } = await this.processarEmLote(linhas, (linha) =>
-      this.gastoService.cadastrar(
-        this.montarGasto(linha, resolvidas, vinculos.get(linha.linha) ?? null)
-      ));
+    // deduplicar: true - o backend recusa com 409 uma linha idêntica a um gasto já
+    // cadastrado (achado M6). Acontece só quando a detecção do cliente não pôde
+    // rodar (ex.: listarTodos falhou acima e classificou tudo como novo); nesse
+    // caso a linha é contada como já cadastrada, não como falha.
+    const { sucesso, falha, ignorados } = await this.processarEmLote(
+      linhas,
+      (linha) => this.gastoService.cadastrar(
+        this.montarGasto(linha, resolvidas, vinculos.get(linha.linha) ?? null),
+        { deduplicar: true }
+      ),
+      (erro) => erro instanceof HttpErrorResponse && erro.status === 409
+    );
+
+    if (ignorados > 0) {
+      // Uma mensagem só, com sucesso + ignoradas + falhas: dois snackbars seguidos
+      // se encobrem (o segundo fecha o primeiro na hora), e "0 importados" isolado
+      // não faz sentido quando a planilha inteira já estava cadastrada.
+      const partes: string[] = [];
+      if (sucesso > 0) {
+        partes.push(`${sucesso} gasto(s) importado(s)`);
+      }
+      partes.push(`${ignorados} linha(s) desta planilha já estavam cadastradas e foram ignoradas`);
+      if (falha > 0) {
+        partes.push(`${falha} falharam`);
+      }
+      this.snackBar.open(`${partes.join('. ')}.`, 'Fechar', { duration: 6000 });
+      return;
+    }
+
     this.mostrarResumo(sucesso, falha, 'importado(s)');
   }
 
   // Loop sequencial (um request por vez - o rate limit do backend é calibrado
-  // pra isso) com o diálogo de progresso.
+  // pra isso) com o diálogo de progresso. `ehIgnoravel` separa os erros que não
+  // são falha de verdade (ex.: 409 de duplicata na criação) numa terceira conta.
   private async processarEmLote<T>(
     itens: T[],
-    acao: (item: T) => Observable<unknown>
-  ): Promise<{ sucesso: number; falha: number }> {
+    acao: (item: T) => Observable<unknown>,
+    ehIgnoravel?: (erro: unknown) => boolean
+  ): Promise<{ sucesso: number; falha: number; ignorados: number }> {
     const ref = this.dialog.open(ImportarProgressoDialogComponent, {
       disableClose: true, width: '360px', maxWidth: '95vw'
     });
@@ -325,18 +353,23 @@ export class ImportacaoGastosOrquestrador {
 
     let sucesso = 0;
     let falha = 0;
+    let ignorados = 0;
     for (let i = 0; i < itens.length; i++) {
       try {
         await firstValueFrom(acao(itens[i]));
         sucesso++;
-      } catch {
-        falha++;
+      } catch (erro) {
+        if (ehIgnoravel?.(erro)) {
+          ignorados++;
+        } else {
+          falha++;
+        }
       }
       ref.componentInstance.atual = i + 1;
     }
 
     ref.close();
-    return { sucesso, falha };
+    return { sucesso, falha, ignorados };
   }
 
   private montarGasto(

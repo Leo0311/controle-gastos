@@ -47,8 +47,15 @@ export class GastoService {
     return this.http.get<Gasto>(`${this.baseUrl}/${id}`);
   }
 
-  cadastrar(gasto: Gasto): Observable<Gasto> {
-    return this.http.post<Gasto>(this.baseUrl, gasto);
+  // deduplicar: só a importação de planilha passa true. Faz o backend recusar com
+  // 409 uma linha idêntica (mesma descrição/valor/data) a um gasto já cadastrado -
+  // rede de segurança do achado M6, além da detecção que a importação já faz no
+  // cliente. O "Novo gasto" manual não passa e continua aceitando gastos iguais.
+  cadastrar(gasto: Gasto, opcoes?: { deduplicar?: boolean }): Observable<Gasto> {
+    const options = opcoes?.deduplicar
+      ? { params: new HttpParams().set('deduplicar', true) }
+      : {};
+    return this.http.post<Gasto>(this.baseUrl, gasto, options);
   }
 
   atualizar(id: number, gasto: Gasto): Observable<Gasto> {

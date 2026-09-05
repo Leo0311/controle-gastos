@@ -40,6 +40,28 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
 
     List<Gasto> findByUsuarioIdAndDataBetweenOrderByDataDescIdDesc(Integer usuarioId, LocalDate inicio, LocalDate fim);
 
+    // Rede de segurança do backend contra reimportação de planilha (achado M6): a
+    // detecção de duplicata da importação vive no frontend (classificar-linhas.ts)
+    // e depende de listarTodos(); se essa chamada falha, o orquestrador trata toda
+    // a planilha como linhas novas e recria tudo. Uma chave lógica
+    // (usuário + data + valor + descrição normalizada) identifica um gasto
+    // equivalente já cadastrado. TRIM/LOWER na descrição casa variações de caixa e
+    // espaço; o valor é comparado exato (numeric), que é o que uma reimportação
+    // reproduz. Cobre gastos de qualquer origem (avulso, recorrência, parcela),
+    // igual à checagem do frontend, que compara com todo o histórico.
+    @Query("""
+            SELECT COUNT(g) > 0 FROM Gasto g
+            WHERE g.usuarioId = :usuarioId
+              AND g.data = :data
+              AND g.valor = :valor
+              AND LOWER(TRIM(g.descricao)) = LOWER(TRIM(:descricao))
+            """)
+    boolean existeGastoEquivalente(
+            @Param("usuarioId") Integer usuarioId,
+            @Param("data") LocalDate data,
+            @Param("valor") BigDecimal valor,
+            @Param("descricao") String descricao);
+
     long countByCategoriaId(Integer categoriaId);
 
     // IDs das categorias com pelo menos um gasto cadastrado pelo usuário (qualquer

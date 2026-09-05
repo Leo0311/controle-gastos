@@ -10,6 +10,7 @@ import com.controlegastos.api.dto.RankingSubcategoriaDTO;
 import com.controlegastos.api.dto.ResumoDTO;
 import com.controlegastos.api.dto.TotalDiarioDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
+import com.controlegastos.api.exception.GastoDuplicadoException;
 import com.controlegastos.api.exception.OrcamentoInvalidoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
@@ -116,13 +117,41 @@ public class GastoService {
     }
 
     public Gasto cadastrar(Gasto gasto, Integer usuarioId) {
+        return cadastrar(gasto, usuarioId, false);
+    }
+
+    // rejeitarDuplicata=true só é usado pela importação de planilha (POST
+    // /api/gastos?deduplicar=true): se já existe um gasto logicamente idêntico
+    // (mesma descrição, valor e data - ver GastoRepository.existeGastoEquivalente),
+    // a linha é recusada com 409 em vez de criar uma cópia. É a rede de segurança
+    // do achado M6 - a detecção "de verdade" continua no frontend, com a UX de
+    // revisão; aqui é só o corte final pro caso de ela não ter rodado. O cadastro
+    // manual avulso (rejeitarDuplicata=false) segue permitindo dois gastos iguais
+    // no mesmo dia de propósito.
+    public Gasto cadastrar(Gasto gasto, Integer usuarioId, boolean rejeitarDuplicata) {
         // gastoRecorrenteId/compraParceladaId só podem ser setados internamente por
         // GastoRecorrenteService/CompraParceladaService (ver cadastrarVinculadoA*) -
         // nunca por uma criação vinda da API pública, senão qualquer cliente poderia
         // marcar um gasto como "gerado automaticamente".
         gasto.setGastoRecorrenteId(null);
         gasto.setCompraParceladaId(null);
+        if (rejeitarDuplicata) {
+            rejeitarSeDuplicata(gasto, usuarioId);
+        }
         return salvar(gasto, usuarioId);
+    }
+
+    private void rejeitarSeDuplicata(Gasto gasto, Integer usuarioId) {
+        // Campos incompletos (descrição/valor nulos) são erro de validação, não
+        // duplicata - deixa validar() em salvar() reportar com a mensagem certa.
+        if (gasto.getDescricao() == null || gasto.getValor() == null) {
+            return;
+        }
+        LocalDate data = gasto.getData() != null ? gasto.getData() : LocalDate.now();
+        if (repository.existeGastoEquivalente(usuarioId, data, gasto.getValor(), gasto.getDescricao())) {
+            throw new GastoDuplicadoException(
+                    "Já existe um gasto idêntico (mesma descrição, valor e data) cadastrado.");
+        }
     }
 
     // Usado só por GastoRecorrenteService pra criar o gasto já vinculado à recorrência

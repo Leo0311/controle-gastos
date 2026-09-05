@@ -101,6 +101,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("erro", e.getMessage()));
     }
 
+    @ExceptionHandler(GastoDuplicadoException.class)
+    public ResponseEntity<Map<String, String>> tratarGastoDuplicado(GastoDuplicadoException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("erro", e.getMessage()));
+    }
+
     // Rede de segurança: qualquer exceção sem handler específico acima (conexão com
     // o banco caindo no meio de um request, um parâmetro malformado que nem chega a
     // virar IllegalArgumentException, etc.) caía no handler default do Spring Boot,

@@ -59,10 +59,17 @@ public class GastoController {
         return service.buscarPorId(id, usuario.usuarioId());
     }
 
+    // deduplicar=true (só a importação de planilha usa) faz o backend recusar com
+    // 409 uma linha logicamente idêntica a um gasto já cadastrado - rede de
+    // segurança do achado M6. O cadastro manual não passa o parâmetro e continua
+    // aceitando gastos iguais no mesmo dia.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Gasto cadastrar(@RequestBody Gasto gasto, @AuthenticationPrincipal UsuarioPrincipal usuario) {
-        return service.cadastrar(gasto, usuario.usuarioId());
+    public Gasto cadastrar(
+            @RequestBody Gasto gasto,
+            @RequestParam(name = "deduplicar", defaultValue = "false") boolean deduplicar,
+            @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.cadastrar(gasto, usuario.usuarioId(), deduplicar);
     }
 
     @PutMapping("/{id}")
