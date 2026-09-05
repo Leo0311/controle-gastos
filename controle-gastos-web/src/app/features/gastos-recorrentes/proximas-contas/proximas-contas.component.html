@@ -1,0 +1,64 @@
+<div class="cabecalho-aba">
+  <p class="dica-aba">
+    Lançamentos futuros (a partir de hoje) que já vieram de um gasto recorrente (🔁) ou de uma compra parcelada (💳),
+    agrupados por mês.
+  </p>
+</div>
+
+@if (carregando) {
+  <div class="carregando">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+} @else if (erro) {
+  <app-erro-carregamento oQue="as próximas contas" (tentarNovamente)="tentarNovamente.emit()"></app-erro-carregamento>
+} @else if (calendario.length === 0) {
+  <app-empty-state icon="event" mensagem="Nenhuma conta futura de recorrentes ou parcelas."></app-empty-state>
+} @else {
+  <!-- Um mat-expansion-panel por mês (mesmo padrão do ranking de Análises): o
+       cabeçalho com nome do mês + total fica sempre visível; a lista de
+       lançamentos abre/fecha ao clicar. O 1º mês (mais próximo) já abre
+       expandido; os demais começam colapsados. -->
+  <mat-accordion class="lista-calendario" multi>
+    @for (grupo of calendarioVisivel; track grupo.chave; let primeiro = $first) {
+      <mat-expansion-panel class="grupo-mes" [expanded]="primeiro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="cabecalho-mes">
+              <span class="nome-mes">{{ grupo.rotulo }}</span>
+              <span class="total-mes">{{ grupo.total | currency:'BRL' }}</span>
+            </span>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="itens-mes">
+          @for (item of grupo.itens; track $index) {
+            <div class="item-calendario">
+              <span class="data-item">{{ formatarDiaMes(item.data) }}</span>
+              <span class="icone-origem" [title]="item.origem === 'parcela' ? 'Parcela' : 'Recorrente'">
+                {{ item.origem === 'parcela' ? '💳' : '🔁' }}
+              </span>
+              <span class="descricao-item">{{ item.descricao }}</span>
+              <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
+            </div>
+          }
+        </div>
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+
+  @if (mesesRestantes > 0) {
+    <div class="ver-mais-meses">
+      <button mat-stroked-button type="button" (click)="verMaisMeses()">
+        Ver mais {{ proximoBloco }} {{ proximoBloco === 1 ? 'mês' : 'meses' }}
+      </button>
+      <!-- Só quando ainda faltaria mais de um clique: aí o "Ver tudo" também
+           serve de indicador de quanto falta, sem virar um segundo botão
+           concorrendo no caso comum (parcelada curta, poucos meses a mais). -->
+      @if (mesesRestantes > proximoBloco) {
+        <button mat-button type="button" (click)="verTodosOsMeses()">
+          Ver tudo (mais {{ mesesRestantes }} meses)
+        </button>
+      }
+    </div>
+  }
+}

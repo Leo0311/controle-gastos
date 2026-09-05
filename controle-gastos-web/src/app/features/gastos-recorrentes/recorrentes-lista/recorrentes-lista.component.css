@@ -1,0 +1,32 @@
+/* Específico da aba "Recorrentes". Layout de cartão e estados de aba comuns vêm
+   de ../lista-cartoes.css e ../aba-comum.css (ver styleUrls). */
+
+/* mat-chip (MDC) não tema pelo background-color/color comuns - a superfície e o
+   texto são desenhados por dentro do componente, então precisam das custom
+   properties do MDC. "Ativo" usa o tint de status OK (verde aqui = "está
+   funcionando", leitura natural do estado da recorrência); "Pausado", o cinza
+   neutro. Os dois tokens já têm valor próprio no modo escuro (ver styles.scss),
+   então não precisa mais travar a cor do texto. */
+.chip-ativo {
+  font-size: 11px;
+  min-height: 22px;
+  padding: 0 8px;
+  --mdc-chip-elevated-container-color: var(--status-ok-fundo);
+  --mdc-chip-label-text-color: var(--status-ok-texto);
+}
+
+.chip-pausado {
+  font-size: 11px;
+  min-height: 22px;
+  padding: 0 8px;
+  --mdc-chip-elevated-container-color: var(--trilha-neutra);
+  --mdc-chip-label-text-color: var(--texto-pagina);
+}
+
+/* Explica o que "Pausado" significa na prática - o chip sozinho não diz que os
+   lançamentos futuros já gerados continuam valendo. */
+.linha-estado-pausado {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--texto-terciario);
+}

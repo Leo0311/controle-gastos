@@ -1,0 +1,51 @@
+<div class="cabecalho-aba">
+  <p class="dica-aba">
+    Compras parceladas são cadastradas pelo formulário de novo gasto, na opção "Parcelar compra".
+  </p>
+</div>
+
+@if (carregando) {
+  <div class="carregando">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+} @else if (erro) {
+  <app-erro-carregamento oQue="as compras parceladas" (tentarNovamente)="carregar()"></app-erro-carregamento>
+} @else if (parceladas.length === 0) {
+  <app-empty-state icon="credit_card" mensagem="Nenhuma compra parcelada cadastrada."></app-empty-state>
+} @else {
+  <div class="lista-recorrentes">
+    @for (parcelada of parceladas; track parcelada.id) {
+      <div class="item-recorrente">
+        <div class="info-recorrente">
+          <div class="linha-titulo">
+            <span class="descricao">{{ parcelada.descricao }}</span>
+          </div>
+          <div class="linha-detalhes">
+            <span>{{ categoriaLabel(parcelada.categoriaId) }}</span>
+            @if (parcelada.subcategoriaId) {
+              <span> / {{ subcategoriaLabel(parcelada.subcategoriaId) }}</span>
+            }
+            <span class="separador">·</span>
+            <span>{{ parcelada.valorTotal | currency:'BRL' }} em {{ parcelada.numeroParcelas }}x</span>
+            <span class="separador">·</span>
+            <span>Todo dia {{ parcelada.diaDoMes }}</span>
+          </div>
+          <div class="linha-detalhes">
+            @if (parcelamentoIncompleto(parcelada)) {
+              <span class="parcelas-incompletas" role="status">
+                <mat-icon inline>warning</mat-icon>
+                {{ parcelasLancadas(parcelada) }} de {{ parcelada.numeroParcelas }} parcelas — uma foi removida
+              </span>
+            } @else {
+              <span>{{ parcelasLancadas(parcelada) }} de {{ parcelada.numeroParcelas }} parcelas</span>
+            }
+          </div>
+        </div>
+
+        <button mat-icon-button (click)="excluirParcelada(parcelada)" aria-label="Excluir compra parcelada" title="Excluir">
+          <mat-icon color="warn">delete</mat-icon>
+        </button>
+      </div>
+    }
+  </div>
+}

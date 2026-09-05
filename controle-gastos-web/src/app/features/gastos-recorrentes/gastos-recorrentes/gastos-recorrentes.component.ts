@@ -1,108 +1,59 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
-import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { GastoService } from '../../../services/gasto.service';
-import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
-import { CompraParcelada } from '../../../models/compra-parcelada.model';
-import { Gasto } from '../../../models/gasto.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
-import {
-  GastoRecorrenteFormDialogComponent,
-  GastoRecorrenteFormDialogData
-} from '../gasto-recorrente-form-dialog/gasto-recorrente-form-dialog.component';
-import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
-import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
-import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 import { AbasArrastaveisDirective } from '../../../shared/abas-arrastaveis.directive';
-import { NotificacaoService } from '../../../core/notificacao.service';
-import { MESES_NOMES } from '../../../core/meses';
+import {
+  GrupoMesCalendario,
+  agruparProximasContas,
+  contarLancamentosFuturosPorRecorrente,
+  hojeIso
+} from '../proximas-contas';
+import { RecorrentesListaComponent } from '../recorrentes-lista/recorrentes-lista.component';
+import { ParceladasListaComponent } from '../parceladas-lista/parceladas-lista.component';
+import { ProximasContasComponent } from '../proximas-contas/proximas-contas.component';
 
-/** Um lançamento futuro (recorrente ou parcela) na aba "Próximas contas". */
-interface ItemCalendario {
-  data: string;
-  descricao: string;
-  valor: number;
-  origem: 'recorrente' | 'parcela';
-}
-
-/** Grupo de um mês na aba "Próximas contas", com o total do mês. */
-interface GrupoMesCalendario {
-  chave: string;
-  rotulo: string;
-  total: number;
-  itens: ItemCalendario[];
-}
-
+/**
+ * Casca das 3 abas de Recorrentes/Parceladas/Próximas contas (achado M8: um
+ * componente de 424 linhas com as 3 sub-telas virou 3 componentes + lógica pura
+ * em proximas-contas.ts / mensagem-pausa.ts). Aqui fica só o que cruza abas:
+ *
+ * - os mapas de categoria/subcategoria (usados pelos rótulos das abas Recorrentes
+ *   e Parceladas), carregados uma vez;
+ * - a leitura de gastos, que alimenta tanto o calendário da aba "Próximas contas"
+ *   quanto a contagem de "lançamentos futuros já gerados" mostrada na aba
+ *   "Recorrentes" - um request só, igual antes.
+ *
+ * Quando a aba "Recorrentes" pausa/reativa uma recorrência, ela emite
+ * `recorrenciaAlternada` e o calendário é recarregado.
+ */
 @Component({
   selector: 'app-gastos-recorrentes',
   standalone: true,
   imports: [
-    CurrencyPipe,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatMenuModule,
     MatTabsModule,
-    MatExpansionModule,
-    MatDialogModule,
-    MatProgressSpinnerModule,
-    EmptyStateComponent,
-    ErroCarregamentoComponent,
-    AbasArrastaveisDirective
+    AbasArrastaveisDirective,
+    RecorrentesListaComponent,
+    ParceladasListaComponent,
+    ProximasContasComponent
   ],
   templateUrl: './gastos-recorrentes.component.html',
   styleUrl: './gastos-recorrentes.component.css'
 })
 export class GastosRecorrentesComponent implements OnInit {
 
-  private readonly service = inject(GastoRecorrenteService);
-  private readonly parceladaService = inject(CompraParceladaService);
   private readonly categoriaService = inject(CategoriaService);
   private readonly gastoService = inject(GastoService);
-  private readonly dialog = inject(MatDialog);
-  private readonly notificacao = inject(NotificacaoService);
 
-  recorrentes: GastoRecorrente[] = [];
-  parceladas: CompraParcelada[] = [];
-  // calendario = todos os meses (a API já devolve tudo; o agrupamento é no
-  // cliente). calendarioVisivel = só a janela renderizada - uma parcelada de 120x
-  // são 120 mat-expansion-panel, e mostrar todos de uma vez deixa a rolagem
-  // inutilizável. Não muda tráfego nem tempo de resposta, só o que vai pro DOM.
+  categoriasPorId = new Map<number, Categoria>();
+  subcategoriasPorId = new Map<number, Subcategoria>();
+
   calendario: GrupoMesCalendario[] = [];
-  calendarioVisivel: GrupoMesCalendario[] = [];
-  mesesRestantes = 0;
-  proximoBloco = 0;
-  private readonly INCREMENTO_MESES = 12;
-  private mesesVisiveis = this.INCREMENTO_MESES;
-  carregando = false;
-  carregandoParceladas = false;
+  lancamentosFuturosPorRecorrente = new Map<number, number>();
   carregandoCalendario = false;
-  // Uma flag de erro por aba - cada aba carrega separado e mostra seu próprio
-  // estado de erro inline, sem um snackbar sobrescrevendo o aviso do outro.
-  erro = false;
-  erroParceladas = false;
   erroCalendario = false;
-
-  private categoriasPorId = new Map<number, Categoria>();
-  private subcategoriasPorId = new Map<number, Subcategoria>();
-
-  // Quantos gastos futuros (data >= hoje) já foram pré-gerados por cada recorrência.
-  // Vem da MESMA leitura de gastos que a aba "Próximas contas" já faz em
-  // carregarCalendario() - nenhum request a mais. Usado no card das recorrências
-  // pausadas (o "Pausado" sozinho não diz que os lançamentos já gerados continuam)
-  // e no diálogo de confirmação ao pausar.
-  private lancamentosFuturosPorRecorrente = new Map<number, number>();
 
   ngOnInit(): void {
     this.categoriaService.listarVisiveis().subscribe({
@@ -113,8 +64,6 @@ export class GastosRecorrentesComponent implements OnInit {
       next: (subcategorias) => { this.subcategoriasPorId = new Map(subcategorias.map((s) => [s.id!, s])); },
       error: () => { /* usado só pro nome na listagem */ }
     });
-    this.carregar();
-    this.carregarParceladas();
     this.carregarCalendario();
   }
 
@@ -123,284 +72,16 @@ export class GastosRecorrentesComponent implements OnInit {
     this.erroCalendario = false;
     this.gastoService.listarTodos().subscribe({
       next: (gastos) => {
-        this.calendario = this.agruparProximasContas(gastos);
-        this.mesesVisiveis = this.INCREMENTO_MESES;
-        this.atualizarJanelaCalendario();
-        this.recalcularLancamentosFuturos(gastos);
+        const hoje = hojeIso();
+        this.calendario = agruparProximasContas(gastos, hoje);
+        this.lancamentosFuturosPorRecorrente = contarLancamentosFuturosPorRecorrente(gastos, hoje);
         this.carregandoCalendario = false;
       },
       error: () => {
         this.calendario = [];
-        this.atualizarJanelaCalendario();
         this.carregandoCalendario = false;
         this.erroCalendario = true;
       }
-    });
-  }
-
-  // Recorta calendario na janela atual e recalcula quanto ainda falta. Os meses
-  // revelados entram DEPOIS do botão (que fica no fim da lista), então a rolagem
-  // não pula: o conteúdo acima do ponto de scroll não muda, o botão só desce.
-  private atualizarJanelaCalendario(): void {
-    this.calendarioVisivel = this.calendario.slice(0, this.mesesVisiveis);
-    this.mesesRestantes = Math.max(0, this.calendario.length - this.mesesVisiveis);
-    this.proximoBloco = Math.min(this.INCREMENTO_MESES, this.mesesRestantes);
-  }
-
-  verMaisMeses(): void {
-    this.mesesVisiveis += this.INCREMENTO_MESES;
-    this.atualizarJanelaCalendario();
-  }
-
-  verTodosOsMeses(): void {
-    this.mesesVisiveis = this.calendario.length;
-    this.atualizarJanelaCalendario();
-  }
-
-  // Gastos futuros (data >= hoje) que vieram de uma recorrência ou de uma compra
-  // parcelada, agrupados por mês em ordem cronológica, com o total de cada mês.
-  private agruparProximasContas(gastos: Gasto[]): GrupoMesCalendario[] {
-    const hoje = this.hojeIso();
-    const futuros = gastos
-      .filter((g) => g.data >= hoje && (g.gastoRecorrenteId != null || g.compraParceladaId != null))
-      .sort((a, b) => a.data.localeCompare(b.data));
-
-    const grupos = new Map<string, GrupoMesCalendario>();
-    for (const gasto of futuros) {
-      const chave = gasto.data.slice(0, 7);
-      let grupo = grupos.get(chave);
-      if (!grupo) {
-        grupo = { chave, rotulo: this.rotuloMes(chave), total: 0, itens: [] };
-        grupos.set(chave, grupo);
-      }
-      grupo.total += gasto.valor;
-      grupo.itens.push({
-        data: gasto.data,
-        descricao: gasto.descricao,
-        valor: gasto.valor,
-        origem: gasto.compraParceladaId != null ? 'parcela' : 'recorrente'
-      });
-    }
-    return [...grupos.values()];
-  }
-
-  // Conta, por recorrência, os gastos com data >= hoje já vinculados a ela (os
-  // pré-gerados pelo horizonte "gerar próximos meses"). Reusa a lista que
-  // carregarCalendario já baixou - sem request novo.
-  private recalcularLancamentosFuturos(gastos: Gasto[]): void {
-    const hoje = this.hojeIso();
-    const mapa = new Map<number, number>();
-    for (const gasto of gastos) {
-      if (gasto.gastoRecorrenteId != null && gasto.data >= hoje) {
-        mapa.set(gasto.gastoRecorrenteId, (mapa.get(gasto.gastoRecorrenteId) ?? 0) + 1);
-      }
-    }
-    this.lancamentosFuturosPorRecorrente = mapa;
-  }
-
-  lancamentosFuturos(recorrenteId: number | undefined): number {
-    return recorrenteId != null ? (this.lancamentosFuturosPorRecorrente.get(recorrenteId) ?? 0) : 0;
-  }
-
-  // Quantas parcelas a compra tem hoje (do backend, contagem agregada). Sem o dado,
-  // assume completo pra não sinalizar falso.
-  parcelasLancadas(parcelada: CompraParcelada): number {
-    return parcelada.parcelasLancadas ?? parcelada.numeroParcelas;
-  }
-
-  parcelamentoIncompleto(parcelada: CompraParcelada): boolean {
-    return parcelada.parcelasLancadas != null && parcelada.parcelasLancadas < parcelada.numeroParcelas;
-  }
-
-  private hojeIso(): string {
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    const dia = String(hoje.getDate()).padStart(2, '0');
-    return `${ano}-${mes}-${dia}`;
-  }
-
-  private rotuloMes(chave: string): string {
-    const [ano, mes] = chave.split('-').map(Number);
-    return `${MESES_NOMES[mes - 1]} de ${ano}`;
-  }
-
-  formatarDiaMes(data: string): string {
-    const [, mes, dia] = data.split('-');
-    return `${dia}/${mes}`;
-  }
-
-  carregar(): void {
-    this.carregando = true;
-    this.erro = false;
-    this.service.listarTodos().subscribe({
-      next: (recorrentes) => {
-        this.recorrentes = recorrentes;
-        this.carregando = false;
-      },
-      error: () => {
-        this.recorrentes = [];
-        this.carregando = false;
-        this.erro = true;
-      }
-    });
-  }
-
-  carregarParceladas(): void {
-    this.carregandoParceladas = true;
-    this.erroParceladas = false;
-    this.parceladaService.listarTodos().subscribe({
-      next: (parceladas) => {
-        this.parceladas = parceladas;
-        this.carregandoParceladas = false;
-      },
-      error: () => {
-        this.parceladas = [];
-        this.carregandoParceladas = false;
-        this.erroParceladas = true;
-      }
-    });
-  }
-
-  excluirParcelada(parcelada: CompraParcelada): void {
-    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
-      data: {
-        titulo: 'Excluir compra parcelada',
-        mensagem: `Tem certeza que deseja excluir "${parcelada.descricao}"? A compra é removida por completo (ação `
-          + 'definitiva, sem reativar) - as parcelas já vencidas (data igual ou anterior a hoje) continuam na '
-          + 'listagem de Gastos como histórico, só as parcelas futuras são removidas.'
-      }
-    });
-    ref.afterClosed().subscribe((confirmado) => {
-      if (!confirmado) {
-        return;
-      }
-      this.parceladaService.excluir(parcelada.id!).subscribe({
-        next: () => {
-          this.notificacao.sucesso('Compra parcelada excluída com sucesso!');
-          this.carregarParceladas();
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
-    });
-  }
-
-  categoriaLabel(categoriaId: number): string {
-    const categoria = this.categoriasPorId.get(categoriaId);
-    return categoria ? `${categoria.emoji} ${categoria.nome}` : '';
-  }
-
-  subcategoriaLabel(subcategoriaId: number | null | undefined): string {
-    return subcategoriaId ? (this.subcategoriasPorId.get(subcategoriaId)?.nome ?? '') : '';
-  }
-
-  novoRecorrente(): void {
-    const ref = this.dialog.open<GastoRecorrenteFormDialogComponent, GastoRecorrenteFormDialogData, GastoRecorrente>(
-      GastoRecorrenteFormDialogComponent,
-      { data: { recorrente: null }, width: '480px', maxWidth: '95vw' }
-    );
-    ref.afterClosed().subscribe((resultado) => {
-      if (!resultado) {
-        return;
-      }
-      this.service.cadastrar(resultado).subscribe({
-        next: () => {
-          this.notificacao.sucesso('Gasto recorrente cadastrado com sucesso!');
-          this.carregar();
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
-    });
-  }
-
-  editar(recorrente: GastoRecorrente): void {
-    const ref = this.dialog.open<GastoRecorrenteFormDialogComponent, GastoRecorrenteFormDialogData, GastoRecorrente>(
-      GastoRecorrenteFormDialogComponent,
-      { data: { recorrente }, width: '480px', maxWidth: '95vw' }
-    );
-    ref.afterClosed().subscribe((resultado) => {
-      if (!resultado) {
-        return;
-      }
-      this.service.atualizar(recorrente.id!, resultado).subscribe({
-        next: () => {
-          this.notificacao.sucesso('Gasto recorrente atualizado com sucesso!');
-          this.carregar();
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
-    });
-  }
-
-  alternarAtivo(recorrente: GastoRecorrente): void {
-    // Reativar é inócuo (volta a gerar daqui pra frente); pausar tem uma
-    // consequência que o chip sozinho não comunica, então confirma antes.
-    if (recorrente.ativo) {
-      this.confirmarPausa(recorrente);
-    } else {
-      this.executarAlternarAtivo(recorrente);
-    }
-  }
-
-  private confirmarPausa(recorrente: GastoRecorrente): void {
-    const futuros = this.lancamentosFuturos(recorrente.id);
-    const consequencia = futuros === 0
-      ? 'Nenhum lançamento futuro foi pré-gerado ainda, então nada muda nas outras telas. Para encerrar de '
-        + 'vez, use Excluir (que mantém o histórico dos meses passados).'
-      : (futuros === 1
-          ? 'Há 1 lançamento futuro já gerado (de hoje em diante) que continua'
-          : `Há ${futuros} lançamentos futuros já gerados (de hoje em diante) que continuam`)
-        + ' na lista de Gastos, no Dashboard e em "Próximas contas" - pausar não remove '
-        + (futuros === 1 ? 'esse lançamento' : 'nenhum deles')
-        + '. Para remover também os lançamentos futuros, use Excluir, que apaga os lançamentos a partir de hoje '
-        + 'e mantém o histórico dos meses passados.';
-    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
-      data: {
-        titulo: 'Pausar recorrência',
-        mensagem: `Pausar "${recorrente.descricao}" só impede a geração de NOVOS lançamentos daqui pra frente. `
-          + consequencia
-      }
-    });
-    ref.afterClosed().subscribe((confirmado) => {
-      if (confirmado) {
-        this.executarAlternarAtivo(recorrente);
-      }
-    });
-  }
-
-  private executarAlternarAtivo(recorrente: GastoRecorrente): void {
-    this.service.alternarAtivo(recorrente.id!).subscribe({
-      next: (atualizado) => {
-        this.notificacao.sucesso(atualizado.ativo ? 'Recorrência reativada.' : 'Recorrência pausada.');
-        this.carregar();
-        // reativar pode lançar o gasto do mês corrente; recarrega o contador e a
-        // aba "Próximas contas" pra refletir na hora.
-        this.carregarCalendario();
-      },
-      error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-    });
-  }
-
-  excluir(recorrente: GastoRecorrente): void {
-    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
-      data: {
-        titulo: 'Excluir gasto recorrente',
-        mensagem: `Tem certeza que deseja excluir a recorrência "${recorrente.descricao}"? `
-          + 'Os gastos de meses passados continuam intactos como histórico, mas os gastos a partir de hoje '
-          + '(incluindo os já pré-gerados de meses futuros que ainda não venceram) serão removidos.'
-      }
-    });
-    ref.afterClosed().subscribe((confirmado) => {
-      if (!confirmado) {
-        return;
-      }
-      this.service.excluir(recorrente.id!).subscribe({
-        next: () => {
-          this.notificacao.sucesso('Gasto recorrente excluído com sucesso!');
-          this.carregar();
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
     });
   }
 }

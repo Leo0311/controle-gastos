@@ -1,0 +1,64 @@
+/* Cartões de item das abas "Recorrentes" e "Parceladas" (achado M8). As duas
+   listas têm o mesmo layout de cartão; incluído via styleUrls nos dois
+   componentes. Detalhes específicos de cada aba (chips de estado, selo de
+   parcelamento incompleto) ficam no CSS do próprio componente. */
+
+.lista-recorrentes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-recorrente {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  background: var(--fundo-superficie);
+  /* borda + sombra: a sombra some no fundo escuro, a borda garante a separação
+     dos itens nos dois temas (mesmo tratamento dos cartões de Gastos/Orçamentos). */
+  border: 1px solid var(--divisor-sutil);
+  box-shadow: var(--sombra-cartao);
+}
+
+.item-recorrente.pausado {
+  opacity: 0.65;
+}
+
+.info-recorrente {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.linha-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.descricao {
+  font-weight: 500;
+}
+
+.linha-detalhes {
+  font-size: 13px;
+  color: var(--texto-secundario);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.separador {
+  color: var(--texto-terciario);
+}
+
+@media (max-width: 599px) {
+  .item-recorrente {
+    align-items: flex-start;
+  }
+}

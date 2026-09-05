@@ -1,0 +1,22 @@
+/* Estilos comuns às 3 abas de Recorrentes/Parceladas/Próximas contas (achado M8:
+   o componente único virou 3). Incluído via styleUrls em cada componente-aba. */
+
+.cabecalho-aba {
+  display: flex;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.dica-aba {
+  margin: 0;
+  font-size: 13px;
+  color: var(--texto-secundario);
+}
+
+.carregando {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  padding: 32px;
+}

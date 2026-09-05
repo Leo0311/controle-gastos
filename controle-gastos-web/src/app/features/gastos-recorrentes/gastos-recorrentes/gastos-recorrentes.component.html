@@ -2,195 +2,27 @@
 
 <mat-tab-group appAbasArrastaveis>
   <mat-tab label="Recorrentes">
-    <div class="cabecalho-aba">
-      <button mat-raised-button color="primary" (click)="novoRecorrente()">
-        <mat-icon>add</mat-icon>
-        Novo gasto recorrente
-      </button>
-    </div>
-
-    @if (carregando) {
-      <div class="carregando">
-        <mat-spinner diameter="40"></mat-spinner>
-      </div>
-    } @else if (erro) {
-      <app-erro-carregamento oQue="os gastos recorrentes" (tentarNovamente)="carregar()"></app-erro-carregamento>
-    } @else if (recorrentes.length === 0) {
-      <app-empty-state icon="autorenew" mensagem="Nenhum gasto recorrente cadastrado."></app-empty-state>
-    } @else {
-      <div class="lista-recorrentes">
-        @for (recorrente of recorrentes; track recorrente.id) {
-          <div class="item-recorrente" [class.pausado]="!recorrente.ativo">
-            <div class="info-recorrente">
-              <div class="linha-titulo">
-                <span class="descricao">{{ recorrente.descricao }}</span>
-                @if (recorrente.ativo) {
-                  <mat-chip class="chip-ativo">Ativo</mat-chip>
-                } @else {
-                  <mat-chip class="chip-pausado">Pausado</mat-chip>
-                }
-              </div>
-              <div class="linha-detalhes">
-                <span>{{ categoriaLabel(recorrente.categoriaId) }}</span>
-                @if (recorrente.subcategoriaId) {
-                  <span> / {{ subcategoriaLabel(recorrente.subcategoriaId) }}</span>
-                }
-                <span class="separador">·</span>
-                <span>{{ recorrente.valor | currency:'BRL' }}</span>
-                <span class="separador">·</span>
-                <span>Todo dia {{ recorrente.diaDoMes }}</span>
-              </div>
-              @if (!recorrente.ativo) {
-                <div class="linha-estado-pausado">
-                  Sem novos lançamentos
-                  @if (lancamentosFuturos(recorrente.id) > 0) {
-                    · {{ lancamentosFuturos(recorrente.id) }} lançamento{{ lancamentosFuturos(recorrente.id) > 1 ? 's' : '' }} futuro{{ lancamentosFuturos(recorrente.id) > 1 ? 's' : '' }} já gerado{{ lancamentosFuturos(recorrente.id) > 1 ? 's' : '' }}
-                  }
-                </div>
-              }
-            </div>
-
-            <button mat-icon-button [matMenuTriggerFor]="menuAcoes" aria-label="Mais ações">
-              <mat-icon>more_vert</mat-icon>
-            </button>
-            <mat-menu #menuAcoes="matMenu">
-              <button mat-menu-item (click)="editar(recorrente)">
-                <mat-icon>edit</mat-icon>
-                <span>Editar</span>
-              </button>
-              <button mat-menu-item (click)="alternarAtivo(recorrente)">
-                <mat-icon>{{ recorrente.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
-                <span>{{ recorrente.ativo ? 'Pausar' : 'Reativar' }}</span>
-              </button>
-              <button mat-menu-item (click)="excluir(recorrente)">
-                <mat-icon color="warn">delete</mat-icon>
-                <span>Excluir</span>
-              </button>
-            </mat-menu>
-          </div>
-        }
-      </div>
-    }
+    <app-recorrentes-lista
+      [categoriasPorId]="categoriasPorId"
+      [subcategoriasPorId]="subcategoriasPorId"
+      [lancamentosFuturosPorRecorrente]="lancamentosFuturosPorRecorrente"
+      (recorrenciaAlternada)="carregarCalendario()">
+    </app-recorrentes-lista>
   </mat-tab>
 
   <mat-tab label="Parceladas">
-    <div class="cabecalho-aba">
-      <p class="dica-aba">
-        Compras parceladas são cadastradas pelo formulário de novo gasto, na opção "Parcelar compra".
-      </p>
-    </div>
-
-    @if (carregandoParceladas) {
-      <div class="carregando">
-        <mat-spinner diameter="40"></mat-spinner>
-      </div>
-    } @else if (erroParceladas) {
-      <app-erro-carregamento oQue="as compras parceladas" (tentarNovamente)="carregarParceladas()"></app-erro-carregamento>
-    } @else if (parceladas.length === 0) {
-      <app-empty-state icon="credit_card" mensagem="Nenhuma compra parcelada cadastrada."></app-empty-state>
-    } @else {
-      <div class="lista-recorrentes">
-        @for (parcelada of parceladas; track parcelada.id) {
-          <div class="item-recorrente">
-            <div class="info-recorrente">
-              <div class="linha-titulo">
-                <span class="descricao">{{ parcelada.descricao }}</span>
-              </div>
-              <div class="linha-detalhes">
-                <span>{{ categoriaLabel(parcelada.categoriaId) }}</span>
-                @if (parcelada.subcategoriaId) {
-                  <span> / {{ subcategoriaLabel(parcelada.subcategoriaId) }}</span>
-                }
-                <span class="separador">·</span>
-                <span>{{ parcelada.valorTotal | currency:'BRL' }} em {{ parcelada.numeroParcelas }}x</span>
-                <span class="separador">·</span>
-                <span>Todo dia {{ parcelada.diaDoMes }}</span>
-              </div>
-              <div class="linha-detalhes">
-                @if (parcelamentoIncompleto(parcelada)) {
-                  <span class="parcelas-incompletas" role="status">
-                    <mat-icon inline>warning</mat-icon>
-                    {{ parcelasLancadas(parcelada) }} de {{ parcelada.numeroParcelas }} parcelas — uma foi removida
-                  </span>
-                } @else {
-                  <span>{{ parcelasLancadas(parcelada) }} de {{ parcelada.numeroParcelas }} parcelas</span>
-                }
-              </div>
-            </div>
-
-            <button mat-icon-button (click)="excluirParcelada(parcelada)" aria-label="Excluir compra parcelada" title="Excluir">
-              <mat-icon color="warn">delete</mat-icon>
-            </button>
-          </div>
-        }
-      </div>
-    }
+    <app-parceladas-lista
+      [categoriasPorId]="categoriasPorId"
+      [subcategoriasPorId]="subcategoriasPorId">
+    </app-parceladas-lista>
   </mat-tab>
 
   <mat-tab label="Próximas contas">
-    <div class="cabecalho-aba">
-      <p class="dica-aba">
-        Lançamentos futuros (a partir de hoje) que já vieram de um gasto recorrente (🔁) ou de uma compra parcelada (💳),
-        agrupados por mês.
-      </p>
-    </div>
-
-    @if (carregandoCalendario) {
-      <div class="carregando">
-        <mat-spinner diameter="40"></mat-spinner>
-      </div>
-    } @else if (erroCalendario) {
-      <app-erro-carregamento oQue="as próximas contas" (tentarNovamente)="carregarCalendario()"></app-erro-carregamento>
-    } @else if (calendario.length === 0) {
-      <app-empty-state icon="event" mensagem="Nenhuma conta futura de recorrentes ou parcelas."></app-empty-state>
-    } @else {
-      <!-- Um mat-expansion-panel por mês (mesmo padrão do ranking de Análises): o
-           cabeçalho com nome do mês + total fica sempre visível; a lista de
-           lançamentos abre/fecha ao clicar. O 1º mês (mais próximo) já abre
-           expandido; os demais começam colapsados. -->
-      <mat-accordion class="lista-calendario" multi>
-        @for (grupo of calendarioVisivel; track grupo.chave; let primeiro = $first) {
-          <mat-expansion-panel class="grupo-mes" [expanded]="primeiro">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                <span class="cabecalho-mes">
-                  <span class="nome-mes">{{ grupo.rotulo }}</span>
-                  <span class="total-mes">{{ grupo.total | currency:'BRL' }}</span>
-                </span>
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-
-            <div class="itens-mes">
-              @for (item of grupo.itens; track $index) {
-                <div class="item-calendario">
-                  <span class="data-item">{{ formatarDiaMes(item.data) }}</span>
-                  <span class="icone-origem" [title]="item.origem === 'parcela' ? 'Parcela' : 'Recorrente'">
-                    {{ item.origem === 'parcela' ? '💳' : '🔁' }}
-                  </span>
-                  <span class="descricao-item">{{ item.descricao }}</span>
-                  <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
-                </div>
-              }
-            </div>
-          </mat-expansion-panel>
-        }
-      </mat-accordion>
-
-      @if (mesesRestantes > 0) {
-        <div class="ver-mais-meses">
-          <button mat-stroked-button type="button" (click)="verMaisMeses()">
-            Ver mais {{ proximoBloco }} {{ proximoBloco === 1 ? 'mês' : 'meses' }}
-          </button>
-          <!-- Só quando ainda faltaria mais de um clique: aí o "Ver tudo" também
-               serve de indicador de quanto falta, sem virar um segundo botão
-               concorrendo no caso comum (parcelada curta, poucos meses a mais). -->
-          @if (mesesRestantes > proximoBloco) {
-            <button mat-button type="button" (click)="verTodosOsMeses()">
-              Ver tudo (mais {{ mesesRestantes }} meses)
-            </button>
-          }
-        </div>
-      }
-    }
+    <app-proximas-contas
+      [calendario]="calendario"
+      [carregando]="carregandoCalendario"
+      [erro]="erroCalendario"
+      (tentarNovamente)="carregarCalendario()">
+    </app-proximas-contas>
   </mat-tab>
 </mat-tab-group>
