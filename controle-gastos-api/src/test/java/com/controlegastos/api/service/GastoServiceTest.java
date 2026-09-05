@@ -23,11 +23,13 @@ import static org.mockito.Mockito.when;
 /**
  * Proteções de GastoService para parcela de compra parcelada: não pode ser apagada
  * isolada (excluir), e descrição/valor/data não podem ser alterados (atualizar) -
- * Mockito puro.
+ * Mockito puro. Também cobre a janela de data de validar() (achado R1 da auditoria
+ * 2026-09-05).
  */
 class GastoServiceTest {
 
     private static final int USUARIO = 1;
+    private static final int CATEGORIA = 1;
 
     private final GastoRepository repository = mock(GastoRepository.class);
     private final OrcamentoRepository orcamentoRepository = mock(OrcamentoRepository.class);
@@ -36,6 +38,73 @@ class GastoServiceTest {
 
     private final GastoService service = new GastoService(
             repository, orcamentoRepository, categoriaRepository, subcategoriaRepository);
+
+    private Gasto gastoValido(LocalDate data) {
+        Gasto gasto = new Gasto();
+        gasto.setDescricao("Gasto de teste");
+        gasto.setValor(new BigDecimal("10.00"));
+        gasto.setCategoriaId(CATEGORIA);
+        gasto.setData(data);
+        return gasto;
+    }
+
+    private void stubCategoriaValida() {
+        Categoria categoria = new Categoria();
+        categoria.setId(CATEGORIA);
+        categoria.setNome("Categoria de teste");
+        when(categoriaRepository.findByIdVisivel(CATEGORIA, USUARIO)).thenReturn(Optional.of(categoria));
+        when(repository.save(any(Gasto.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+    }
+
+    @Test
+    void cadastrar_rejeitaDataMaisDeCemAnosNoPassado() {
+        stubCategoriaValida();
+        Gasto gasto = gastoValido(LocalDate.now().minusYears(100).minusDays(1));
+
+        assertThatThrownBy(() -> service.cadastrar(gasto, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("anos atrás");
+    }
+
+    @Test
+    void cadastrar_rejeitaDataMaisDeQuinzeAnosNoFuturo() {
+        stubCategoriaValida();
+        Gasto gasto = gastoValido(LocalDate.now().plusYears(15).plusDays(1));
+
+        assertThatThrownBy(() -> service.cadastrar(gasto, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no futuro");
+    }
+
+    @Test
+    void cadastrar_aceitaDataNoLimiteExatoDaJanela() {
+        stubCategoriaValida();
+
+        assertThat(service.cadastrar(gastoValido(LocalDate.now().minusYears(100)), USUARIO)).isNotNull();
+        assertThat(service.cadastrar(gastoValido(LocalDate.now().plusYears(15)), USUARIO)).isNotNull();
+    }
+
+    @Test
+    void cadastrar_aceitaDataNull_recebeDefaultDeHojeDepoisDeValidar() {
+        stubCategoriaValida();
+
+        Gasto salvo = service.cadastrar(gastoValido(null), USUARIO);
+
+        assertThat(salvo.getData()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void cadastrar_aceitaDataNoLimiteDoPiorCasoDeUmaCompraParcelada() {
+        // CompraParceladaService permite 1ª parcela até 2 meses no futuro e até 120
+        // parcelas mensais - a ÚLTIMA parcela de uma compra legítima no limite cai em
+        // hoje + 2 + 119 = hoje + 121 meses. A janela de GastoService.validar() (15
+        // anos = 180 meses) precisa cobrir isso com folga, senão quebraria uma compra
+        // parcelada válida - exatamente o conflito que a auditoria pediu pra evitar.
+        stubCategoriaValida();
+        Gasto ultimaParcelaDoPiorCaso = gastoValido(LocalDate.now().plusMonths(121));
+
+        assertThat(service.cadastrar(ultimaParcelaDoPiorCaso, USUARIO)).isNotNull();
+    }
 
     @Test
     void excluir_rejeitaParcelaDeCompraParceladaSemApagarNada() {

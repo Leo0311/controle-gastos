@@ -43,6 +43,19 @@ public class GastoService {
     private final CategoriaRepository categoriaRepository;
     private final SubcategoriaRepository subcategoriaRepository;
 
+    // validar() é compartilhado por TODO gasto que chega no banco - avulso
+    // (cadastrar), vinculado a recorrência (cadastrarVinculadoARecorrente) e cada
+    // parcela de uma compra parcelada (salvarParcelas chama validar por parcela).
+    // Por isso a janela aqui não pode ser a mesma (12 meses passado / 2 futuro) de
+    // CompraParceladaService.validar: aquela vale só pra DATA DA 1ª PARCELA: com até
+    // 120 parcelas mensais a partir dela, a ÚLTIMA parcela de uma compra parcelada
+    // legítima pode cair até ~121 meses (~10 anos) no futuro. Esta janela só existe
+    // pra pegar erro de digitação grosseiro (ano 999999999 quebrando o tipo DATE do
+    // Postgres) - auditoria 2026-09, achado R1 - sem barrar nem parcela longa nem
+    // registro de dívida antiga (histórico legado permitido de propósito).
+    private static final int GASTO_ANOS_PASSADO_MAXIMO = 100;
+    private static final int GASTO_ANOS_FUTURO_MAXIMO = 15;
+
     public List<Gasto> listarTodos(Integer usuarioId) {
         return repository.findAllByUsuarioIdOrderByDataDescIdDesc(usuarioId);
     }
@@ -329,6 +342,19 @@ public class GastoService {
         }
         if (gasto.getCategoriaId() == null) {
             throw new IllegalArgumentException("Categoria não pode ser vazia.");
+        }
+        // gasto.getData() pode vir null aqui - salvar()/salvarParcelas() só aplicam o
+        // default (hoje) DEPOIS de validar(); nesse caso não há data pra checar ainda.
+        if (gasto.getData() != null) {
+            LocalDate hoje = LocalDate.now();
+            if (gasto.getData().isBefore(hoje.minusYears(GASTO_ANOS_PASSADO_MAXIMO))) {
+                throw new IllegalArgumentException(
+                        "Data do gasto não pode ser anterior a " + GASTO_ANOS_PASSADO_MAXIMO + " anos atrás.");
+            }
+            if (gasto.getData().isAfter(hoje.plusYears(GASTO_ANOS_FUTURO_MAXIMO))) {
+                throw new IllegalArgumentException(
+                        "Data do gasto não pode ser mais de " + GASTO_ANOS_FUTURO_MAXIMO + " anos no futuro.");
+            }
         }
     }
 }
