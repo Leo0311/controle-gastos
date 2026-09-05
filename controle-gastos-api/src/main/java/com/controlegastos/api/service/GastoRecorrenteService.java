@@ -12,6 +12,7 @@ import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -160,6 +161,10 @@ public class GastoRecorrenteService {
         gasto.setGastoRecorrenteId(recorrente.getId());
         try {
             gastoService.cadastrarVinculadoARecorrente(gasto, usuarioId);
+        } catch (DataIntegrityViolationException e) {
+            // uq_gastos_recorrente_mes: outra requisição concorrente (duas abas, dois
+            // lançamentos automáticos ao mesmo tempo) já inseriu o gasto deste mês
+            // entre a checagem acima e este insert - a corrida perdeu, não é erro.
         } catch (RuntimeException e) {
             // uma recorrência com problema (ex: orçamento vinculado foi excluído depois)
             // não deve travar a pré-geração dos outros meses
@@ -196,6 +201,10 @@ public class GastoRecorrenteService {
         gasto.setGastoRecorrenteId(recorrente.getId());
         try {
             return Optional.of(gastoService.cadastrarVinculadoARecorrente(gasto, usuarioId));
+        } catch (DataIntegrityViolationException e) {
+            // uq_gastos_recorrente_mes: outra requisição concorrente já lançou o gasto
+            // deste mês entre a checagem acima e este insert - a corrida perdeu, não é erro.
+            return Optional.empty();
         } catch (RuntimeException e) {
             return Optional.empty();
         }

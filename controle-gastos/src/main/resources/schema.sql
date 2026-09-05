@@ -263,6 +263,23 @@ CREATE INDEX IF NOT EXISTS idx_gastos_recorrentes_usuario ON gastos_recorrentes 
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS gasto_recorrente_id INT REFERENCES gastos_recorrentes(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_gastos_gasto_recorrente ON gastos (gasto_recorrente_id);
 
+-- Trava no banco a idempotência que GastoRecorrenteService já tentava garantir na
+-- aplicação (existsByGastoRecorrenteIdAndDataBetween antes do insert). Duas
+-- requisições concorrentes (duas abas, dois lançamentos automáticos disparados ao
+-- mesmo tempo) podiam passar pela checagem antes de qualquer uma commitar e gerar
+-- dois gastos pro mesmo mês da mesma recorrência - auditoria de 2026-09, achado M1.
+-- Verificado em produção antes de criar o índice: nenhum duplicado existente
+-- (senão o CREATE UNIQUE INDEX falharia). WHERE ... IS NOT NULL: só recorrências
+-- geram esse tipo de lançamento automático - um gasto avulso comum não tem
+-- gasto_recorrente_id e não deve concorrer com nada aqui. O cast ::timestamp é
+-- necessário: date_trunc(text, date) não existe como overload própria, e sem o
+-- cast explícito o Postgres resolve pra date_trunc(text, timestamptz) - que
+-- depende do fuso da sessão (STABLE, não IMMUTABLE) e por isso é rejeitada em
+-- expressão de índice ("functions in index expression must be marked IMMUTABLE").
+CREATE UNIQUE INDEX IF NOT EXISTS uq_gastos_recorrente_mes
+    ON gastos (gasto_recorrente_id, date_trunc('month', data::timestamp))
+    WHERE gasto_recorrente_id IS NOT NULL;
+
 -- ============================================================================
 -- Compras parceladas: ao cadastrar, gera IMEDIATAMENTE todas as parcelas como
 -- gastos individuais, uma por mês consecutivo a partir do mês atual, no dia
