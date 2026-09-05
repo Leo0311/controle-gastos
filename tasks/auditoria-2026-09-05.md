@@ -235,6 +235,20 @@ importação legítima).
 
 ### M3 — Duas cópias fazem drift de validação: janela de data e nº de parcelas
 
+> **Status: ✅ Resolvido em 2026-09-05.** Feito como o "como corrigir" propõe:
+> os quatro números (`PARCELAS_MIN` 2, `PARCELAS_MAX` 120,
+> `PRIMEIRA_PARCELA_MESES_ATRAS_MAX` 12, `PRIMEIRA_PARCELA_MESES_FRENTE_MAX` 2)
+> viraram constantes públicas em `CompraParceladaService` (usadas por `validar()`)
+> e são expostas por **`GET /api/config`** → `{compraParcelada: {...}}`
+> (autenticado, igual pra todos). No frontend, `ConfigService` (signal + fallback
+> = valores atuais) busca uma vez por sessão; o `gasto-form-dialog` monta os
+> `Validators.min/max` de nº de parcelas e o `[min]`/`[max]` do datepicker a
+> partir disso, e os textos de erro/dica interpolam os números. Mudou o backend →
+> o frontend acompanha na sessão seguinte, sem redeploy dele. +1 teste amarrando
+> `limites()` ao que `validar()` aplica (161 no total); verificado no navegador
+> (endpoint, validação de 121/1 parcelas, janela de data). **API precisa de
+> redeploy manual na VM.**
+
 **Onde:** `controle-gastos-api/.../service/CompraParceladaService.java` (`validar`,
 linha ~167) e `controle-gastos-web/.../gasto-form-dialog.component.ts` (linhas
 ~96–103 e 248) — mesma janela de 12 meses atrás / 2 meses à frente, e o mesmo
@@ -629,7 +643,7 @@ Pra não deixar por omissão, como pedido:
 | 1. Segurança | 3 (R1 ✅, R2 ✅, R4 ✅) | 2 (M1 ✅, M2) | 0 | 5 |
 | 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1 ✅) | 2 |
 | 3. Robustez | 0 | 3 (M1 ✅*, M6, M7 ✅) | 0 | 3 |
-| 4. Qualidade de código | 0 | 2 (M5 ✅, M8) | 1 (C2) | 3 |
+| 4. Qualidade de código | 0 | 3 (M3 ✅, M5 ✅, M8) | 1 (C2) | 4 |
 | 5. Cobertura de teste | 0 | 1 (M4 ✅) | 0 | 1 |
 | **Total (achados únicos)** | **5** | **8** | **2** | **14** |
 
@@ -637,13 +651,14 @@ Pra não deixar por omissão, como pedido:
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
 também citado no topo) — contado uma vez só no total.
 
-**Status em 2026-09-05: 9 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M4, M5,
-M7, C1 — primeira leva de correções, a bateria de testes de service
+**Status em 2026-09-05: 10 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M3, M4,
+M5, M7, C1 — primeira leva de correções, a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
 `SubcategoriaServiceTest`), a paginação de `GET /api/gastos`, a regex de e-mail
-no cadastro, o log padronizado de falha de SMTP e a extração dos helpers
-duplicados do frontend pra `core/`; tudo implementado e testado; suíte de backend
-44 → 160 testes; ver o status em cada achado acima). Faltam: M2, M3, M6, M8, C2.
+no cadastro, o log padronizado de falha de SMTP, a extração dos helpers
+duplicados do frontend pra `core/` e o `GET /api/config` que tira o drift de
+limites do parcelamento; tudo implementado e testado; suíte de backend
+44 → 161 testes; ver o status em cada achado acima). Faltam: M2, M6, M8, C2.
 
 ## Se fosse minha decisão
 
@@ -662,6 +677,7 @@ Nesta ordem:
 7. ~~**M7** (log padronizado de falha de SMTP no esqueci-senha)~~ — ✅ feito,
    versão mínima (o alerta de verdade fica com o monitoramento da VM).
 8. ~~**M5** (helpers duplicados do frontend → `core/`)~~ — ✅ feito.
-9. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez que
-   alguém precisar mexer no fluxo de importação — é a mudança mais arriscada da
-   lista e não tem urgência hoje. **M2, M3, M6, M8** seguem na fila.
+9. ~~**M3** (limites do parcelamento via `GET /api/config`)~~ — ✅ feito.
+10. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez
+    que alguém precisar mexer no fluxo de importação — é a mudança mais arriscada
+    da lista e não tem urgência hoje. **M2, M6, M8** seguem na fila.

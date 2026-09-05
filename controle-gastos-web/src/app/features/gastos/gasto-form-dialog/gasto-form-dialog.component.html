@@ -122,23 +122,23 @@
           <mat-error>Data da 1ª parcela é obrigatória.</mat-error>
         }
         @if (form.controls.dataPrimeiraParcela.hasError('matDatepickerMin')) {
-          <mat-error>A primeira parcela não pode ser há mais de 12 meses. Para uma compra mais antiga,
-            lance as parcelas passadas como gastos avulsos.</mat-error>
+          <mat-error>A primeira parcela não pode ser há mais de {{ mesesAtrasMax }} meses. Para uma compra
+            mais antiga, lance as parcelas passadas como gastos avulsos.</mat-error>
         }
         @if (form.controls.dataPrimeiraParcela.hasError('matDatepickerMax')) {
-          <mat-error>A primeira parcela não pode ser a mais de 2 meses no futuro.</mat-error>
+          <mat-error>A primeira parcela não pode ser a mais de {{ mesesFrenteMax }} meses no futuro.</mat-error>
         }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Número de parcelas</mat-label>
-        <input matInput type="number" min="2" max="120" formControlName="numeroParcelas">
-        <mat-hint>De 2 a 120 parcelas. O valor é dividido em partes iguais; a última é ajustada para a soma bater certinho.</mat-hint>
+        <input matInput type="number" [min]="parcelasMin" [max]="parcelasMax" formControlName="numeroParcelas">
+        <mat-hint>De {{ parcelasMin }} a {{ parcelasMax }} parcelas. O valor é dividido em partes iguais; a última é ajustada para a soma bater certinho.</mat-hint>
         @if (form.controls.numeroParcelas.hasError('required')) {
           <mat-error>Número de parcelas é obrigatório.</mat-error>
         }
         @if (form.controls.numeroParcelas.hasError('min') || form.controls.numeroParcelas.hasError('max')) {
-          <mat-error>Número de parcelas deve estar entre 2 e 120.</mat-error>
+          <mat-error>Número de parcelas deve estar entre {{ parcelasMin }} e {{ parcelasMax }}.</mat-error>
         }
       </mat-form-field>
     }

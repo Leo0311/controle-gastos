@@ -24,6 +24,8 @@ import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
+import { ConfigService } from '../../../services/config.service';
+import { CompraParceladaLimites } from '../../../models/config.model';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
 import { MascaraDataDirective } from '../../../shared/mascara-data.directive';
 import { definirHabilitado } from '../../../shared/form-utils';
@@ -86,6 +88,7 @@ export class GastoFormDialogComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly configService = inject(ConfigService);
 
   // Em telas pequenas, o datepicker abre em modo touch (calendário em tela cheia,
   // mais fácil de usar com o dedo) em vez do pequeno popup ancorado no input.
@@ -93,14 +96,17 @@ export class GastoFormDialogComponent implements OnInit {
     .pipe(map((resultado) => resultado.matches));
 
   readonly editando: boolean;
-  // Janela permitida para a data da 1ª parcela: 12 meses pra trás (compra antiga
-  // só agora registrada) e 2 meses pra frente (fat-finger de ano). Mesma janela
-  // validada no backend (CompraParceladaService.validar).
+  // Limites do parcelamento (janela da 1ª parcela, mín/máx de parcelas) vêm de
+  // GET /api/config - o backend é a autoridade e não há dois conjuntos de
+  // números pra divergir (achado M3). Começam nos padrões e são substituídos
+  // assim que o config carrega (ver aplicarLimites, chamado no construtor).
   private readonly hoje = new Date();
-  readonly minDataPrimeiraParcela =
-    new Date(this.hoje.getFullYear(), this.hoje.getMonth() - 12, this.hoje.getDate());
-  readonly maxDataPrimeiraParcela =
-    new Date(this.hoje.getFullYear(), this.hoje.getMonth() + 2, this.hoje.getDate());
+  mesesAtrasMax = 12;
+  mesesFrenteMax = 2;
+  parcelasMin = 2;
+  parcelasMax = 120;
+  minDataPrimeiraParcela!: Date;
+  maxDataPrimeiraParcela!: Date;
   // Editando uma parcela de compra parcelada: descrição, valor e data são
   // definidos pela compra e ficam travados (mudar quebraria o "(k/N)", a soma das
   // parcelas ou a sequência de meses). Categoria/subcategoria/orçamento seguem
@@ -155,6 +161,12 @@ export class GastoFormDialogComponent implements OnInit {
   ) {
     this.editando = !!data.gasto;
     this.ehParcela = !!data.gasto?.compraParceladaId;
+
+    // Puxa os limites do backend (uma vez por sessão) e aplica o snapshot atual
+    // já - se o GET ainda não voltou, são os padrões acima, que coincidem com o
+    // backend hoje; a próxima abertura do diálogo pega o valor real.
+    this.configService.garantirCarregado();
+    this.aplicarLimites(this.configService.limitesCompraParcelada());
     // Editando um gasto existente: respeita o vínculo já salvo (inclusive se estiver em branco)
     // em vez de forçar uma nova sugestão automática.
     this.escolhaManualOrcamento = this.editando;
@@ -244,10 +256,30 @@ export class GastoFormDialogComponent implements OnInit {
       const dataPrimeiraParcela = this.form.controls.dataPrimeiraParcela;
       dataPrimeiraParcela.setValidators(ativo ? [Validators.required] : []);
       dataPrimeiraParcela.updateValueAndValidity();
-      const numeroParcelas = this.form.controls.numeroParcelas;
-      numeroParcelas.setValidators(ativo ? [Validators.required, Validators.min(2), Validators.max(120)] : []);
-      numeroParcelas.updateValueAndValidity();
+      this.configurarValidadoresNumeroParcelas(!!ativo);
     });
+  }
+
+  private aplicarLimites(limites: CompraParceladaLimites): void {
+    this.parcelasMin = limites.parcelasMin;
+    this.parcelasMax = limites.parcelasMax;
+    this.mesesAtrasMax = limites.primeiraParcelaMesesAtrasMax;
+    this.mesesFrenteMax = limites.primeiraParcelaMesesFrenteMax;
+    const h = this.hoje;
+    this.minDataPrimeiraParcela = new Date(h.getFullYear(), h.getMonth() - this.mesesAtrasMax, h.getDate());
+    this.maxDataPrimeiraParcela = new Date(h.getFullYear(), h.getMonth() + this.mesesFrenteMax, h.getDate());
+    // Se o form já está no modo parcela, revalida com os limites novos.
+    if (this.form.controls.parcelado.value) {
+      this.configurarValidadoresNumeroParcelas(true);
+    }
+  }
+
+  private configurarValidadoresNumeroParcelas(ativo: boolean): void {
+    const controle = this.form.controls.numeroParcelas;
+    controle.setValidators(ativo
+      ? [Validators.required, Validators.min(this.parcelasMin), Validators.max(this.parcelasMax)]
+      : []);
+    controle.updateValueAndValidity();
   }
 
   private sincronizarHabilitacaoSubcategoria(categoriaId: number | null): void {

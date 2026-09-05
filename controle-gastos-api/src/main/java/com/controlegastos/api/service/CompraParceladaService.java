@@ -1,5 +1,6 @@
 package com.controlegastos.api.service;
 
+import com.controlegastos.api.dto.ConfigDTO;
 import com.controlegastos.api.exception.OrcamentoInvalidoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
@@ -29,12 +30,30 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompraParceladaService {
 
+    // Limites do parcelamento. Ficam aqui (dono da regra) e são expostos ao
+    // frontend por GET /api/config (ver ConfigController) pra não haver duas
+    // cópias dos mesmos números que podem divergir - achado M3 da auditoria
+    // 2026-09-05. Mudou aqui, o frontend acompanha sem novo deploy dele.
+    public static final int PARCELAS_MIN = 2;
+    public static final int PARCELAS_MAX = 120;
+    // Cadastro retroativo: 12 meses pra trás cobre o "esqueci de lançar" sem
+    // deixar um erro de digitação de ano criar gasto em 2019; 2 meses pra frente
+    // barra o fat-finger de ano no futuro.
+    public static final int PRIMEIRA_PARCELA_MESES_ATRAS_MAX = 12;
+    public static final int PRIMEIRA_PARCELA_MESES_FRENTE_MAX = 2;
+
     private final CompraParceladaRepository repository;
     private final GastoRepository gastoRepository;
     private final GastoService gastoService;
     private final CategoriaRepository categoriaRepository;
     private final SubcategoriaRepository subcategoriaRepository;
     private final OrcamentoRepository orcamentoRepository;
+
+    public ConfigDTO.CompraParceladaLimites limites() {
+        return new ConfigDTO.CompraParceladaLimites(
+                PARCELAS_MIN, PARCELAS_MAX,
+                PRIMEIRA_PARCELA_MESES_ATRAS_MAX, PRIMEIRA_PARCELA_MESES_FRENTE_MAX);
+    }
 
     public List<CompraParcelada> listarTodos(Integer usuarioId) {
         List<CompraParcelada> compras = repository.findAllByUsuarioIdOrderByDataCriacaoDesc(usuarioId);
@@ -174,8 +193,10 @@ public class CompraParceladaService {
         if (dados.getCategoriaId() == null) {
             throw new IllegalArgumentException("Categoria não pode ser vazia.");
         }
-        if (dados.getNumeroParcelas() == null || dados.getNumeroParcelas() < 2 || dados.getNumeroParcelas() > 120) {
-            throw new IllegalArgumentException("Número de parcelas deve estar entre 2 e 120.");
+        if (dados.getNumeroParcelas() == null
+                || dados.getNumeroParcelas() < PARCELAS_MIN || dados.getNumeroParcelas() > PARCELAS_MAX) {
+            throw new IllegalArgumentException(
+                    "Número de parcelas deve estar entre " + PARCELAS_MIN + " e " + PARCELAS_MAX + ".");
         }
         // Cada parcela precisa fechar em pelo menos 1 centavo - senão a divisão em
         // centavos (ver gerarParcelas) zera as parcelas base, o CHECK (valor > 0) do
@@ -189,18 +210,18 @@ public class CompraParceladaService {
         if (dados.getDataPrimeiraParcela() == null) {
             throw new IllegalArgumentException("Data da primeira parcela é obrigatória.");
         }
-        // Cadastro retroativo é permitido (compra antiga só agora registrada), mas
-        // limitado: 12 meses pra trás cobre o "esqueci de lançar" sem deixar um erro
-        // de digitação de ano criar gasto em 2019; 2 meses pra frente barra o
-        // fat-finger de ano no futuro. Mesma janela validada no frontend.
+        // Janela do cadastro retroativo/futuro - ver constantes acima. O frontend
+        // valida a mesma janela, com os números vindos de GET /api/config.
         LocalDate hoje = LocalDate.now();
-        if (dados.getDataPrimeiraParcela().isBefore(hoje.minusMonths(12))) {
+        if (dados.getDataPrimeiraParcela().isBefore(hoje.minusMonths(PRIMEIRA_PARCELA_MESES_ATRAS_MAX))) {
             throw new IllegalArgumentException(
-                    "A primeira parcela não pode ser há mais de 12 meses. Para uma compra mais antiga, "
-                    + "lance as parcelas passadas como gastos avulsos.");
+                    "A primeira parcela não pode ser há mais de " + PRIMEIRA_PARCELA_MESES_ATRAS_MAX
+                    + " meses. Para uma compra mais antiga, lance as parcelas passadas como gastos avulsos.");
         }
-        if (dados.getDataPrimeiraParcela().isAfter(hoje.plusMonths(2))) {
-            throw new IllegalArgumentException("A primeira parcela não pode ser a mais de 2 meses no futuro.");
+        if (dados.getDataPrimeiraParcela().isAfter(hoje.plusMonths(PRIMEIRA_PARCELA_MESES_FRENTE_MAX))) {
+            throw new IllegalArgumentException(
+                    "A primeira parcela não pode ser a mais de " + PRIMEIRA_PARCELA_MESES_FRENTE_MAX
+                    + " meses no futuro.");
         }
     }
 }

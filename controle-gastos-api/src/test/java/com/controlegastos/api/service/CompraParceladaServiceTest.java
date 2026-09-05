@@ -158,6 +158,23 @@ class CompraParceladaServiceTest {
     }
 
     @Test
+    void limites_exposToNoConfig_batemComOsLimitesQueValidarAplica() {
+        // Achado M3: os números que o frontend lê (GET /api/config) têm que ser os
+        // mesmos que validar() aplica - ambos vêm das constantes do service agora.
+        var limites = service.limites();
+        assertThat(limites.parcelasMin()).isEqualTo(2);
+        assertThat(limites.parcelasMax()).isEqualTo(120);
+        assertThat(limites.primeiraParcelaMesesAtrasMax()).isEqualTo(12);
+        assertThat(limites.primeiraParcelaMesesFrenteMax()).isEqualTo(2);
+
+        // amarra o contrato: o máximo exposto passa; máximo + 1 é rejeitado
+        assertThat(service.cadastrar(compra("2400.00", limites.parcelasMax()), USUARIO)).isNotNull();
+        assertThatThrownBy(() ->
+                service.cadastrar(compra("2400.00", limites.parcelasMax() + 1), USUARIO))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void resolveCategoriaUmaVezSoIndependenteDoNumeroDeParcelas() {
         service.cadastrar(compra("2400.00", 120), USUARIO);
 
