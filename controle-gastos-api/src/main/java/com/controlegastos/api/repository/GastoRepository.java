@@ -55,8 +55,22 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
     List<CategoriaTotal> somarPorCategoriaNoPeriodo(
             @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
-    @Query("SELECT COALESCE(SUM(g.valor), 0) FROM Gasto g WHERE g.orcamentoId = :orcamentoId")
-    BigDecimal somarPorOrcamento(@Param("orcamentoId") Integer orcamentoId);
+    // Soma dos gastos vinculados a cada orçamento (vínculo explícito orcamento_id no
+    // gasto, não comparação automática por categoria/subcategoria) - uma query agregada
+    // só para todos os orçamentos do mês, em vez de um SELECT por orçamento dentro de um
+    // loop (era o único loop-de-query que sobrava no projeto - auditoria 2026-09-05,
+    // achado R3; existia antes como somarPorOrcamento(Integer), chamado um a um).
+    // Um orçamento sem nenhum gasto vinculado simplesmente não aparece no resultado
+    // (GROUP BY não gera linha pra grupo vazio) - o chamador trata a ausência como zero.
+    @Query("SELECT g.orcamentoId AS orcamentoId, SUM(g.valor) AS total FROM Gasto g "
+            + "WHERE g.orcamentoId IN :orcamentoIds GROUP BY g.orcamentoId")
+    List<OrcamentoTotal> somarPorOrcamentos(@Param("orcamentoIds") List<Integer> orcamentoIds);
+
+    interface OrcamentoTotal {
+        Integer getOrcamentoId();
+
+        BigDecimal getTotal();
+    }
 
     @Query("SELECT COALESCE(SUM(g.valor), 0) FROM Gasto g "
             + "WHERE g.usuarioId = :usuarioId AND g.data BETWEEN :inicio AND :fim")

@@ -7,6 +7,7 @@ import com.controlegastos.api.model.Orcamento;
 import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.GastoRepository;
+import com.controlegastos.api.repository.GastoRepository.OrcamentoTotal;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -110,6 +112,17 @@ public class OrcamentoService {
 
     public List<OrcamentoMesDTO> orcamentosDoMes(int mes, int ano, Integer usuarioId) {
         List<Orcamento> orcamentos = repository.findByUsuarioIdAndMesAndAno(usuarioId, mes, ano);
+        if (orcamentos.isEmpty()) {
+            return List.of();
+        }
+
+        // Uma query agregada só para todos os orçamentos do mês, em vez de
+        // somarPorOrcamento chamado um a um dentro do loop abaixo (auditoria
+        // 2026-09-05, achado R3 - o único loop-de-query que sobrava no projeto).
+        // Orçamento sem gasto nenhum não aparece no Map - getOrDefault trata como zero.
+        List<Integer> ids = orcamentos.stream().map(Orcamento::getId).collect(Collectors.toList());
+        Map<Integer, BigDecimal> totalPorOrcamento = gastoRepository.somarPorOrcamentos(ids).stream()
+                .collect(Collectors.toMap(OrcamentoTotal::getOrcamentoId, OrcamentoTotal::getTotal));
 
         return orcamentos.stream()
                 .map(o -> {
@@ -117,7 +130,7 @@ public class OrcamentoService {
                     // comparação automática por categoria/subcategoria - por isso um gasto
                     // vinculado ao orçamento específico de uma subcategoria já soma só para
                     // ele, nunca para o orçamento geral da categoria (e vice-versa).
-                    BigDecimal gasto = gastoRepository.somarPorOrcamento(o.getId());
+                    BigDecimal gasto = totalPorOrcamento.getOrDefault(o.getId(), BigDecimal.ZERO);
                     boolean ultrapassou = gasto.compareTo(o.getValorLimite()) > 0;
                     boolean completo = gasto.compareTo(o.getValorLimite()) == 0;
                     boolean proximoDoLimite = !ultrapassou && !completo
