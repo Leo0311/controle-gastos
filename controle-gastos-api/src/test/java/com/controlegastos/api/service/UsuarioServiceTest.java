@@ -11,11 +11,16 @@ import com.controlegastos.api.exception.TokenInvalidoException;
 import com.controlegastos.api.model.Usuario;
 import com.controlegastos.api.repository.UsuarioRepository;
 import com.controlegastos.api.security.JwtService;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 import org.springframework.mail.MailSendException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -267,6 +272,36 @@ class UsuarioServiceTest {
         assertThatCode(() -> service.esqueciSenha("leo@example.com")).doesNotThrowAnyException();
 
         verify(repository).save(any());
+    }
+
+    @Test
+    void esqueciSenha_falhaDeSmtpEmiteLogDeErroComChaveEstavelEPesquisavel() {
+        // Achado M7: até a VM ter monitoramento externo, este log é o único sinal de
+        // que o SMTP caiu. Fixa a chave "evento=falha_envio_email" (grep no journalctl)
+        // e o usuario_id, pra não perder isso numa futura mexida na mensagem.
+        Usuario usuario = usuarioExistente("hash"); // id = 7
+        when(repository.findByEmailIgnoreCase("leo@example.com")).thenReturn(Optional.of(usuario));
+        doThrow(new MailSendException("Authentication failed"))
+                .when(emailService).enviarEmailRedefinicaoSenha(any(), any(), any());
+
+        Logger logger = (Logger) LoggerFactory.getLogger(UsuarioService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            service.esqueciSenha("leo@example.com");
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertThat(appender.list).anySatisfy(evento -> {
+            assertThat(evento.getLevel()).isEqualTo(Level.ERROR);
+            assertThat(evento.getFormattedMessage())
+                    .contains("evento=falha_envio_email")
+                    .contains("tipo=redefinicao_senha")
+                    .contains("usuario_id=7");
+            assertThat(evento.getThrowableProxy()).isNotNull(); // stack trace vai junto
+        });
     }
 
     // ---------- redefinirSenha() ----------

@@ -405,6 +405,18 @@ meio).
 
 ### M7 — SMTP fora do ar na recuperação de senha falha em silêncio total
 
+> **Status: ✅ Resolvido em 2026-09-05 (versão mínima, por decisão).** O `catch`
+> agora emite um log de erro **padronizado e pesquisável** —
+> `evento=falha_envio_email tipo=redefinicao_senha usuario_id=… causa="…"` + stack
+> trace — em vez da frase livre de antes. Achável com
+> `journalctl -u controle-gastos | grep evento=falha_envio_email`. Teste em
+> `UsuarioServiceTest` fixa a chave (160 testes no total). **A resposta ao usuário
+> não mudou** (segue genérica, pra não reabrir enumeração de conta).
+> **Deliberadamente NÃO** montamos canal de alerta novo (métrica, webhook): já há
+> um item de risco aberto sobre "sem monitoramento externo na VM"
+> (`tasks/divida-tecnica.md`), que quando resolvido deve cobrir este caso — não
+> vale duplicar esforço agora. **API precisa de redeploy manual na VM.**
+
 **Onde:** `controle-gastos-api/.../service/UsuarioService.java`, método
 `esqueciSenha` (linha ~65) — `catch (MailException e) { log.error(...); }`, sem
 mais nenhuma ação.
@@ -599,7 +611,7 @@ Pra não deixar por omissão, como pedido:
 |---|---|---|---|---|
 | 1. Segurança | 3 (R1 ✅, R2 ✅, R4 ✅) | 2 (M1 ✅, M2) | 0 | 5 |
 | 2. Banco e performance | 1 (R3 ✅) | 0 | 1 (C1 ✅) | 2 |
-| 3. Robustez | 0 | 3 (M1 ✅*, M6, M7) | 0 | 3 |
+| 3. Robustez | 0 | 3 (M1 ✅*, M6, M7 ✅) | 0 | 3 |
 | 4. Qualidade de código | 0 | 2 (M5, M8) | 1 (C2) | 3 |
 | 5. Cobertura de teste | 0 | 1 (M4 ✅) | 0 | 1 |
 | **Total (achados únicos)** | **5** | **8** | **2** | **14** |
@@ -608,12 +620,13 @@ Pra não deixar por omissão, como pedido:
 concorrência (robustez) com efeito de duplicidade de dado financeiro (por isso
 também citado no topo) — contado uma vez só no total.
 
-**Status em 2026-09-05: 7 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M4, C1 —
-primeira leva de correções, a bateria de testes de service
+**Status em 2026-09-05: 8 de 14 achados resolvidos** (R1, R2, R3, R4, M1, M4, M7,
+C1 — primeira leva de correções, a bateria de testes de service
 (`OrcamentoServiceTest`, `UsuarioServiceTest`, `CategoriaServiceTest`,
-`SubcategoriaServiceTest`), a paginação de `GET /api/gastos` e a regex de e-mail
-no cadastro; tudo implementado e testado; suíte de backend 44 → 159 testes; ver o
-status em cada achado acima). Faltam: M2, M3, M5, M6, M7, M8, C2.
+`SubcategoriaServiceTest`), a paginação de `GET /api/gastos`, a regex de e-mail
+no cadastro e o log padronizado de falha de SMTP; tudo implementado e testado;
+suíte de backend 44 → 160 testes; ver o status em cada achado acima). Faltam:
+M2, M3, M5, M6, M8, C2.
 
 ## Se fosse minha decisão
 
@@ -629,6 +642,8 @@ Nesta ordem:
    `GastoRecorrenteServiceTest` (+5)~~ — ✅ feito, completo (suíte 44 → 141).
 5. ~~**C1** (paginação de `GET /api/gastos`)~~ — ✅ feito.
 6. ~~**R4** (regex de e-mail no cadastro)~~ — ✅ feito, junto com a leva acima.
-7. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez que
+7. ~~**M7** (log padronizado de falha de SMTP no esqueci-senha)~~ — ✅ feito,
+   versão mínima (o alerta de verdade fica com o monitoramento da VM).
+8. **C2** (extrair a orquestração de importação) eu deixaria pra a próxima vez que
    alguém precisar mexer no fluxo de importação — é a mudança mais arriscada da
    lista e não tem urgência hoje. **M2, M3, M5, M6, M7, M8** seguem na fila.

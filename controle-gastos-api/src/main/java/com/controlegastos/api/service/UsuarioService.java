@@ -80,7 +80,15 @@ public class UsuarioService {
             try {
                 emailService.enviarEmailRedefinicaoSenha(usuario.getEmail(), usuario.getNome(), token);
             } catch (MailException e) {
-                log.error("Falha ao enviar e-mail de redefinição de senha para {}", usuario.getEmail(), e);
+                // O token já foi salvo; o usuário só não recebe o link. A resposta ao
+                // usuário NÃO muda (segue genérica no controller, pra não reabrir
+                // enumeração de conta). Até a VM ter monitoramento externo (item de
+                // risco aberto em tasks/divida-tecnica.md, que deve cobrir este caso),
+                // este log é o único sinal - por isso a chave estável
+                // "evento=falha_envio_email": SMTP fora do ar aparece com
+                //   grep 'evento=falha_envio_email' no journalctl do serviço.
+                log.error("evento=falha_envio_email tipo=redefinicao_senha usuario_id={} causa=\"{}\"",
+                        usuario.getId(), e.getMostSpecificCause().getMessage(), e);
             }
         });
         // Não revela se o e-mail existe ou não: a resposta é sempre a mesma
