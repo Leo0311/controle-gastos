@@ -7,6 +7,7 @@ Sistema de controle de gastos pessoais com autenticação, categorias e subcateg
 - **Frontend**: https://controle-gastos-web-v8wf.onrender.com — [Render](https://render.com) Static Site (Blueprint em `render.yaml`), **auto-deploy a cada push na `master`**.
 - **API**: https://controle-gastos-leo.duckdns.org (base dos endpoints: `/api`) — VM na [Oracle Cloud](https://www.oracle.com/cloud/) (Always Free). Roda como serviço `systemd` (`controle-gastos`); nginx faz o proxy reverso com TLS via Let's Encrypt; as variáveis de ambiente (banco, JWT, e-mail) ficam em `/etc/controle-gastos.env`. **O deploy é manual, na VM**: `git pull` na raiz do repo, `cd controle-gastos-api && ./mvnw clean package -DskipTests`, `sudo systemctl restart controle-gastos`. Um push na `master` **não** atualiza a API. (O deploy em container pro Render foi descontinuado em setembro de 2026 — o `Dockerfile` correspondente saiu do repo, mas continua no histórico do Git.)
 - **Banco**: PostgreSQL gerenciado pelo [Neon](https://neon.tech).
+- **Monitoramento**: `GET /api/health` (público, sem autenticação) responde `{"status":"UP"}` com HTTP 200 quando a API e o banco estão no ar, e `{"status":"DOWN"}` com HTTP 503 se a conexão com o banco falha. É o endpoint que um serviço externo de uptime (UptimeRobot etc.) consulta para alertar quando a API cai.
 
 ## Estrutura do repositório
 
