@@ -99,7 +99,14 @@
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
-    <button mat-button type="button" (click)="cancelar()">Cancelar</button>
-    <button mat-raised-button color="primary" type="submit">Salvar</button>
+    <button mat-button type="button" (click)="cancelar()" [disabled]="salvando">Cancelar</button>
+    <button mat-raised-button color="primary" type="submit" [disabled]="salvando">
+      @if (salvando) {
+        <mat-progress-spinner class="spinner-botao" diameter="18" mode="indeterminate"></mat-progress-spinner>
+        Salvando…
+      } @else {
+        Salvar
+      }
+    </button>
   </mat-dialog-actions>
 </form>

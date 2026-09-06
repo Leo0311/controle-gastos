@@ -16,7 +16,6 @@ import { GastoService } from '../../../services/gasto.service';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
-import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { Gasto } from '../../../models/gasto.model';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria } from '../../../models/categoria.model';
@@ -119,7 +118,6 @@ export class GastosComponent implements OnInit {
     private readonly orcamentoService: OrcamentoService,
     private readonly categoriaService: CategoriaService,
     private readonly gastoRecorrenteService: GastoRecorrenteService,
-    private readonly compraParceladaService: CompraParceladaService,
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar,
     private readonly notificacao: NotificacaoService,
@@ -417,24 +415,17 @@ export class GastosComponent implements OnInit {
       if (!resultado) {
         return;
       }
+      // recorrente/parcelada já foram persistidos pelo próprio diálogo (com
+      // spinner, ver GastoFormResultado) - aqui só o aviso e o recarregamento.
       if (resultado.tipo === 'recorrente') {
-        this.gastoRecorrenteService.cadastrar(resultado.recorrente).subscribe({
-          next: () => {
-            this.notificacao.sucesso('Gasto recorrente cadastrado com sucesso!');
-            this.carregar();
-          },
-          error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-        });
+        this.notificacao.sucesso('Gasto recorrente cadastrado com sucesso!');
+        this.carregar();
         return;
       }
       if (resultado.tipo === 'parcelada') {
-        this.compraParceladaService.cadastrar(resultado.parcelada).subscribe({
-          next: (compra) => {
-            this.notificacao.sucesso(`Compra parcelada cadastrada com sucesso! ${compra.numeroParcelas} parcelas lançadas.`);
-            this.carregar();
-          },
-          error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-        });
+        this.notificacao.sucesso(
+          `Compra parcelada cadastrada com sucesso! ${resultado.parcelada.numeroParcelas} parcelas lançadas.`);
+        this.carregar();
         return;
       }
       this.gastoService.cadastrar(resultado.gasto).subscribe({

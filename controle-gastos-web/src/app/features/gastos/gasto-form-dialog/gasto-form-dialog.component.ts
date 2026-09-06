@@ -11,11 +11,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
-import { debounceTime, map } from 'rxjs';
+import { debounceTime, map, Observable } from 'rxjs';
 
 import { Gasto } from '../../../models/gasto.model';
 import { GastoService } from '../../../services/gasto.service';
+import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
+import { CompraParceladaService } from '../../../services/compra-parcelada.service';
+import { NotificacaoService } from '../../../core/notificacao.service';
 import { calcularSugestaoCategoria, SugestaoCategoria } from './sugestao-categoria';
 import { sugerirPorDicionario } from './dicionario-categorias';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
@@ -47,6 +51,10 @@ export interface GastoFormDialogData {
 // exclusivos - ver [disabled] no template), o formulário cria uma recorrência ou uma
 // compra parcelada em vez de um gasto avulso - por isso o resultado do diálogo é uma
 // dessas três formas, nunca mais de uma ao mesmo tempo.
+//
+// `recorrente` e `parcelada` já vêm PERSISTIDOS (o diálogo faz a chamada com
+// spinner - ver salvarComLoading); o chamador só mostra o aviso e recarrega.
+// `gasto` ainda é só os dados: o chamador é quem chama a API (insert único, rápido).
 export type GastoFormResultado =
   | { tipo: 'gasto'; gasto: Gasto }
   | { tipo: 'recorrente'; recorrente: GastoRecorrente }
@@ -73,6 +81,7 @@ const NOVA_SUBCATEGORIA = -1;
     MatCheckboxModule,
     MatIconModule,
     MatTooltipModule,
+    MatProgressSpinnerModule,
     MascaraMoedaDirective,
     MascaraDataDirective
   ],
@@ -85,6 +94,9 @@ export class GastoFormDialogComponent implements OnInit {
   private readonly orcamentoService = inject(OrcamentoService);
   private readonly categoriaService = inject(CategoriaService);
   private readonly gastoService = inject(GastoService);
+  private readonly gastoRecorrenteService = inject(GastoRecorrenteService);
+  private readonly compraParceladaService = inject(CompraParceladaService);
+  private readonly notificacao = inject(NotificacaoService);
   private readonly dialog = inject(MatDialog);
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly destroyRef = inject(DestroyRef);
@@ -114,6 +126,13 @@ export class GastoFormDialogComponent implements OnInit {
   readonly ehParcela: boolean;
   readonly NOVA_CATEGORIA = NOVA_CATEGORIA;
   readonly NOVA_SUBCATEGORIA = NOVA_SUBCATEGORIA;
+
+  // Recorrência e compra parcelada fazem vários inserts no backend (a pré-geração
+  // de meses / parcelas) e podem demorar - o diálogo salva por conta própria e
+  // fica aberto com spinner + botões travados até terminar, pra não dar pra
+  // recarregar ou navegar no meio e disparar uma chamada concorrente. Gasto
+  // avulso é um insert só e continua sendo salvo pelo chamador (gastos.component).
+  salvando = false;
 
   /** Enquanto false, o orçamento selecionado é recalculado automaticamente conforme categoria/data mudam. */
   private escolhaManualOrcamento: boolean;
@@ -401,7 +420,7 @@ export class GastoFormDialogComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.salvando) {
       this.form.markAllAsTouched();
       return;
     }
@@ -418,7 +437,10 @@ export class GastoFormDialogComponent implements OnInit {
         orcamentoId: valores.orcamentoId ?? null,
         mesesGerar: valores.mesesGerar!
       };
-      this.dialogRef.close({ tipo: 'recorrente', recorrente } satisfies GastoFormResultado);
+      this.salvarComLoading(
+        this.gastoRecorrenteService.cadastrar(recorrente),
+        (salvo) => ({ tipo: 'recorrente', recorrente: salvo })
+      );
       return;
     }
 
@@ -432,7 +454,10 @@ export class GastoFormDialogComponent implements OnInit {
         dataPrimeiraParcela: this.formatarDataIso(valores.dataPrimeiraParcela!),
         orcamentoId: valores.orcamentoId ?? null
       };
-      this.dialogRef.close({ tipo: 'parcelada', parcelada } satisfies GastoFormResultado);
+      this.salvarComLoading(
+        this.compraParceladaService.cadastrar(parcelada),
+        (salva) => ({ tipo: 'parcelada', parcelada: salva })
+      );
       return;
     }
 
@@ -445,6 +470,27 @@ export class GastoFormDialogComponent implements OnInit {
       orcamentoId: valores.orcamentoId ?? null
     };
     this.dialogRef.close({ tipo: 'gasto', gasto } satisfies GastoFormResultado);
+  }
+
+  // Trava o diálogo (spinner no botão, `disableClose` contra ESC/backdrop, botões
+  // desabilitados via [disabled]="salvando") enquanto a criação está em voo. No
+  // sucesso, fecha devolvendo a entidade já persistida - o chamador só mostra o
+  // aviso e recarrega. No erro, destrava e mostra a mensagem, mantendo o diálogo
+  // aberto com os dados preenchidos.
+  private salvarComLoading<T>(
+    chamada$: Observable<T>,
+    montarResultado: (salvo: T) => GastoFormResultado
+  ): void {
+    this.salvando = true;
+    this.dialogRef.disableClose = true;
+    chamada$.subscribe({
+      next: (salvo) => this.dialogRef.close(montarResultado(salvo)),
+      error: (erro) => {
+        this.salvando = false;
+        this.dialogRef.disableClose = false;
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
+      }
+    });
   }
 
   private abrirNovaCategoria(): void {

@@ -2,7 +2,7 @@
 
 <form [formGroup]="form" (ngSubmit)="salvar()">
   <mat-dialog-content class="form-content">
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Descrição</mat-label>
       <input matInput formControlName="descricao" maxlength="150">
       @if (ehParcela) {
@@ -26,7 +26,7 @@
       </button>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Valor</mat-label>
       <span matTextPrefix>R$&nbsp;</span>
       <input matInput appMascaraMoeda placeholder="0,00" formControlName="valor">
@@ -38,7 +38,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Categoria</mat-label>
       <mat-select formControlName="categoriaId" (selectionChange)="onCategoriaChange($event)">
         @for (c of opcoesCategoria; track c.id) {
@@ -53,7 +53,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Subcategoria (opcional)</mat-label>
       <mat-select
         formControlName="subcategoriaId"
@@ -73,7 +73,7 @@
     </mat-form-field>
 
     @if (editando || (!form.controls.recorrente.value && !form.controls.parcelado.value)) {
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Data</mat-label>
         <input matInput appMascaraData [matDatepicker]="picker" formControlName="data">
         <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
@@ -96,7 +96,7 @@
     }
 
     @if (!editando && form.controls.recorrente.value) {
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Dia do mês</mat-label>
         <input matInput type="number" min="1" max="31" formControlName="diaDoMes">
         <mat-hint>Em meses mais curtos, lança no último dia válido (ex: dia 31 em fevereiro).</mat-hint>
@@ -108,11 +108,11 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Gerar para os próximos meses</mat-label>
         <input matInput type="number" min="1" max="12" formControlName="mesesGerar">
-        <mat-hint>Lança já os gastos desses meses (a partir do atual), pra aparecerem no Dashboard/Análises sem
-          esperar cada mês chegar. A recorrência segue lançando os meses seguintes normalmente depois.</mat-hint>
+        <mat-hint>Lança já os gastos desses meses, pra aparecerem no Dashboard e nas Análises sem esperar cada mês
+          chegar.</mat-hint>
         @if (form.controls.mesesGerar.hasError('required')) {
           <mat-error>Informe quantos meses gerar.</mat-error>
         }
@@ -123,7 +123,7 @@
     }
 
     @if (!editando && form.controls.parcelado.value) {
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Data da 1ª parcela</mat-label>
         <input matInput appMascaraData [matDatepicker]="pickerParcela"
           [min]="minDataPrimeiraParcela" [max]="maxDataPrimeiraParcela"
@@ -143,7 +143,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Número de parcelas</mat-label>
         <input matInput type="number" [min]="parcelasMin" [max]="parcelasMax" formControlName="numeroParcelas">
         <mat-hint>De {{ parcelasMin }} a {{ parcelasMax }} parcelas. O valor é dividido em partes iguais; a última é ajustada para a soma bater certinho.</mat-hint>
@@ -156,7 +156,7 @@
       </mat-form-field>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>
         Orçamento (opcional)
         <mat-icon
@@ -181,7 +181,14 @@
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
-    <button mat-button type="button" (click)="cancelar()">Cancelar</button>
-    <button mat-raised-button color="primary" type="submit">Salvar</button>
+    <button mat-button type="button" (click)="cancelar()" [disabled]="salvando">Cancelar</button>
+    <button mat-raised-button color="primary" type="submit" [disabled]="salvando">
+      @if (salvando) {
+        <mat-progress-spinner class="spinner-botao" diameter="18" mode="indeterminate"></mat-progress-spinner>
+        Salvando…
+      } @else {
+        Salvar
+      }
+    </button>
   </mat-dialog-actions>
 </form>

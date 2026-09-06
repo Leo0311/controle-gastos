@@ -94,40 +94,27 @@ export class RecorrentesListaComponent implements OnInit {
   }
 
   novoRecorrente(): void {
-    const ref = this.dialog.open<GastoRecorrenteFormDialogComponent, GastoRecorrenteFormDialogData, GastoRecorrente>(
-      GastoRecorrenteFormDialogComponent,
-      { data: { recorrente: null }, width: '480px', maxWidth: '95vw' }
-    );
-    ref.afterClosed().subscribe((resultado) => {
-      if (!resultado) {
-        return;
-      }
-      this.service.cadastrar(resultado).subscribe({
-        next: () => {
-          this.notificacao.sucesso('Gasto recorrente cadastrado com sucesso!');
-          this.carregar();
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
-    });
+    this.abrirFormulario(null, 'Gasto recorrente cadastrado com sucesso!');
   }
 
   editar(recorrente: GastoRecorrente): void {
+    this.abrirFormulario(recorrente, 'Gasto recorrente atualizado com sucesso!');
+  }
+
+  // O diálogo faz o cadastro/edição por conta própria (com spinner, ver
+  // gasto-recorrente-form-dialog) e fecha devolvendo a recorrência já persistida,
+  // ou undefined se foi cancelado. Aqui só o aviso e o recarregamento da lista.
+  private abrirFormulario(recorrente: GastoRecorrente | null, mensagemSucesso: string): void {
     const ref = this.dialog.open<GastoRecorrenteFormDialogComponent, GastoRecorrenteFormDialogData, GastoRecorrente>(
       GastoRecorrenteFormDialogComponent,
       { data: { recorrente }, width: '480px', maxWidth: '95vw' }
     );
-    ref.afterClosed().subscribe((resultado) => {
-      if (!resultado) {
+    ref.afterClosed().subscribe((salvo) => {
+      if (!salvo) {
         return;
       }
-      this.service.atualizar(recorrente.id!, resultado).subscribe({
-        next: () => {
-          this.notificacao.sucesso('Gasto recorrente atualizado com sucesso!');
-          this.carregar();
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
+      this.notificacao.sucesso(mensagemSucesso);
+      this.carregar();
     });
   }
 

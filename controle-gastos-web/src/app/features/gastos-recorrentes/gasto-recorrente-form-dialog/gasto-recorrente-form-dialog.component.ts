@@ -7,12 +7,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule, MatSelectChange } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { Orcamento } from '../../../models/orcamento.model';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { OrcamentoService } from '../../../services/orcamento.service';
 import { CategoriaService } from '../../../services/categoria.service';
+import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
+import { NotificacaoService } from '../../../core/notificacao.service';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
 import { definirHabilitado } from '../../../shared/form-utils';
 import {
@@ -44,6 +47,7 @@ const NOVA_SUBCATEGORIA = -1;
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
+    MatProgressSpinnerModule,
     MascaraMoedaDirective
   ],
   templateUrl: './gasto-recorrente-form-dialog.component.html',
@@ -54,11 +58,19 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly orcamentoService = inject(OrcamentoService);
   private readonly categoriaService = inject(CategoriaService);
+  private readonly service = inject(GastoRecorrenteService);
+  private readonly notificacao = inject(NotificacaoService);
   private readonly dialog = inject(MatDialog);
 
   readonly editando: boolean;
+  private readonly recorrenteId: number | null;
   readonly NOVA_CATEGORIA = NOVA_CATEGORIA;
   readonly NOVA_SUBCATEGORIA = NOVA_SUBCATEGORIA;
+
+  // Criar/editar uma recorrência pré-gera vários gastos no backend (mesesGerar) e
+  // pode demorar - o diálogo salva por conta própria e fica aberto com spinner +
+  // botões travados até terminar, pra não dar pra fechar/navegar no meio.
+  salvando = false;
 
   private categoriaAnterior: number | null;
   private subcategoriaAnterior: number | null;
@@ -93,6 +105,7 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) data: GastoRecorrenteFormDialogData
   ) {
     this.editando = !!data.recorrente;
+    this.recorrenteId = data.recorrente?.id ?? null;
     this.categoriaAnterior = data.recorrente?.categoriaId ?? null;
     this.subcategoriaAnterior = data.recorrente?.subcategoriaId ?? null;
 
@@ -172,7 +185,7 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.salvando) {
       this.form.markAllAsTouched();
       return;
     }
@@ -186,7 +199,20 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
       orcamentoId: valores.orcamentoId ?? null,
       mesesGerar: valores.mesesGerar!
     };
-    this.dialogRef.close(recorrente);
+    const chamada$ = this.recorrenteId != null
+      ? this.service.atualizar(this.recorrenteId, recorrente)
+      : this.service.cadastrar(recorrente);
+
+    this.salvando = true;
+    this.dialogRef.disableClose = true;
+    chamada$.subscribe({
+      next: (salvo) => this.dialogRef.close(salvo),
+      error: (erro) => {
+        this.salvando = false;
+        this.dialogRef.disableClose = false;
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
+      }
+    });
   }
 
   private abrirNovaCategoria(): void {
