@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { OrcamentosComponent } from './orcamentos.component';
+import { provedoresDeTeste } from '../../../testing/test-providers';
 
 describe('OrcamentosComponent', () => {
   let component: OrcamentosComponent;
@@ -8,9 +9,9 @@ describe('OrcamentosComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [OrcamentosComponent]
-    })
-    .compileComponents();
+      imports: [OrcamentosComponent],
+      providers: [provedoresDeTeste()]
+    }).compileComponents();
 
     fixture = TestBed.createComponent(OrcamentosComponent);
     component = fixture.componentInstance;

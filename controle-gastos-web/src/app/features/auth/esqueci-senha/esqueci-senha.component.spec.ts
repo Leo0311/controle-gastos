@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { EsqueciSenhaComponent } from './esqueci-senha.component';
+import { provedoresDeTeste } from '../../../testing/test-providers';
 
 describe('EsqueciSenhaComponent', () => {
   let component: EsqueciSenhaComponent;
@@ -8,9 +9,9 @@ describe('EsqueciSenhaComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EsqueciSenhaComponent]
-    })
-    .compileComponents();
+      imports: [EsqueciSenhaComponent],
+      providers: [provedoresDeTeste()]
+    }).compileComponents();
 
     fixture = TestBed.createComponent(EsqueciSenhaComponent);
     component = fixture.componentInstance;
