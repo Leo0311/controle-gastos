@@ -65,12 +65,21 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
 
     long countByCategoriaId(Integer categoriaId);
 
-    // IDs das categorias com pelo menos um gasto cadastrado pelo usuário (qualquer
-    // período) - usado pra filtrar o dropdown de categoria em Gastos, mostrando só
-    // categorias realmente em uso. Gastos legados sem categoriaId (nunca migrados)
-    // ficam de fora, já que não correspondem a nenhuma categoria gerida específica.
-    @Query("SELECT DISTINCT g.categoriaId FROM Gasto g WHERE g.usuarioId = :usuarioId AND g.categoriaId IS NOT NULL")
-    List<Integer> categoriaIdsComGasto(@Param("usuarioId") Integer usuarioId);
+    // IDs das categorias com pelo menos um gasto cadastrado pelo usuário no período
+    // informado - usado pra filtrar o dropdown de categoria em Gastos, mostrando só
+    // categorias com gasto no recorte que a tela está exibindo. inicio/fim nulos =
+    // qualquer período (modo "Ver todos os meses"). Mesmo truque de CAST(...AS date)
+    // de buscarPagina pra o Postgres inferir o tipo do parâmetro quando chega nulo.
+    // Gastos legados sem categoriaId (nunca migrados) ficam de fora, já que não
+    // correspondem a nenhuma categoria gerida específica.
+    @Query("SELECT DISTINCT g.categoriaId FROM Gasto g WHERE g.usuarioId = :usuarioId "
+            + "AND g.categoriaId IS NOT NULL "
+            + "AND (CAST(:inicio AS date) IS NULL OR g.data >= :inicio) "
+            + "AND (CAST(:fim AS date) IS NULL OR g.data <= :fim)")
+    List<Integer> categoriaIdsComGasto(
+            @Param("usuarioId") Integer usuarioId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim);
 
     long countBySubcategoriaId(Integer subcategoriaId);
 

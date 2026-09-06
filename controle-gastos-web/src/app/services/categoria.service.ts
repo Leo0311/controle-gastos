@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -18,10 +18,18 @@ export class CategoriaService {
     return this.http.get<Categoria[]>(this.baseUrl);
   }
 
-  // Só as categorias visíveis com pelo menos um gasto cadastrado (qualquer
-  // período) - alimenta o dropdown "Filtrar por categoria" da tela de Gastos.
-  listarComGastos(): Observable<Categoria[]> {
-    return this.http.get<Categoria[]>(`${this.baseUrl}/com-gastos`);
+  // Categorias visíveis com pelo menos um gasto no mês/ano informado - alimenta o
+  // dropdown "Filtrar por categoria" da tela de Gastos. Sem mes/ano (ou nulos) =
+  // qualquer período, usado no modo "Ver todos os meses".
+  listarComGastos(mes?: number | null, ano?: number | null): Observable<Categoria[]> {
+    let params = new HttpParams();
+    if (mes) {
+      params = params.set('mes', mes);
+    }
+    if (ano) {
+      params = params.set('ano', ano);
+    }
+    return this.http.get<Categoria[]>(`${this.baseUrl}/com-gastos`, { params });
   }
 
   criar(categoria: Categoria): Observable<Categoria> {

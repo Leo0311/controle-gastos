@@ -102,8 +102,10 @@ export class GastosComponent implements OnInit {
   private primeiraCarga = true;
 
   // Opções do <mat-select> de filtro por categoria - carregadas de
-  // GET /api/categorias/com-gastos (categorias com pelo menos um gasto, qualquer
-  // período). Recarregado a cada carregar().
+  // GET /api/categorias/com-gastos escopado no mês/ano atual da tela (ou qualquer
+  // período em "Ver todos os meses"). Recarregado a cada carregar(), então segue a
+  // troca de mês/ano; se a categoria filtrada sai desse recorte, o filtro reseta
+  // pra "Todas" (ver carregar()).
   opcoesCategoriaFiltro: Categoria[] = [];
 
   // Emoji da categoria na tabela/cartão - populado no ngOnInit e reatualizado
@@ -315,16 +317,37 @@ export class GastosComponent implements OnInit {
     this.router.navigate(['/gastos'], { queryParams, replaceUrl: true });
   }
 
-  // Carrega a 1ª página da listagem (mês/ano/categoria vão como filtro do
-  // servidor - ver GET /api/gastos/pagina). Chamado a cada troca de filtro e
-  // depois de cada criação/edição/exclusão/importação, sempre voltando pro topo.
+  // Recarrega a tela: primeiro as opções do dropdown de categoria (escopadas no
+  // mês/ano atual), depois a 1ª página da listagem. Chamado a cada troca de filtro
+  // e depois de cada criação/edição/exclusão/importação, sempre voltando pro topo.
+  //
+  // A ordem importa: as opções dizem se a categoria filtrada ainda tem gasto no
+  // recorte recém-selecionado - se não tem (trocou de mês) ou foi excluída, o
+  // filtro reseta pra "Todas" ANTES da página carregar, senão a tela ficaria vazia
+  // sem explicação (o servidor pagina e filtra, então não dá pra "consertar"
+  // client-side depois).
   carregar(): void {
     this.carregando = true;
     this.erro = false;
     this.paginaAtual = 0;
     this.temMais = false;
-    this.carregarOpcoesCategoriaFiltro();
 
+    this.categoriaService.listarComGastos(this.filtroMes, this.filtroAno).subscribe({
+      next: (categorias) => {
+        this.opcoesCategoriaFiltro = categorias;
+        if (this.filtroCategoriaId !== null && !categorias.some((c) => c.id === this.filtroCategoriaId)) {
+          this.filtroCategoriaId = null;
+        }
+        this.carregarPrimeiraPagina();
+      },
+      error: () => {
+        // Dropdown auxiliar falhou - ainda assim carrega a lista com o filtro atual.
+        this.carregarPrimeiraPagina();
+      }
+    });
+  }
+
+  private carregarPrimeiraPagina(): void {
     this.gastoService.listarPaginado({
       page: 0,
       size: this.tamanhoPagina,
@@ -382,22 +405,6 @@ export class GastosComponent implements OnInit {
         this.carregandoMais = false;
         this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
       }
-    });
-  }
-
-  // Opções do dropdown "Filtrar por categoria" - categorias com pelo menos um
-  // gasto (qualquer período). Recarregado a cada carregar() pra refletir uma
-  // categoria que ganhou seu primeiro gasto (ex: importação). Se a categoria
-  // filtrada sumiu da lista (foi excluída), reseta pra "Todas".
-  private carregarOpcoesCategoriaFiltro(): void {
-    this.categoriaService.listarComGastos().subscribe({
-      next: (categorias) => {
-        this.opcoesCategoriaFiltro = categorias;
-        if (this.filtroCategoriaId !== null && !categorias.some((c) => c.id === this.filtroCategoriaId)) {
-          this.filtroCategoriaId = null;
-        }
-      },
-      error: () => { /* dropdown auxiliar; sem ele o filtro por categoria só não aparece */ }
     });
   }
 

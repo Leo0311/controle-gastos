@@ -12,12 +12,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -352,16 +354,51 @@ class CategoriaServiceTest {
     }
 
     @Test
-    void listarComGastos_filtraSoAsCategoriasComPeloMenosUmGasto() {
+    void listarComGastos_semMesAno_consultaQualquerPeriodoEFiltraSoAsComGasto() {
         Categoria cA = categoria(1, "Alimentação", USUARIO);
         Categoria cB = categoria(2, "Bares", USUARIO);
         Categoria cC = categoria(3, "Casa", USUARIO);
         when(repository.findVisiveis(USUARIO)).thenReturn(List.of(cA, cB, cC));
-        when(gastoRepository.categoriaIdsComGasto(USUARIO)).thenReturn(List.of(1, 3));
+        when(gastoRepository.categoriaIdsComGasto(eq(USUARIO), any(), any())).thenReturn(List.of(1, 3));
 
-        List<Categoria> comGastos = service.listarComGastos(USUARIO);
+        List<Categoria> comGastos = service.listarComGastos(USUARIO, null, null);
 
         assertThat(comGastos).containsExactly(cA, cC);
+        // mes/ano nulos -> janela de datas aberta (modo "Ver todos os meses").
+        verify(gastoRepository).categoriaIdsComGasto(USUARIO, null, null);
+    }
+
+    @Test
+    void listarComGastos_comMesAno_escopaNaJanelaDoMes() {
+        Categoria cA = categoria(1, "Alimentação", USUARIO);
+        when(repository.findVisiveis(USUARIO)).thenReturn(List.of(cA));
+        when(gastoRepository.categoriaIdsComGasto(eq(USUARIO), any(), any())).thenReturn(List.of(1));
+
+        service.listarComGastos(USUARIO, 2, 2026);
+
+        // Fevereiro de 2026: 1 a 28.
+        verify(gastoRepository).categoriaIdsComGasto(
+                USUARIO, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+    }
+
+    @Test
+    void listarComGastos_soAno_escopaNoAnoInteiro() {
+        when(repository.findVisiveis(USUARIO)).thenReturn(List.of());
+        when(gastoRepository.categoriaIdsComGasto(eq(USUARIO), any(), any())).thenReturn(List.of());
+
+        service.listarComGastos(USUARIO, null, 2026);
+
+        verify(gastoRepository).categoriaIdsComGasto(
+                USUARIO, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+    }
+
+    @Test
+    void listarComGastos_mesInvalido_lancaSemConsultarRepositorio() {
+        assertThatThrownBy(() -> service.listarComGastos(USUARIO, 13, 2026))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Mês inválido");
+
+        verify(gastoRepository, never()).categoriaIdsComGasto(any(), any(), any());
     }
 
     private CategoriaOrdemUsuario ordem(int categoriaId, int posicao) {

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -44,12 +45,32 @@ public class CategoriaService {
         return ordenarPorPreferencia(repository.findVisiveis(usuarioId), usuarioId);
     }
 
-    // Só as categorias visíveis para o usuário que têm pelo menos um gasto cadastrado
-    // (qualquer período, não só o mês filtrado no momento, pra manter simples) - usado
-    // pelo filtro de categoria em Gastos, pra não listar categorias nunca usadas. Mantém
-    // a mesma ordem de listarVisiveis (preferência do usuário), só filtrando o resultado.
-    public List<Categoria> listarComGastos(Integer usuarioId) {
-        Set<Integer> idsComGasto = new HashSet<>(gastoRepository.categoriaIdsComGasto(usuarioId));
+    // Categorias visíveis com pelo menos um gasto no mês/ano informado - usado pelo
+    // dropdown "Filtrar por categoria" em Gastos, pra não listar categoria sem gasto
+    // no recorte que a tela está exibindo. mes/ano nulos = qualquer período (modo
+    // "Ver todos os meses", em que mostrar tudo é o certo). A janela de datas é
+    // derivada aqui igual a GastoService.listarPaginado (mês -> 1º/último dia; só
+    // ano -> jan a dez), pra o repositório receber só inicio/fim. Mantém a ordem de
+    // listarVisiveis (preferência do usuário), só filtrando o resultado.
+    public List<Categoria> listarComGastos(Integer usuarioId, Integer mes, Integer ano) {
+        LocalDate inicio = null;
+        LocalDate fim = null;
+        if (ano != null) {
+            if (ano <= 0) {
+                throw new IllegalArgumentException("Ano inválido.");
+            }
+            if (mes != null) {
+                if (mes < 1 || mes > 12) {
+                    throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
+                }
+                inicio = LocalDate.of(ano, mes, 1);
+                fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
+            } else {
+                inicio = LocalDate.of(ano, 1, 1);
+                fim = LocalDate.of(ano, 12, 31);
+            }
+        }
+        Set<Integer> idsComGasto = new HashSet<>(gastoRepository.categoriaIdsComGasto(usuarioId, inicio, fim));
         return listarVisiveis(usuarioId).stream()
                 .filter(c -> idsComGasto.contains(c.getId()))
                 .collect(Collectors.toList());

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,9 +33,15 @@ public class CategoriaController {
         return service.listarVisiveis(usuario.usuarioId());
     }
 
+    // Dropdown "Filtrar por categoria" da tela de Gastos. mes/ano opcionais: quando
+    // vêm, retorna só categorias com gasto naquele mês/ano; nulos (modo "Ver todos
+    // os meses") = categorias com gasto em qualquer período.
     @GetMapping("/com-gastos")
-    public List<Categoria> listarComGastos(@AuthenticationPrincipal UsuarioPrincipal usuario) {
-        return service.listarComGastos(usuario.usuarioId());
+    public List<Categoria> listarComGastos(
+            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) Integer ano,
+            @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.listarComGastos(usuario.usuarioId(), mes, ano);
     }
 
     @PostMapping
