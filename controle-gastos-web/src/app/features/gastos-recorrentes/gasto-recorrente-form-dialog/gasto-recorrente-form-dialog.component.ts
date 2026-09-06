@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, Inject, inject, OnInit } from '@angular/core';
+import { Component, ElementRef, Inject, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,7 +17,7 @@ import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { NotificacaoService } from '../../../core/notificacao.service';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
-import { definirHabilitado } from '../../../shared/form-utils';
+import { definirHabilitado, focarPrimeiroCampoInvalido } from '../../../shared/form-utils';
 import {
   CategoriaFormDialogComponent,
   CategoriaFormDialogData
@@ -61,6 +61,7 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
   private readonly service = inject(GastoRecorrenteService);
   private readonly notificacao = inject(NotificacaoService);
   private readonly dialog = inject(MatDialog);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   readonly editando: boolean;
   private readonly recorrenteId: number | null;
@@ -185,8 +186,12 @@ export class GastoRecorrenteFormDialogComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.form.invalid || this.salvando) {
+    if (this.salvando) {
+      return;
+    }
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
+      focarPrimeiroCampoInvalido(this.elementRef.nativeElement);
       return;
     }
     const valores = this.form.getRawValue();

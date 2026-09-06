@@ -1,5 +1,5 @@
 import { AsyncPipe, CurrencyPipe } from '@angular/common';
-import { Component, DestroyRef, Inject, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Inject, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -32,7 +32,7 @@ import { ConfigService } from '../../../services/config.service';
 import { CompraParceladaLimites } from '../../../models/config.model';
 import { MascaraMoedaDirective } from '../../../shared/mascara-moeda.directive';
 import { MascaraDataDirective } from '../../../shared/mascara-data.directive';
-import { definirHabilitado } from '../../../shared/form-utils';
+import { definirHabilitado, focarPrimeiroCampoInvalido } from '../../../shared/form-utils';
 import {
   CategoriaFormDialogComponent,
   CategoriaFormDialogData
@@ -101,6 +101,7 @@ export class GastoFormDialogComponent implements OnInit {
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly destroyRef = inject(DestroyRef);
   private readonly configService = inject(ConfigService);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   // Em telas pequenas, o datepicker abre em modo touch (calendário em tela cheia,
   // mais fácil de usar com o dedo) em vez do pequeno popup ancorado no input.
@@ -420,8 +421,12 @@ export class GastoFormDialogComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.form.invalid || this.salvando) {
+    if (this.salvando) {
+      return;
+    }
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
+      focarPrimeiroCampoInvalido(this.elementRef.nativeElement);
       return;
     }
 
