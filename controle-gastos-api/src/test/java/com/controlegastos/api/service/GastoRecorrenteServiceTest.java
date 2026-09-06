@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -38,6 +40,12 @@ import static org.mockito.Mockito.when;
  * dataDoLancamento e lancarPendentes leem LocalDate.now() diretamente, então
  * os testes se apoiam em invariantes que valem em qualquer data: um mês curto
  * sempre cai no seu último dia, e um lote já lançado nunca é relançado.
+ *
+ * A pré-geração de meses (gerarProximosMeses) foi otimizada no achado 2.3:
+ * categoria resolvida 1x, sem exists por mês numa recorrência nova, e 1 batch
+ * (gastoRepository.inserirEmLote) no lugar de N inserts - por isso os testes
+ * capturam os gastos gerados do argumento do inserirEmLote (meses futuros) e do
+ * cadastrarVinculadoARecorrente (mês corrente, só no fluxo de edição).
  */
 class GastoRecorrenteServiceTest {
 
@@ -65,7 +73,7 @@ class GastoRecorrenteServiceTest {
         when(categoriaRepository.findByIdVisivel(any(), any())).thenReturn(Optional.of(categoria));
 
         // repository.save devolve a recorrência já com id - gerarProximosMeses usa
-        // recorrente.getId() pra checar duplicidade e vincular cada gasto gerado.
+        // recorrente.getId() pra vincular cada gasto gerado.
         when(repository.save(any(GastoRecorrente.class))).thenAnswer(invocacao -> {
             GastoRecorrente r = invocacao.getArgument(0);
             r.setId(RECORRENTE);
@@ -74,6 +82,10 @@ class GastoRecorrenteServiceTest {
 
         when(gastoService.cadastrarVinculadoARecorrente(any(), any()))
                 .thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        // Numa edição, gerarProximosMeses consulta as datas já lançadas - vazio por
+        // padrão (nenhum mês do horizonte pré-gerado ainda).
+        when(gastoRepository.datasDosGastosDaRecorrente(any(), any())).thenReturn(List.of());
     }
 
     private GastoRecorrente recorrente(int diaDoMes, Integer mesesGerar) {
@@ -87,10 +99,22 @@ class GastoRecorrenteServiceTest {
         return dados;
     }
 
+    // Datas de todos os gastos gerados na pré-geração: os meses futuros vêm no
+    // argumento do inserirEmLote (batch único); o mês corrente, quando lançado
+    // numa edição, vem pelo cadastrarVinculadoARecorrente.
+    @SuppressWarnings("unchecked")
     private List<LocalDate> datasGeradas() {
-        ArgumentCaptor<Gasto> captor = ArgumentCaptor.forClass(Gasto.class);
-        verify(gastoService, atLeast(1)).cadastrarVinculadoARecorrente(captor.capture(), any());
-        return captor.getAllValues().stream().map(Gasto::getData).toList();
+        List<LocalDate> datas = new ArrayList<>();
+
+        ArgumentCaptor<List<Gasto>> lote = ArgumentCaptor.forClass(List.class);
+        verify(gastoRepository, atLeast(0)).inserirEmLote(lote.capture());
+        lote.getAllValues().forEach(gastos -> gastos.forEach(g -> datas.add(g.getData())));
+
+        ArgumentCaptor<Gasto> mesCorrente = ArgumentCaptor.forClass(Gasto.class);
+        verify(gastoService, atLeast(0)).cadastrarVinculadoARecorrente(mesCorrente.capture(), any());
+        mesCorrente.getAllValues().forEach(g -> datas.add(g.getData()));
+
+        return datas;
     }
 
     @Test
@@ -121,6 +145,20 @@ class GastoRecorrenteServiceTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("esperava um lançamento em mês de 30 dias no horizonte de 12 meses"));
         assertThat(mesDe30Dias.getDayOfMonth()).isEqualTo(30);
+    }
+
+    @Test
+    void cadastrar_preGeracaoResolveCategoriaUmaVezEUsaUmBatchSo() {
+        service.cadastrar(recorrente(15, 12), USUARIO);
+
+        // Categoria resolvida 1x (antes: 1 + 1 por mês futuro).
+        verify(categoriaRepository, times(1)).findByIdVisivel(CATEGORIA, USUARIO);
+        // Recorrência nova não tem gasto vinculado - nenhum exists/consulta de meses.
+        verify(gastoRepository, never()).existsByGastoRecorrenteIdAndDataBetween(any(), any(), any());
+        verify(gastoRepository, never()).datasDosGastosDaRecorrente(any(), any());
+        // Um batch só, nunca inserts individuais via cadastrarVinculadoARecorrente.
+        verify(gastoRepository, times(1)).inserirEmLote(any());
+        verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
     }
 
     @Test
@@ -206,22 +244,27 @@ class GastoRecorrenteServiceTest {
     void atualizar_naoDuplicaOsMesesQueJaForamGerados() {
         GastoRecorrente existente = recorrente(1, 3);
         when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));
-        // Todo mês do horizonte já tem o gasto lançado.
+        // Mês corrente já lançado...
         when(gastoRepository.existsByGastoRecorrenteIdAndDataBetween(any(), any(), any())).thenReturn(true);
+        // ...e todos os meses futuros do horizonte também.
+        LocalDate hoje = LocalDate.now();
+        when(gastoRepository.datasDosGastosDaRecorrente(any(), any()))
+                .thenReturn(List.of(hoje.plusMonths(1), hoje.plusMonths(2)));
 
         service.atualizar(RECORRENTE, recorrente(1, 3), USUARIO);
 
+        verify(gastoRepository, never()).inserirEmLote(any());
         verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
     }
 
     @Test
-    void atualizar_recorrenciaComProblemaNaoTravaAEdicao_catchDeLancarParaMesFuturo() {
+    void atualizar_recorrenciaComProblemaNaoTravaAEdicao_catchDoBatch() {
         GastoRecorrente existente = recorrente(1, 3);
         when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));
-        // Ex.: o orçamento vinculado foi excluído depois - cada tentativa de lançar
-        // um mês estoura, mas o catch (RuntimeException) da pré-geração engole.
-        when(gastoService.cadastrarVinculadoARecorrente(any(), any()))
-                .thenThrow(new RuntimeException("orçamento vinculado foi excluído"));
+        // Ex.: o batch de pré-geração estoura (constraint, coluna, etc.) - o catch
+        // de gerarProximosMeses engole, o salvamento da recorrência não é revertido.
+        doThrow(new RuntimeException("falha no insert em lote"))
+                .when(gastoRepository).inserirEmLote(any());
 
         assertThatCode(() -> service.atualizar(RECORRENTE, recorrente(1, 3), USUARIO))
                 .doesNotThrowAnyException();

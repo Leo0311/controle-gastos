@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public interface GastoRepository extends JpaRepository<Gasto, Integer> {
+public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRepositoryCustom {
 
     List<Gasto> findAllByUsuarioIdOrderByDataDescIdDesc(Integer usuarioId);
 
@@ -76,6 +76,13 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer> {
     // Usado pra checar se uma recorrência já foi lançada no mês/ano atual antes de
     // criar um novo gasto a partir dela - ver GastoRecorrenteService.lancarPendentes.
     boolean existsByGastoRecorrenteIdAndDataBetween(Integer gastoRecorrenteId, LocalDate inicio, LocalDate fim);
+
+    // Datas dos gastos de uma recorrência a partir de uma data - a pré-geração
+    // (gerarProximosMeses) usa pra saber, numa edição, quais meses do horizonte já
+    // têm gasto, numa query só em vez de um exists por mês (achado 2.3).
+    @Query("SELECT g.data FROM Gasto g WHERE g.gastoRecorrenteId = :recorrenteId AND g.data >= :aPartirDe")
+    List<LocalDate> datasDosGastosDaRecorrente(
+            @Param("recorrenteId") Integer recorrenteId, @Param("aPartirDe") LocalDate aPartirDe);
 
     // Parcelas ainda não vencidas (data futura) de uma compra parcelada - removidas ao
     // cancelar a compra, mantendo intactas as parcelas com data igual ou anterior a

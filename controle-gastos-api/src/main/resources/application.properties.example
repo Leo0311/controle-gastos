@@ -7,6 +7,11 @@ spring.datasource.username=postgres
 spring.datasource.password=SUA_SENHA_AQUI
 spring.datasource.driver-class-name=org.postgresql.Driver
 
+# Reescreve INSERT em lote (JdbcTemplate.batchUpdate) num unico INSERT multi-linha -
+# a pre-geracao de gastos recorrentes usa isso (achado 2.3). Copie esta linha pro
+# seu application.properties.
+spring.datasource.hikari.data-source-properties.reWriteBatchedInserts=true
+
 # As tabelas ja existem (criadas pelo schema.sql do projeto console) - nao recriar/alterar,
 # apenas validar se o mapeamento das entidades bate com o schema atual
 spring.jpa.hibernate.ddl-auto=validate

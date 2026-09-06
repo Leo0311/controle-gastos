@@ -53,7 +53,34 @@ questionável.
 
 ---
 
-## 2.3 — Performance da geração de gastos recorrentes (N+1 no laço de meses)
+## ~~2.3 — Performance da geração de gastos recorrentes (N+1 no laço de meses)~~ — RESOLVIDO 2026-09-05
+
+**Resolvido:** as 3 otimizações abaixo foram implementadas.
+`GastoRecorrenteService.cadastrar` com `mesesGerar=12` foi de **36 → 4** statements
+SQL (medido local via `spring.jpa.show-sql` + log do `JdbcTemplate`):
+antes `1 select usuarios (auth) + 12 select categorias + 1 insert recorrente + 11
+select gastos (exists) + 11 insert gastos`; depois `1 select usuarios (auth) + 1
+select categorias + 1 insert recorrente + 1 batch insert`.
+
+- Item 1: `resolverCategoria` roda 1× em `cadastrar`/`atualizar` e passa os nomes
+  pra `gerarProximosMeses` (mesmo padrão de `CompraParceladaService`).
+- Item 2: numa recorrência nova, `gerarProximosMeses` nem consulta os meses já
+  lançados (não há nenhum); o mês corrente entra no mesmo batch quando o dia já
+  chegou (sem corrida - a recorrência só fica visível pro lançamento sob demanda
+  após o commit). Na edição, uma query só (`datasDosGastosDaRecorrente`) traz
+  todas as datas do horizonte, no lugar de 1 `exists` por mês; o mês corrente na
+  edição continua pelo `tentarLancar` (trata a corrida com `lancarPendentes`).
+- Item 3: `GastoRepository.inserirEmLote` (fragmento custom com `JdbcTemplate.batchUpdate`)
+  + `reWriteBatchedInserts=true` no pool. Feito no nível do JDBC porque `Gasto`
+  usa `GenerationType.IDENTITY`, que desliga o batch de insert do Hibernate -
+  então `hibernate.jdbc.batch_size` **não** foi adicionado (seria inócuo pras
+  entidades deste projeto).
+
+Cold start do Neon (item 5 abaixo) segue em aberto - é ortogonal.
+
+Histórico da análise original abaixo, mantido pra referência.
+
+---
 
 **Registrado em:** 2026-09-05, na rodada que adicionou o indicador de loading ao
 salvamento de recorrente/parcelada (commit `1810354`). O loading cobre a UX; isto

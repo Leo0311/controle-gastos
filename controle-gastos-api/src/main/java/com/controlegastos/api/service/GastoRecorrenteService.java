@@ -19,9 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -50,14 +54,14 @@ public class GastoRecorrenteService {
     @Transactional
     public GastoRecorrente cadastrar(GastoRecorrente dados, Integer usuarioId) {
         validar(dados);
-        validarCategoria(dados, usuarioId);
+        CategoriaResolvida categoria = resolverCategoria(dados, usuarioId);
         validarOrcamento(dados.getOrcamentoId(), usuarioId);
         dados.setId(null);
         dados.setUsuarioId(usuarioId);
         dados.setAtivo(true);
         dados.setDataCriacao(LocalDateTime.now());
         GastoRecorrente salvo = repository.save(dados);
-        gerarProximosMeses(salvo, usuarioId, dados.getMesesGerar());
+        gerarProximosMeses(salvo, usuarioId, dados.getMesesGerar(), categoria, true);
         return salvo;
     }
 
@@ -69,7 +73,7 @@ public class GastoRecorrenteService {
     public GastoRecorrente atualizar(Integer id, GastoRecorrente dados, Integer usuarioId) {
         GastoRecorrente existente = buscarPorId(id, usuarioId);
         validar(dados);
-        validarCategoria(dados, usuarioId);
+        CategoriaResolvida categoria = resolverCategoria(dados, usuarioId);
         validarOrcamento(dados.getOrcamentoId(), usuarioId);
         existente.setDescricao(dados.getDescricao());
         existente.setValor(dados.getValor());
@@ -78,7 +82,7 @@ public class GastoRecorrenteService {
         existente.setDiaDoMes(dados.getDiaDoMes());
         existente.setOrcamentoId(dados.getOrcamentoId());
         GastoRecorrente salvo = repository.save(existente);
-        gerarProximosMeses(salvo, usuarioId, dados.getMesesGerar());
+        gerarProximosMeses(salvo, usuarioId, dados.getMesesGerar(), categoria, false);
         return salvo;
     }
 
@@ -122,53 +126,74 @@ public class GastoRecorrenteService {
 
     // Pré-gera os gastos dos próximos "mesesGerar" meses (1 a 12, já validado em
     // validar()) a partir de hoje - chamada ao criar ou editar uma recorrência.
-    // Mês atual (i=0): segue a regra de sempre (tentarLancar) - só lança se o dia já
-    // chegou, senão o lançamento sob demanda cuida dele quando o dia chegar. Meses
-    // seguintes (i=1..mesesGerar-1): inteiramente futuros, então sempre são gerados,
-    // sem a checagem de "dia ainda não chegou" (que só faz sentido dentro do mês
-    // corrente). Idempotente nos dois casos (mesma checagem de
-    // existsByGastoRecorrenteIdAndDataBetween) - chamar de novo numa edição não
-    // duplica os meses já gerados antes, só estende pros meses recém-incluídos.
-    private void gerarProximosMeses(GastoRecorrente recorrente, Integer usuarioId, Integer mesesGerar) {
+    //
+    // Otimização de round-trips (achado 2.3): antes era, por mês, 1 exists de
+    // duplicata + 1 resolução de categoria + 1 insert individual (~3-5 idas ao
+    // banco por mês, ~38 no total pra mesesGerar=12). Agora:
+    // - categoria/subcategoria resolvidas UMA vez pelo chamador (parâmetro);
+    // - numa recorrência NOVA não há gasto vinculado nenhum, então os "já
+    //   lançados" são vazios sem consultar o banco; numa edição, uma query só
+    //   traz todas as datas do horizonte;
+    // - os meses a inserir vão num único batch JDBC (inserirEmLote).
+    //
+    // Mês corrente (i=0): numa recorrência NOVA entra no mesmo batch quando o dia
+    // já chegou (não há corrida - a recorrência só fica visível pro lançamento
+    // sob demanda depois do commit). Numa EDIÇÃO, continua pelo tentarLancar, que
+    // trata a corrida com um lancarPendentes concorrente do mês corrente.
+    private void gerarProximosMeses(GastoRecorrente recorrente, Integer usuarioId, int mesesGerar,
+                                    CategoriaResolvida categoria, boolean recorrenciaNova) {
         LocalDate hoje = LocalDate.now();
 
-        tentarLancar(recorrente, usuarioId, hoje);
-        for (int i = 1; i < mesesGerar; i++) {
-            lancarParaMesFuturo(recorrente, usuarioId, hoje.plusMonths(i));
+        Set<YearMonth> jaLancados = recorrenciaNova
+                ? Collections.emptySet()
+                : gastoRepository.datasDosGastosDaRecorrente(recorrente.getId(), hoje.withDayOfMonth(1)).stream()
+                        .map(YearMonth::from)
+                        .collect(Collectors.toSet());
+
+        List<Gasto> aInserir = new ArrayList<>();
+
+        int primeiroMesFuturo = 1;
+        if (recorrenciaNova) {
+            LocalDate dataMesCorrente = dataDoLancamento(recorrente.getDiaDoMes(), hoje);
+            if (!dataMesCorrente.isAfter(hoje)) {
+                aInserir.add(montarGasto(recorrente, categoria, dataMesCorrente, usuarioId));
+            }
+        } else {
+            tentarLancar(recorrente, usuarioId, hoje);
+        }
+
+        for (int i = primeiroMesFuturo; i < mesesGerar; i++) {
+            LocalDate data = dataDoLancamento(recorrente.getDiaDoMes(), hoje.plusMonths(i));
+            if (!jaLancados.contains(YearMonth.from(data))) {
+                aInserir.add(montarGasto(recorrente, categoria, data, usuarioId));
+            }
+        }
+
+        if (aInserir.isEmpty()) {
+            return;
+        }
+        try {
+            gastoRepository.inserirEmLote(aInserir);
+        } catch (RuntimeException e) {
+            // Uma recorrência com problema não deve travar o salvamento da
+            // recorrência em si - mesma garantia do laço individual antigo.
         }
     }
 
-    // Mesma lógica de tentarLancar, mas sem a checagem "o dia ainda não chegou" -
-    // usada só pra meses inteiramente futuros na pré-geração (ver gerarProximosMeses),
-    // onde essa checagem não se aplica (o mês nem começou ainda).
-    private void lancarParaMesFuturo(GastoRecorrente recorrente, Integer usuarioId, LocalDate referencia) {
-        LocalDate dataLancamento = dataDoLancamento(recorrente.getDiaDoMes(), referencia);
-        LocalDate inicioMes = referencia.withDayOfMonth(1);
-        LocalDate fimMes = referencia.withDayOfMonth(referencia.lengthOfMonth());
-        boolean jaLancado = gastoRepository
-                .existsByGastoRecorrenteIdAndDataBetween(recorrente.getId(), inicioMes, fimMes);
-        if (jaLancado) {
-            return;
-        }
-
+    private Gasto montarGasto(GastoRecorrente recorrente, CategoriaResolvida categoria,
+                              LocalDate data, Integer usuarioId) {
         Gasto gasto = new Gasto();
         gasto.setDescricao(recorrente.getDescricao());
         gasto.setValor(recorrente.getValor());
         gasto.setCategoriaId(recorrente.getCategoriaId());
+        gasto.setCategoria(categoria.categoriaNome());
         gasto.setSubcategoriaId(recorrente.getSubcategoriaId());
+        gasto.setSubcategoria(categoria.subcategoriaNome());
         gasto.setOrcamentoId(recorrente.getOrcamentoId());
-        gasto.setData(dataLancamento);
+        gasto.setData(data);
+        gasto.setUsuarioId(usuarioId);
         gasto.setGastoRecorrenteId(recorrente.getId());
-        try {
-            gastoService.cadastrarVinculadoARecorrente(gasto, usuarioId);
-        } catch (DataIntegrityViolationException e) {
-            // uq_gastos_recorrente_mes: outra requisição concorrente (duas abas, dois
-            // lançamentos automáticos ao mesmo tempo) já inseriu o gasto deste mês
-            // entre a checagem acima e este insert - a corrida perdeu, não é erro.
-        } catch (RuntimeException e) {
-            // uma recorrência com problema (ex: orçamento vinculado foi excluído depois)
-            // não deve travar a pré-geração dos outros meses
-        }
+        return gasto;
     }
 
     // Lança o gasto da recorrência pro mês de referência, se o dia já chegou (ou já
@@ -218,11 +243,20 @@ public class GastoRecorrenteService {
         return referencia.withDayOfMonth(dia);
     }
 
-    private void validarCategoria(GastoRecorrente dados, Integer usuarioId) {
+    // Nomes de categoria/subcategoria já resolvidos, pra gerarProximosMeses gravar
+    // em cada gasto sem o GastoService ter que buscar de novo por mês (achado 2.3
+    // - mesmo padrão de CompraParceladaService.CategoriaResolvida). subcategoriaNome
+    // é null quando a recorrência não tem subcategoria.
+    private record CategoriaResolvida(String categoriaNome, String subcategoriaNome) { }
+
+    // Confirma que categoria (e subcategoria, se houver) existem e são visíveis pro
+    // usuário, e devolve os nomes. Além de validar, é a resolução única usada na
+    // pré-geração dos meses.
+    private CategoriaResolvida resolverCategoria(GastoRecorrente dados, Integer usuarioId) {
         Categoria categoria = categoriaRepository.findByIdVisivel(dados.getCategoriaId(), usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Categoria inválida ou não pertence ao usuário."));
         if (dados.getSubcategoriaId() == null) {
-            return;
+            return new CategoriaResolvida(categoria.getNome(), null);
         }
         Subcategoria subcategoria = subcategoriaRepository
                 .findByIdVisivel(dados.getSubcategoriaId(), usuarioId)
@@ -230,6 +264,7 @@ public class GastoRecorrenteService {
         if (!subcategoria.getCategoriaId().equals(categoria.getId())) {
             throw new IllegalArgumentException("Subcategoria não pertence à categoria selecionada.");
         }
+        return new CategoriaResolvida(categoria.getNome(), subcategoria.getNome());
     }
 
     private void validarOrcamento(Integer orcamentoId, Integer usuarioId) {
