@@ -141,6 +141,44 @@ html.tema-escuro {
   --status-critico-texto: #f09595;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hover unificado de elevação (elementos clicáveis com container próprio)
+//
+// O mat-raised-button já sobe uma sombra no hover de graça do Material - é o
+// padrão que queremos. Os outros botões com contorno/preenchimento próprio
+// (mat-stroked-button e mat-flat-button) só tinham o state-layer e ficavam
+// "chapados". Aqui a lacuna é preenchida com a MESMA var(--sombra-hover) dos
+// cards clicáveis (.clicavel abaixo), pra todo clicável com container reagir
+// igual ao passar o mouse, nos dois temas.
+//
+// Fica de fora de propósito: mat-button (texto) e mat-icon-button são planos por
+// design - sombra ali destoaria -, então seguem só com o state-layer do
+// Material; mat-button-toggle, abas do topo e a bottom nav têm estado
+// "ativo/selecionado" próprio. Botão desabilitado nunca sobe. Não toca no ripple
+// nem duplica a sombra nativa do mat-raised-button.
+// ─────────────────────────────────────────────────────────────────────────────
+.mat-mdc-outlined-button:not(:disabled),
+.mat-mdc-unelevated-button:not(:disabled) {
+  transition: box-shadow 0.2s ease;
+}
+
+.mat-mdc-outlined-button:not(:disabled):hover,
+.mat-mdc-unelevated-button:not(:disabled):hover {
+  box-shadow: var(--sombra-hover);
+}
+
+// Superfície clicável genérica (card-stat do dashboard hoje; disponível pra
+// qualquer card/elemento com role="button"). Mesma elevação de hover dos botões
+// acima - um único ponto de verdade pro efeito.
+.clicavel {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.clicavel:hover {
+  box-shadow: var(--sombra-hover);
+}
+
 .snack-alerta {
   --mdc-snackbar-container-color: var(--fundo-snack-erro);
   --mdc-snackbar-supporting-text-color: #fff;

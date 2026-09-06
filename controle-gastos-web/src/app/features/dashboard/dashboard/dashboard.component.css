@@ -38,13 +38,7 @@
   border-color: var(--acento-primario);
 }
 
-.clicavel {
-  cursor: pointer;
-}
-
-.clicavel:hover {
-  box-shadow: var(--sombra-hover);
-}
+/* .clicavel (cursor + elevação no hover) é global, em styles.scss. */
 
 .card-stat:focus-visible {
   outline: 2px solid var(--acento-primario);
