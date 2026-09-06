@@ -53,6 +53,60 @@ questionável.
 
 ---
 
+## 2.3 — Performance da geração de gastos recorrentes (N+1 no laço de meses)
+
+**Registrado em:** 2026-09-05, na rodada que adicionou o indicador de loading ao
+salvamento de recorrente/parcelada (commit `1810354`). O loading cobre a UX; isto
+aqui é o ganho de latência, a tratar numa próxima rodada.
+
+**Onde:** `GastoRecorrenteService.gerarProximosMeses` + `lancarParaMesFuturo` /
+`tentarLancar` → `GastoService.cadastrarVinculadoARecorrente` → `salvar` (backend).
+Chamado por `cadastrar` e `atualizar` de recorrência.
+
+**Comportamento atual:** laço sequencial, **um mês por vez**, dentro de uma
+transação. Por mês:
+
+1. `existsByGastoRecorrenteIdAndDataBetween` — 1 SELECT
+2. `resolverCategoria` → `categoriaRepository.findByIdVisivel` — 1 SELECT
+   (+ 1 SELECT se houver subcategoria)
+3. `validarOrcamento` — 1 SELECT se `orcamentoId != null`
+4. `repository.save` — 1 INSERT
+
+Para `mesesGerar = 12`: **~38 a 62 round-trips sequenciais** ao banco (3 por mês no
+mínimo, 5 com subcategoria + orçamento), mais a criação da própria recorrência.
+
+**Por que incomoda:**
+
+- **Local (Postgres 14):** ~50–150 ms, imperceptível.
+- **Produção (Neon):** cada round-trip carrega a latência VM Oracle ↔ Neon; e o
+  Neon serverless escala a zero, então a **primeira** query depois de ocioso pode
+  custar segundos sozinha (cold start). É o "demora visivelmente mais" que o
+  usuário relatou.
+
+**O que fazer (por ordem de retorno / risco):**
+
+1. **Resolver categoria/subcategoria UMA vez** antes do laço, passando os nomes já
+   resolvidos pra cada mês — hoje resolve as mesmas 12×. `CompraParceladaService.salvarParcelas`
+   já faz exatamente isso ("resolvidos e validados UMA única vez pelo chamador").
+   Corta ~12–24 SELECTs. Baixo risco.
+2. **Pular o `exists` na criação** — recorrência recém-criada não tem gasto nenhum
+   vinculado, então os 12 `existsByGastoRecorrenteIdAndDataBetween` sempre dão
+   `false`. Split do caminho create vs. edit (ou uma flag). Corta ~12 SELECTs. Na
+   **edição** manter a checagem (ou trocar por uma query só, buscando todos os
+   meses já lançados da recorrência e checando em memória).
+3. **Batch dos inserts** — `saveAll` + `spring.jpa.properties.hibernate.jdbc.batch_size`,
+   via um método de insert em lote no estilo `salvarParcelas`. 12 INSERTs → 1–2.
+4. Combinado: ~38 queries → ~3–4. No Neon, diferença estimada entre ~5 s e ~0,5 s.
+5. **Cold start do Neon** é ortogonal — só resolve com tier pago "always-on" ou um
+   ping keep-warm; fora do escopo de código.
+
+**Custo de não fazer:** salvar uma recorrência com horizonte alto trava o diálogo
+(com spinner, desde `1810354`) por alguns segundos em produção. Sem perda de dado,
+sem risco de duplicata (a geração é idempotente e há a constraint
+`uq_gastos_recorrente_mes` no banco), só espera.
+
+---
+
 ## Pendências abertas em setembro de 2026
 
 - ~~**Endpoint órfão `GET /api/categorias/com-gastos`**~~ — resolvido em 2026-09-05: voltou a ter chamador (`CategoriaService.listarComGastos` no frontend) ao alimentar o dropdown "Filtrar por categoria" da tela de Gastos na correção do achado C1 da auditoria (paginação de `GET /api/gastos`).
