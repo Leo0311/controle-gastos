@@ -22,9 +22,17 @@
   padding: 32px;
 }
 
+/* O mat-accordion vai de borda a borda do card (card sem padding). Cada
+   mat-expansion-panel traz a própria sombra de elevação do Material; a do último
+   painel projetava pra baixo sobre o antigo padding-bottom de 16px do card,
+   deixando uma linha solta ("borda dupla") entre o canto arredondado do painel e
+   o do card. Sem o padding-bottom, o último painel encosta no fim do card (os
+   dois cantos de raio 12 coincidem) e o overflow:hidden apara a sombra do painel
+   na curva - some a linha. O respiro abaixo da última linha vem do padding
+   interno do próprio expansion-panel-header. */
 .card-analise {
   margin-bottom: 16px;
-  padding-bottom: 16px;
+  overflow: hidden;
 }
 
 /* mat-expansion-panel-header tem altura fixa (48px) por padrão, que não comporta o
