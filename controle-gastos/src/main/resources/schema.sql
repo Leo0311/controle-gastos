@@ -657,3 +657,74 @@ CREATE INDEX IF NOT EXISTS idx_categorias_ordem_usuario_usuario ON categorias_or
 -- esta migração não desloga ninguém que esteja logado.
 -- ============================================================================
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0;
+
+-- ============================================================================
+-- Terceira leva de categorias/subcategorias padrão do sistema: duas categorias
+-- novas (Pets, Beleza e cuidados pessoais) e subcategorias novas em categorias
+-- que já existiam (Saúde, Transporte, Outros). Mesmo padrão idempotente das
+-- levas anteriores - INSERT ... ON CONFLICT DO NOTHING, categoria localizada
+-- pelo nome (id é SERIAL, não previsível), usuario_id NULL = padrão do sistema.
+-- Nenhuma categoria/subcategoria pessoal já existente é tocada. Só dado seedado:
+-- não há coluna/tabela nova, então a API (ddl-auto=validate) não precisa de
+-- rebuild - basta aplicar este trecho no Neon para as novas aparecerem.
+-- ============================================================================
+
+INSERT INTO categorias (usuario_id, nome, emoji) VALUES
+    (NULL, 'Pets', '🐾'),
+    (NULL, 'Beleza e cuidados pessoais', '💇')
+ON CONFLICT (COALESCE(usuario_id, 0), LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Ração', '🍖'),
+    ('Veterinário', '🏥'),
+    ('Banho e tosa', '🛁'),
+    ('Medicamentos', '💊'),
+    ('Acessórios', '🧸')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Pets')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Salão/Barbearia', '💇'),
+    ('Manicure/Pedicure', '💅'),
+    ('Estética', '🧖'),
+    ('Produtos de higiene e beleza', '🧴')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Beleza e cuidados pessoais')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Terapia/Psicólogo', '🧠'),
+    ('Vacinas', '💉')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Saúde')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Multas', '🚨')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Transporte')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+INSERT INTO subcategorias (categoria_id, usuario_id, nome, emoji)
+SELECT c.id, NULL, v.nome, v.emoji
+FROM categorias c
+CROSS JOIN (VALUES
+    ('Doações', '🙏'),
+    ('Impostos', '🧾'),
+    ('Empréstimos/dívidas', '💸')
+) AS v(nome, emoji)
+WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Outros')
+ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;

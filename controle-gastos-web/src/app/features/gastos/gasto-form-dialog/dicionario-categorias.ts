@@ -143,6 +143,17 @@ export const DICIONARIO_CATEGORIAS: EntradaDicionario[] = [
   { termos: ['ipva'], categoria: 'Transporte', subcategoria: 'IPVA' },
   { termos: ['licenciamento', 'crlv', 'detran'], categoria: 'Transporte', subcategoria: 'Licenciamento' },
   { termos: ['lava jato', 'lavagem do carro', 'lavar o carro'], categoria: 'Transporte', subcategoria: 'Lavagem' },
+  // "detran" não entra aqui de propósito: já é termo de "Licenciamento" (acima) e,
+  // por ser mais curto e vir antes, venceria o desempate — uma taxa de detran é
+  // mesmo ambígua entre multa e licenciamento.
+  {
+    termos: [
+      'multa', 'multas', 'multa de transito', 'multa de velocidade', 'radar',
+      'infracao de transito', 'notificacao de infracao'
+    ],
+    categoria: 'Transporte',
+    subcategoria: 'Multas'
+  },
   // "Outros" não existe em Transporte -> vira sugestão só da categoria.
   {
     termos: ['pedagio', 'sem parar', 'conectcar', 'veloe', 'tag de pedagio', 'praca de pedagio'],
@@ -407,7 +418,65 @@ export const DICIONARIO_CATEGORIAS: EntradaDicionario[] = [
     subcategoria: 'Hospedagem'
   },
   { termos: ['city tour', 'excursao', 'passeio turistico', 'ingresso turistico'], categoria: 'Viagens', subcategoria: 'Passeios' },
-  { termos: ['viagem', 'viajar', 'mochilao', 'roteiro de viagem'], categoria: 'Viagens', subcategoria: 'Outros' }
+  { termos: ['viagem', 'viajar', 'mochilao', 'roteiro de viagem'], categoria: 'Viagens', subcategoria: 'Outros' },
+
+  // ─── Pets ───────────────────────────────────────────────────────────────────
+  {
+    termos: ['racao', 'racao para cachorro', 'racao para gato', 'saco de racao'],
+    categoria: 'Pets',
+    subcategoria: 'Ração'
+  },
+  {
+    termos: [
+      'veterinario', 'vet', 'consulta veterinaria', 'clinica veterinaria',
+      'petshop', 'pet shop'
+    ],
+    categoria: 'Pets',
+    subcategoria: 'Veterinário'
+  },
+  {
+    termos: ['banho e tosa', 'tosa', 'banho do cachorro', 'banho do pet'],
+    categoria: 'Pets',
+    subcategoria: 'Banho e tosa'
+  },
+  {
+    termos: ['coleira', 'guia para cachorro', 'brinquedo para pet', 'arranhador'],
+    categoria: 'Pets',
+    subcategoria: 'Acessórios'
+  },
+
+  // ─── Beleza e cuidados pessoais ─────────────────────────────────────────────
+  {
+    termos: [
+      'salao', 'salao de beleza', 'cabeleireiro', 'barbearia', 'barbeiro',
+      'corte de cabelo', 'escova progressiva'
+    ],
+    categoria: 'Beleza e cuidados pessoais',
+    subcategoria: 'Salão/Barbearia'
+  },
+  {
+    termos: ['manicure', 'pedicure', 'esmalteria', 'fazer as unhas'],
+    categoria: 'Beleza e cuidados pessoais',
+    subcategoria: 'Manicure/Pedicure'
+  },
+  {
+    termos: [
+      'estetica', 'clinica de estetica', 'limpeza de pele', 'depilacao',
+      'design de sobrancelha', 'sobrancelha'
+    ],
+    categoria: 'Beleza e cuidados pessoais',
+    subcategoria: 'Estética'
+  },
+
+  // ─── Outros ─────────────────────────────────────────────────────────────────
+  { termos: ['doacao', 'doacoes', 'doar', 'vaquinha', 'contribuicao'], categoria: 'Outros', subcategoria: 'Doações' },
+  // "imposto do imovel" (mais longo) continua vencendo p/ Moradia/IPTU; "ir" sozinho
+  // NÃO entra (colidiria com o verbo "ir" em qualquer descrição).
+  {
+    termos: ['imposto', 'impostos', 'darf', 'imposto de renda', 'restituicao', 'declaracao do ir'],
+    categoria: 'Outros',
+    subcategoria: 'Impostos'
+  }
 ];
 
 /**

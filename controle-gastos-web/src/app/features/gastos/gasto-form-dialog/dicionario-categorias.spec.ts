@@ -9,7 +9,10 @@ const CATEGORIAS: Categoria[] = [
   { id: 3, nome: 'Saúde', emoji: '🏥', usuarioId: null },
   { id: 4, nome: 'Moradia', emoji: '🏠', usuarioId: null },
   { id: 5, nome: 'Contas e serviços', emoji: '💡', usuarioId: null },
-  { id: 6, nome: 'Lazer', emoji: '🎮', usuarioId: null }
+  { id: 6, nome: 'Lazer', emoji: '🎮', usuarioId: null },
+  { id: 7, nome: 'Pets', emoji: '🐾', usuarioId: null },
+  { id: 8, nome: 'Beleza e cuidados pessoais', emoji: '💇', usuarioId: null },
+  { id: 9, nome: 'Outros', emoji: '📦', usuarioId: null }
 ];
 
 const SUBCATEGORIAS: Subcategoria[] = [
@@ -22,8 +25,13 @@ const SUBCATEGORIAS: Subcategoria[] = [
   { id: 16, categoriaId: 5, nome: 'Streaming', emoji: '🎬', usuarioId: null },
   { id: 17, categoriaId: 6, nome: 'Bares', emoji: '🍻', usuarioId: null },
   { id: 18, categoriaId: 1, nome: 'Mercado', emoji: '🛒', usuarioId: null },
-  { id: 19, categoriaId: 6, nome: 'Esportes', emoji: '⚽', usuarioId: null }
+  { id: 19, categoriaId: 6, nome: 'Esportes', emoji: '⚽', usuarioId: null },
+  { id: 20, categoriaId: 7, nome: 'Ração', emoji: '🍖', usuarioId: null },
+  { id: 21, categoriaId: 7, nome: 'Veterinário', emoji: '🏥', usuarioId: null },
+  { id: 22, categoriaId: 8, nome: 'Salão/Barbearia', emoji: '💇', usuarioId: null },
+  { id: 23, categoriaId: 9, nome: 'Impostos', emoji: '🧾', usuarioId: null }
   // De propósito SEM "Outros" em Transporte (id 2) - "pedágio" cai só na categoria.
+  // De propósito SEM "Multas" (Transporte) e "Doações" (Outros) - caem só na categoria.
 ];
 
 describe('sugerirPorDicionario', () => {
@@ -87,7 +95,15 @@ describe('sugerirPorDicionario', () => {
       ['porcao de batata frita', 6, 17],    // "batata frita" (Bares) vence "batata" (Mercado)
       ['jogo de volei na praia', 6, 19],    // Lazer > Esportes
       ['torneio de xadrez', 6, 19],         // Lazer > Esportes
-      ['aula de tenis', 6, 19]              // "aula de tenis" (Esportes) vence "tenis" (Calçados)
+      ['aula de tenis', 6, 19],             // "aula de tenis" (Esportes) vence "tenis" (Calçados)
+      ['racao para o cachorro', 7, 20],     // Pets > Ração
+      ['consulta no veterinario', 7, 21],   // Pets > Veterinário
+      ['petshop do bairro', 7, 21],         // Pets > Veterinário
+      ['corte de cabelo na barbearia', 8, 22], // Beleza > Salão/Barbearia
+      ['darf do mes', 9, 23],               // Outros > Impostos
+      ['imposto de renda', 9, 23],          // Outros > Impostos
+      ['multa de transito', 2, null],       // Transporte > Multas (subcat fora do fixture -> null)
+      ['doacao para a igreja', 9, null]     // Outros > Doações (subcat fora do fixture -> null)
     ];
     for (const [texto, catId, subId] of casos) {
       it(`"${texto}" -> categoria ${catId}, subcategoria ${subId}`, () => {
