@@ -20,7 +20,12 @@ import { GastoService } from '../../../services/gasto.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { NotificacaoService } from '../../../core/notificacao.service';
-import { calcularSugestaoCategoria, SugestaoCategoria } from './sugestao-categoria';
+import {
+  calcularSugestaoCategoria,
+  mesmaSugestao,
+  sugestaoDeveAparecer,
+  SugestaoCategoria
+} from './sugestao-categoria';
 import { sugerirPorDicionario } from './dicionario-categorias';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { CompraParcelada } from '../../../models/compra-parcelada.model';
@@ -357,15 +362,13 @@ export class GastoFormDialogComponent implements OnInit {
 
   /** Chip de sugestão a exibir agora — ou null quando não há o que sugerir. */
   get sugestao(): (SugestaoCategoria & { rotulo: string }) | null {
-    if (!this.sugestaoBruta || this.sugestaoDispensada) {
-      return null;
-    }
-    const categoriaAtual = this.form.controls.categoriaId.value;
-    const subcategoriaAtual = this.form.controls.subcategoriaId.value ?? null;
-    if (categoriaAtual === this.sugestaoBruta.categoriaId && subcategoriaAtual === this.sugestaoBruta.subcategoriaId) {
-      return null;
-    }
-    return this.sugestaoBruta;
+    const aparece = sugestaoDeveAparecer(
+      this.sugestaoBruta,
+      this.sugestaoDispensada,
+      this.form.controls.categoriaId.value,
+      this.form.controls.subcategoriaId.value ?? null
+    );
+    return aparece ? this.sugestaoBruta : null;
   }
 
   // Prioridade: o histórico pessoal do usuário sempre ganha; o dicionário de
@@ -380,9 +383,13 @@ export class GastoFormDialogComponent implements OnInit {
   }
 
   private recalcularSugestao(texto: string): void {
-    this.sugestaoDispensada = false;
     const combo = calcularSugestaoCategoria(texto, this.gastosAnteriores)
       ?? sugerirPorDicionario(texto, this.todasCategorias, this.todasSubcategorias);
+    // O "x" (dispensar) só perde o efeito quando a sugestão muda de conteúdo -
+    // digitar mais uma letra sem mudar a combinação não faz o chip voltar.
+    if (!mesmaSugestao(combo, this.sugestaoBruta)) {
+      this.sugestaoDispensada = false;
+    }
     this.sugestaoBruta = combo ? { ...combo, rotulo: this.montarRotuloSugestao(combo) } : null;
   }
 
@@ -404,12 +411,17 @@ export class GastoFormDialogComponent implements OnInit {
     this.form.controls.categoriaId.setValue(sugestao.categoriaId);
     this.categoriaAnterior = sugestao.categoriaId;
     this.atualizarOpcoesSubcategoria();
-    this.form.controls.subcategoriaId.setValue(sugestao.subcategoriaId);
-    this.subcategoriaAnterior = sugestao.subcategoriaId;
+    // Sugestão categoria-só (sem subcategoria): não mexe no campo de subcategoria
+    // - a troca de categoria acima já removeu uma subcategoria órfã (de outra
+    // categoria) via atualizarOpcoesSubcategoria; o que não pode é apagar uma
+    // subcategoria válida que o usuário tenha escolhido.
+    if (sugestao.subcategoriaId != null) {
+      this.form.controls.subcategoriaId.setValue(sugestao.subcategoriaId);
+      this.subcategoriaAnterior = sugestao.subcategoriaId;
+    }
     this.atualizarOpcoesOrcamento();
-    // Não zera `sugestaoBruta`: o getter `sugestao` já esconde o chip enquanto a
-    // combinação selecionada for a sugerida, e volta a mostrá-lo se o usuário
-    // trocar a categoria/subcategoria manualmente depois.
+    // Não zera `sugestaoBruta`: o getter `sugestao` já esconde o chip assim que
+    // há uma subcategoria escolhida ou a categoria sugerida está aplicada.
   }
 
   dispensarSugestao(): void {

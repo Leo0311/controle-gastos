@@ -1,5 +1,11 @@
 import { Gasto } from '../../../models/gasto.model';
-import { calcularSugestaoCategoria, normalizarDescricao } from './sugestao-categoria';
+import {
+  calcularSugestaoCategoria,
+  mesmaSugestao,
+  normalizarDescricao,
+  sugestaoDeveAparecer,
+  SugestaoCategoria
+} from './sugestao-categoria';
 
 function gasto(descricao: string, categoriaId: number, subcategoriaId: number | null, data = '2026-01-01'): Gasto {
   return { descricao, valor: 10, categoriaId, subcategoriaId, data };
@@ -45,6 +51,52 @@ describe('sugestao-categoria', () => {
         gasto('Uber B', 4, 8, '2026-05-20')
       ];
       expect(calcularSugestaoCategoria('uber', historico)).toEqual({ categoriaId: 4, subcategoriaId: 8 });
+    });
+  });
+
+  describe('mesmaSugestao', () => {
+    it('true só quando categoria e subcategoria batem (null-safe)', () => {
+      expect(mesmaSugestao({ categoriaId: 3, subcategoriaId: 7 }, { categoriaId: 3, subcategoriaId: 7 })).toBeTrue();
+      expect(mesmaSugestao({ categoriaId: 3, subcategoriaId: null }, { categoriaId: 3, subcategoriaId: null })).toBeTrue();
+      expect(mesmaSugestao({ categoriaId: 3, subcategoriaId: 7 }, { categoriaId: 3, subcategoriaId: 8 })).toBeFalse();
+      expect(mesmaSugestao({ categoriaId: 3, subcategoriaId: 7 }, { categoriaId: 4, subcategoriaId: 7 })).toBeFalse();
+      expect(mesmaSugestao(null, null)).toBeTrue();
+      expect(mesmaSugestao(null, { categoriaId: 3, subcategoriaId: 7 })).toBeFalse();
+    });
+  });
+
+  describe('sugestaoDeveAparecer', () => {
+    const sugComSub: SugestaoCategoria = { categoriaId: 3, subcategoriaId: 7 };
+    const sugSoCategoria: SugestaoCategoria = { categoriaId: 3, subcategoriaId: null };
+
+    it('não aparece sem sugestão ou quando dispensada', () => {
+      expect(sugestaoDeveAparecer(null, false, null, null)).toBeFalse();
+      expect(sugestaoDeveAparecer(sugComSub, true, null, null)).toBeFalse();
+    });
+
+    it('aparece enquanto nada foi escolhido', () => {
+      expect(sugestaoDeveAparecer(sugComSub, false, null, null)).toBeTrue();
+    });
+
+    it('some assim que o usuário escolhe QUALQUER subcategoria (bug 1)', () => {
+      // subcategoria sugerida
+      expect(sugestaoDeveAparecer(sugComSub, false, 3, 7)).toBeFalse();
+      // subcategoria diferente, mesma categoria
+      expect(sugestaoDeveAparecer(sugComSub, false, 3, 9)).toBeFalse();
+      // subcategoria escolhida sobre uma sugestão categoria-só
+      expect(sugestaoDeveAparecer(sugSoCategoria, false, 3, 9)).toBeFalse();
+    });
+
+    it('sugestão categoria-só some quando essa categoria já está aplicada', () => {
+      expect(sugestaoDeveAparecer(sugSoCategoria, false, 3, null)).toBeFalse();
+    });
+
+    it('continua visível quando só a categoria mudou, sem subcategoria (atalho de correção)', () => {
+      // categoria diferente da sugerida, sem subcategoria ainda
+      expect(sugestaoDeveAparecer(sugComSub, false, 5, null)).toBeTrue();
+      expect(sugestaoDeveAparecer(sugSoCategoria, false, 5, null)).toBeTrue();
+      // categoria da sugestão-com-subcategoria escolhida, subcategoria ainda não
+      expect(sugestaoDeveAparecer(sugComSub, false, 3, null)).toBeTrue();
     });
   });
 });

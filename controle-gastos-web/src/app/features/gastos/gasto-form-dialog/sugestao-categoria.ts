@@ -6,6 +6,40 @@ export interface SugestaoCategoria {
   subcategoriaId: number | null;
 }
 
+/** Duas sugestões apontam pra mesma combinação categoria+subcategoria? (null-safe) */
+export function mesmaSugestao(a: SugestaoCategoria | null, b: SugestaoCategoria | null): boolean {
+  if (!a || !b) {
+    return a === b;
+  }
+  return a.categoriaId === b.categoriaId && (a.subcategoriaId ?? null) === (b.subcategoriaId ?? null);
+}
+
+/**
+ * O chip de sugestão deve aparecer agora? Escondido quando: não há sugestão; o
+ * usuário fechou no "x" (`dispensada`); o usuário já escolheu ALGUMA subcategoria
+ * (decisão manual - a sugestão não compete mais); ou a sugestão é categoria-só e
+ * essa categoria já está aplicada. Fica visível enquanto não há subcategoria
+ * escolhida - inclusive quando a categoria selecionada difere da sugerida, aí o
+ * chip serve de atalho pra corrigir.
+ */
+export function sugestaoDeveAparecer(
+  sugestao: SugestaoCategoria | null,
+  dispensada: boolean,
+  categoriaAtual: number | null,
+  subcategoriaAtual: number | null
+): boolean {
+  if (!sugestao || dispensada) {
+    return false;
+  }
+  if (subcategoriaAtual != null) {
+    return false;
+  }
+  if (categoriaAtual === sugestao.categoriaId && sugestao.subcategoriaId == null) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Normaliza uma descrição para a comparação "parecida": sem espaços nas pontas,
  * minúscula e sem acento (NFD + remoção dos diacríticos U+0300–U+036F), para que
