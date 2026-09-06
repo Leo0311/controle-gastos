@@ -500,7 +500,12 @@ export class GastosComponent implements OnInit {
   excluir(gasto: Gasto): void {
     // Parcela de compra parcelada não é excluível sozinha (deixaria o parcelamento
     // incoerente) - o botão/menu de excluir nem aparece nesse caso, e o backend
-    // rejeita. Este método só roda para gasto avulso.
+    // rejeita. Este método só roda para gasto avulso ou de recorrência.
+    if (gasto.gastoRecorrenteId != null) {
+      this.excluirRecorrenciaDoGasto(gasto);
+      return;
+    }
+
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
         titulo: 'Excluir gasto',
@@ -519,6 +524,32 @@ export class GastosComponent implements OnInit {
         },
         error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
+    });
+  }
+
+  // Excluir um lançamento gerado por uma recorrência apaga a recorrência INTEIRA
+  // (todos os lançamentos dela, passados e futuros, mais o registro). O diálogo
+  // faz a chamada, com spinner e botões travados, porque é exclusão em massa e
+  // irreversível (o backend é atômico - ver GastoService.excluirRecorrenciaEmCascata).
+  private excluirRecorrenciaDoGasto(gasto: Gasto): void {
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'Excluir recorrência inteira',
+        mensagem: `Este gasto faz parte da recorrência "${gasto.descricao}". Excluir vai remover TODOS os `
+          + 'lançamentos gerados por ela (passados e futuros) e a recorrência deixará de existir. '
+          + 'Esta ação não pode ser desfeita.',
+        textoConfirmar: 'Excluir tudo',
+        textoProcessando: 'Excluindo…',
+        acao: () => this.gastoService.excluir(gasto.id!)
+      }
+    });
+
+    ref.afterClosed().subscribe((excluido) => {
+      if (!excluido) {
+        return;
+      }
+      this.notificacao.sucesso('Recorrência e todos os lançamentos dela foram excluídos.');
+      this.carregar();
     });
   }
 

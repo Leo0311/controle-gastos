@@ -1,0 +1,8 @@
+/* Spinner ao lado do texto no botão de confirmar, enquanto a ação roda. Cor do
+   acento pra não sumir no cinza do botão desabilitado. */
+.spinner-botao {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+  --mdc-circular-progress-active-indicator-color: var(--acento-primario);
+}

@@ -1,6 +1,13 @@
 <h2 mat-dialog-title>{{ data.titulo }}</h2>
 <mat-dialog-content>{{ data.mensagem }}</mat-dialog-content>
 <mat-dialog-actions align="end">
-  <button mat-button (click)="cancelar()">Cancelar</button>
-  <button mat-raised-button color="warn" (click)="confirmar()">Confirmar</button>
+  <button mat-button (click)="cancelar()" [disabled]="processando">Cancelar</button>
+  <button mat-raised-button color="warn" (click)="confirmar()" [disabled]="processando">
+    @if (processando) {
+      <mat-progress-spinner class="spinner-botao" diameter="18" mode="indeterminate"></mat-progress-spinner>
+      {{ data.textoProcessando ?? 'Processando…' }}
+    } @else {
+      {{ data.textoConfirmar ?? 'Confirmar' }}
+    }
+  </button>
 </mat-dialog-actions>

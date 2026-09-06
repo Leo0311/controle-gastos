@@ -158,23 +158,25 @@ export class RecorrentesListaComponent implements OnInit {
   excluir(recorrente: GastoRecorrente): void {
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
-        titulo: 'Excluir gasto recorrente',
-        mensagem: `Tem certeza que deseja excluir a recorrência "${recorrente.descricao}"? `
-          + 'Os gastos de meses passados continuam intactos como histórico, mas os gastos a partir de hoje '
-          + '(incluindo os já pré-gerados de meses futuros que ainda não venceram) serão removidos.'
+        titulo: 'Excluir recorrência',
+        mensagem: `Excluir a recorrência "${recorrente.descricao}" vai remover TODOS os lançamentos gerados `
+          + 'por ela (passados e futuros) e a recorrência deixará de existir. Esta ação não pode ser desfeita.',
+        textoConfirmar: 'Excluir tudo',
+        textoProcessando: 'Excluindo…',
+        // O backend apaga os lançamentos e o registro numa transação só (atômico);
+        // o diálogo fica com spinner e botões travados até terminar.
+        acao: () => this.service.excluir(recorrente.id!)
       }
     });
-    ref.afterClosed().subscribe((confirmado) => {
-      if (!confirmado) {
+    ref.afterClosed().subscribe((excluido) => {
+      if (!excluido) {
         return;
       }
-      this.service.excluir(recorrente.id!).subscribe({
-        next: () => {
-          this.notificacao.sucesso('Gasto recorrente excluído com sucesso!');
-          this.carregar();
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
+      this.notificacao.sucesso('Recorrência e todos os lançamentos dela foram excluídos.');
+      this.carregar();
+      // Os lançamentos removidos somem da aba "Próximas contas" e do contador de
+      // "lançamentos futuros já gerados" - o pai recarrega o calendário.
+      this.recorrenciaAlternada.emit();
     });
   }
 }

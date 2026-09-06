@@ -258,6 +258,17 @@ class GastoRecorrenteServiceTest {
     }
 
     @Test
+    void excluir_delegaPraExclusaoEmCascataDoGastoService() {
+        service.excluir(RECORRENTE, USUARIO);
+
+        verify(gastoService).excluirRecorrenciaEmCascata(RECORRENTE, USUARIO);
+        // Não mexe direto na recorrência nem nos gastos - a cascata (gastos +
+        // registro, atômica) vive toda no GastoService.
+        verify(repository, never()).delete(any());
+        verify(gastoRepository, never()).excluirTodosDaRecorrente(any());
+    }
+
+    @Test
     void atualizar_recorrenciaComProblemaNaoTravaAEdicao_catchDoBatch() {
         GastoRecorrente existente = recorrente(1, 3);
         when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));

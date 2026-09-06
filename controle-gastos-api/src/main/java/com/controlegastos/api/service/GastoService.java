@@ -15,8 +15,10 @@ import com.controlegastos.api.exception.OrcamentoInvalidoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
+import com.controlegastos.api.model.GastoRecorrente;
 import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaRepository;
+import com.controlegastos.api.repository.GastoRecorrenteRepository;
 import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
@@ -26,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -51,6 +54,7 @@ public class GastoService {
     private final OrcamentoRepository orcamentoRepository;
     private final CategoriaRepository categoriaRepository;
     private final SubcategoriaRepository subcategoriaRepository;
+    private final GastoRecorrenteRepository gastoRecorrenteRepository;
 
     // validar() é compartilhado por TODO gasto que chega no banco - avulso
     // (cadastrar), vinculado a recorrência (cadastrarVinculadoARecorrente) e cada
@@ -236,6 +240,7 @@ public class GastoService {
         gasto.setSubcategoria(subcategoria.getNome());
     }
 
+    @Transactional
     public void excluir(Integer id, Integer usuarioId) {
         Gasto existente = buscarPorId(id, usuarioId);
         // Excluir uma parcela isolada deixaria o parcelamento permanentemente
@@ -248,7 +253,29 @@ public class GastoService {
                     "Esta é uma parcela de uma compra parcelada e não pode ser excluída sozinha. "
                     + "Para desfazer, exclua a compra parcelada inteira na aba \"Parceladas\" (tela Recorrentes).");
         }
+        // Excluir um lançamento gerado por uma recorrência remove a recorrência
+        // INTEIRA em cascata (todos os lançamentos dela + o registro), não só este
+        // gasto - o frontend confirma isso explicitamente antes de chamar. Um gasto
+        // avulso (sem gastoRecorrenteId) segue sendo excluído sozinho.
+        if (existente.getGastoRecorrenteId() != null) {
+            excluirRecorrenciaEmCascata(existente.getGastoRecorrenteId(), usuarioId);
+            return;
+        }
         repository.delete(existente);
+    }
+
+    // Exclusão em cascata de uma recorrência: apaga TODOS os gastos vinculados a ela
+    // (passados e futuros) e depois o próprio registro. Ponto único chamado tanto
+    // pela aba Gastos (excluir um lançamento dela) quanto pela aba Recorrentes
+    // (excluir o recorrente direto) - ver GastoRecorrenteService.excluir. Tudo numa
+    // transação: falhou no meio, nada é removido.
+    @Transactional
+    public void excluirRecorrenciaEmCascata(Integer recorrenteId, Integer usuarioId) {
+        GastoRecorrente recorrente = gastoRecorrenteRepository.findByIdAndUsuarioId(recorrenteId, usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Gasto recorrente não encontrado com ID " + recorrenteId));
+        repository.excluirTodosDaRecorrente(recorrenteId);
+        gastoRecorrenteRepository.delete(recorrente);
     }
 
     public ResumoDTO resumo(Integer usuarioId, LocalDate inicio, LocalDate fim) {

@@ -2,14 +2,18 @@ package com.controlegastos.api.service;
 
 import com.controlegastos.api.dto.GastoPaginaDTO;
 import com.controlegastos.api.exception.GastoDuplicadoException;
+import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
+import com.controlegastos.api.model.GastoRecorrente;
 import com.controlegastos.api.repository.CategoriaRepository;
+import com.controlegastos.api.repository.GastoRecorrenteRepository;
 import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.OrcamentoRepository;
 import com.controlegastos.api.repository.SubcategoriaRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,9 +51,10 @@ class GastoServiceTest {
     private final OrcamentoRepository orcamentoRepository = mock(OrcamentoRepository.class);
     private final CategoriaRepository categoriaRepository = mock(CategoriaRepository.class);
     private final SubcategoriaRepository subcategoriaRepository = mock(SubcategoriaRepository.class);
+    private final GastoRecorrenteRepository gastoRecorrenteRepository = mock(GastoRecorrenteRepository.class);
 
     private final GastoService service = new GastoService(
-            repository, orcamentoRepository, categoriaRepository, subcategoriaRepository);
+            repository, orcamentoRepository, categoriaRepository, subcategoriaRepository, gastoRecorrenteRepository);
 
     private Gasto gastoValido(LocalDate data) {
         Gasto gasto = new Gasto();
@@ -189,6 +195,42 @@ class GastoServiceTest {
         service.excluir(11, USUARIO);
 
         verify(repository).delete(avulso);
+        verify(repository, never()).excluirTodosDaRecorrente(any());
+    }
+
+    @Test
+    void excluir_gastoDeRecorrencia_apagaARecorrenciaInteiraEmCascata_semExcluirSoOGasto() {
+        Gasto lancamento = new Gasto();
+        lancamento.setId(12);
+        lancamento.setUsuarioId(USUARIO);
+        lancamento.setGastoRecorrenteId(500);
+        when(repository.findByIdAndUsuarioId(12, USUARIO)).thenReturn(Optional.of(lancamento));
+
+        GastoRecorrente recorrente = new GastoRecorrente();
+        recorrente.setId(500);
+        recorrente.setUsuarioId(USUARIO);
+        when(gastoRecorrenteRepository.findByIdAndUsuarioId(500, USUARIO)).thenReturn(Optional.of(recorrente));
+
+        service.excluir(12, USUARIO);
+
+        // Nunca apaga só o lançamento clicado - apaga todos os da recorrência...
+        verify(repository, never()).delete(any());
+        InOrder ordem = inOrder(repository, gastoRecorrenteRepository);
+        ordem.verify(repository).excluirTodosDaRecorrente(500);
+        // ...e só então a recorrência (a FK é ON DELETE SET NULL - inverter deixaria
+        // os gastos órfãos em vez de removidos).
+        ordem.verify(gastoRecorrenteRepository).delete(recorrente);
+    }
+
+    @Test
+    void excluirRecorrenciaEmCascata_lancaNaoEncontradoQuandoARecorrenciaNaoEhDoUsuario() {
+        when(gastoRecorrenteRepository.findByIdAndUsuarioId(999, USUARIO)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.excluirRecorrenciaEmCascata(999, USUARIO))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+
+        verify(repository, never()).excluirTodosDaRecorrente(any());
+        verify(gastoRecorrenteRepository, never()).delete(any());
     }
 
     @Test

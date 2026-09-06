@@ -92,20 +92,13 @@ public class GastoRecorrenteService {
         return repository.save(existente);
     }
 
-    // Exclui a recorrência e remove os gastos já lançados a partir de HOJE (inclusive)
-    // - inclui os pré-gerados de meses futuros que ainda não venceram, já que a
-    // recorrência deixou de existir. Gastos de meses passados (data anterior a hoje)
-    // continuam intactos como histórico: a FK gastos.gasto_recorrente_id é ON DELETE
-    // SET NULL (ver schema.sql), então excluir a recorrência só desvincula esses,
-    // sem apagar - mesmo padrão usado em CompraParceladaService.excluir.
-    @Transactional
+    // Exclui a recorrência INTEIRA em cascata: todos os gastos gerados por ela
+    // (passados e futuros) mais o registro da recorrência. Mesmo ponto usado quando
+    // a exclusão é disparada pela aba Gastos (excluir um lançamento dela) - a lógica
+    // vive em GastoService.excluirRecorrenciaEmCascata pra não haver duas cópias, e
+    // é atômica (@Transactional lá).
     public void excluir(Integer id, Integer usuarioId) {
-        GastoRecorrente existente = buscarPorId(id, usuarioId);
-
-        List<Gasto> gastosFuturos = gastoRepository.findByGastoRecorrenteIdAndDataGreaterThanEqual(id, LocalDate.now());
-        gastoRepository.deleteAll(gastosFuturos);
-
-        repository.delete(existente);
+        gastoService.excluirRecorrenciaEmCascata(id, usuarioId);
     }
 
     // Verifica todas as recorrências ativas do usuário e lança o gasto do mês atual

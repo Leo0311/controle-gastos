@@ -4,6 +4,7 @@ import com.controlegastos.api.model.Gasto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -89,11 +90,14 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
     // hoje (histórico do que já foi pago) - ver CompraParceladaService.excluir.
     List<Gasto> findByCompraParceladaIdAndDataAfter(Integer compraParceladaId, LocalDate data);
 
-    // Gastos de uma recorrência a partir de hoje (inclusive) - removidos ao excluir a
-    // recorrência, mantendo intactos os gastos de meses passados (histórico) - ver
-    // GastoRecorrenteService.excluir. Diferente de compras parceladas (que preservam o
-    // gasto do dia de hoje como "já vencido"), aqui hoje conta como futuro/removível.
-    List<Gasto> findByGastoRecorrenteIdAndDataGreaterThanEqual(Integer gastoRecorrenteId, LocalDate data);
+    // Apaga TODOS os gastos de uma recorrência (passados e futuros) numa tacada -
+    // parte da exclusão em cascata da recorrência (ver
+    // GastoService.excluirRecorrenciaEmCascata). Roda antes do delete da própria
+    // recorrência: a FK gastos.gasto_recorrente_id é ON DELETE SET NULL, então se a
+    // recorrência sumisse primeiro os gastos ficariam órfãos em vez de removidos.
+    @Modifying
+    @Query("DELETE FROM Gasto g WHERE g.gastoRecorrenteId = :recorrenteId")
+    int excluirTodosDaRecorrente(@Param("recorrenteId") Integer recorrenteId);
 
     // Agrupa por categoriaId quando presente (fonte de verdade); GROUP BY também por
     // LOWER(categoria) porque categoriaId nulo (gastos legados, sem categoria gerenciada

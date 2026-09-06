@@ -257,9 +257,11 @@ CREATE INDEX IF NOT EXISTS idx_gastos_recorrentes_usuario ON gastos_recorrentes 
 -- Rastreia qual gasto foi lançado automaticamente a partir de qual recorrência -
 -- usado tanto pra evitar duplicar o lançamento do mesmo mês (checando se já existe
 -- um gasto com esse gasto_recorrente_id no mês atual) quanto pra indicar na tela de
--- Gastos quais lançamentos são automáticos. ON DELETE SET NULL: excluir a
--- recorrência nunca apaga nem desfigura gastos já lançados, só desvincula (perdem
--- só a indicação visual de "gerado automaticamente").
+-- Gastos quais lançamentos são automáticos. ON DELETE SET NULL é a rede de segurança
+-- pra quem apaga uma recorrência direto no banco (ou pelo app de console): os gastos
+-- ficam desvinculados em vez de quebrarem a FK. A API NÃO conta com isso - ela apaga
+-- os gastos da recorrência antes (GastoService.excluirRecorrenciaEmCascata), então
+-- excluir uma recorrência pela API remove todos os lançamentos dela.
 ALTER TABLE gastos ADD COLUMN IF NOT EXISTS gasto_recorrente_id INT REFERENCES gastos_recorrentes(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_gastos_gasto_recorrente ON gastos (gasto_recorrente_id);
 
