@@ -31,3 +31,6 @@ skills-lock.json
 
 # ===== Validação de navegador (snapshots e screenshots gerados pelo Playwright MCP) =====
 .playwright-mcp/
+
+# ===== Notas de trabalho entre sessões (uso interno, não versionar) =====
+tasks/
