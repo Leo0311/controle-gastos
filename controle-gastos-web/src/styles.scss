@@ -142,6 +142,54 @@ html.tema-escuro {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// mat-raised-button no tema ESCURO - preenchimento sólido
+//
+// O "elevated button" do M3 (o que o Angular Material chama de raised/protected)
+// usa `md-sys-color.surface` como cor de container. No nosso dark theme isso
+// resolve pra #12100b - exatamente o --fundo-pagina. No claro a sombra de
+// elevação (level1) dá o contraste; no escuro essa sombra é preta sobre
+// quase-preto e some, deixando o botão visualmente idêntico a um
+// mat-stroked-button (só o rótulo colorido, sem preenchimento).
+//
+// A correção devolve um preenchimento SÓLIDO + rótulo/ícone contrastante - um
+// "filled button", claramente a ação (primária ou destrutiva). O rótulo e o
+// ícone precisam ser reafirmados em todos os estados senão o Material os reverte
+// pra cor clara (primary/error), que sumiria sobre o novo fundo; a camada de
+// estado (hover/focus/press) e o ripple usam o token --mat- único do Angular
+// Material 18 - sem ele o overlay seguiria azul (primary) por cima do fill.
+// Escopado por cor (.mat-primary / .mat-warn). Só no escuro - o claro já está
+// correto.
+// ─────────────────────────────────────────────────────────────────────────────
+@mixin raised-fill-escuro($container, $ink) {
+  --mdc-protected-button-container-color: #{$container};
+  --mdc-protected-button-label-text-color: #{$ink};
+  --mdc-protected-button-hover-label-text-color: #{$ink};
+  --mdc-protected-button-focus-label-text-color: #{$ink};
+  --mdc-protected-button-pressed-label-text-color: #{$ink};
+  --mdc-protected-button-with-icon-icon-color: #{$ink};
+  --mdc-protected-button-with-icon-hover-icon-color: #{$ink};
+  --mdc-protected-button-with-icon-focus-icon-color: #{$ink};
+  --mdc-protected-button-with-icon-pressed-icon-color: #{$ink};
+  --mat-protected-button-state-layer-color: #{$ink};
+  --mat-protected-button-ripple-color: #{rgba($ink, 0.12)};
+}
+
+// primary: acento azul-petróleo (#6fbbd4, via --acento-primario) + teal escuro
+// no papel on-primary do M3. Contraste ~6.3:1. Distinto do mat-stroked-button.
+html.tema-escuro .mat-mdc-raised-button.mat-primary {
+  @include raised-fill-escuro(var(--acento-primario), #003546);
+}
+
+// warn: paleta "error" do m3-theme.scss - error-80 (#ffb4ab) de fill, error-20
+// (#690005 = on-error no dark) de rótulo/ícone. Mesma paleta de onde o "Excluir"
+// já tira a cor do texto no claro; NÃO usa --status-critico-* (aquilo é tint
+// para badge, não fill). Contraste ~7.8:1. Único alvo: "Excluir" do
+// confirm-dialog.
+html.tema-escuro .mat-mdc-raised-button.mat-warn {
+  @include raised-fill-escuro(#ffb4ab, #690005);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Hover unificado de elevação (elementos clicáveis com container próprio)
 //
 // O mat-raised-button já sobe uma sombra no hover de graça do Material - é o
