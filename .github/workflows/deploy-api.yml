@@ -1,0 +1,113 @@
+name: Deploy API (Oracle VM)
+
+# Deploy automático da API (controle-gastos-api) na VM da Oracle Cloud.
+#
+# Dispara em push na master QUANDO o push mexe em algo dentro de
+# controle-gastos-api/ (ou neste próprio workflow) - mudança só de frontend ou
+# de README não roda nada aqui. Também pode ser disparado à mão pela aba Actions
+# (workflow_dispatch), útil pra reimplantar sem um commit novo.
+#
+# O que ele faz na VM, por SSH: git pull --ff-only, ./mvnw clean package
+# -DskipTests, sudo systemctl restart controle-gastos. Depois checa
+# GET /api/health pela URL pública; se não vier {"status":"UP"} em ~2min, o
+# workflow FALHA - e a falha dispara o e-mail padrão de "workflow failed" do
+# GitHub, sem precisar configurar notificação nenhuma.
+#
+# Secrets necessários (Settings > Secrets and variables > Actions):
+#   VM_SSH_HOST         host ou IP da VM                 (ex: controle-gastos-leo.duckdns.org)
+#   VM_SSH_USER         usuário SSH na VM                (ex: ubuntu / opc)
+#   VM_SSH_KEY          chave PRIVADA de deploy (PEM)    - par dedicado, não a sua pessoal
+#   VM_REPO_PATH        caminho da raiz do repo na VM    (ex: /home/ubuntu/controle-gastos)
+#   VM_SSH_PORT         porta SSH                        (opcional; default 22)
+#   VM_SSH_KNOWN_HOSTS  linha(s) de known_hosts da VM    (opcional; ver README - se
+#                       ausente, a host key é buscada por ssh-keyscan a cada run)
+#
+# Pré-requisitos na VM (uma vez):
+#   - a .pub correspondente a VM_SSH_KEY em ~/.ssh/authorized_keys do VM_SSH_USER;
+#   - sudo sem senha SÓ pra o restart, em /etc/sudoers.d/controle-gastos-deploy:
+#       <VM_SSH_USER> ALL=(root) NOPASSWD: /usr/bin/systemctl restart controle-gastos
+#     (confira o caminho com `which systemctl`; em algumas distros é /bin/systemctl)
+#   - o repo já clonado em VM_REPO_PATH, com a working tree limpa (git pull --ff-only
+#     falha de propósito se alguém tiver deixado mudança local na VM).
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'controle-gastos-api/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch: {}
+
+# Nunca deixa dois deploys correrem em paralelo; não cancela um em andamento
+# (não dá pra interromper um build/restart no meio com segurança).
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # URL pública do health check - já documentada no README, não é segredo.
+  API_HEALTH_URL: https://controle-gastos-leo.duckdns.org/api/health
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configurar chave SSH
+        env:
+          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          SSH_HOST: ${{ secrets.VM_SSH_HOST }}
+          SSH_PORT: ${{ secrets.VM_SSH_PORT || '22' }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VM_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          install -m 600 /dev/null "$HOME/.ssh/id_deploy"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/id_deploy"
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          else
+            ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" > "$HOME/.ssh/known_hosts" 2>/dev/null
+          fi
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Deploy na VM (git pull + build + restart)
+        env:
+          SSH_PORT: ${{ secrets.VM_SSH_PORT || '22' }}
+          SSH_TARGET: ${{ secrets.VM_SSH_USER }}@${{ secrets.VM_SSH_HOST }}
+          VM_REPO_PATH: ${{ secrets.VM_REPO_PATH }}
+        run: |
+          ssh -i "$HOME/.ssh/id_deploy" -p "$SSH_PORT" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
+            "$SSH_TARGET" "VM_REPO_PATH='$VM_REPO_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$VM_REPO_PATH"
+          echo "-> git pull --ff-only"
+          git pull --ff-only
+          cd controle-gastos-api
+          echo "-> ./mvnw clean package -DskipTests"
+          ./mvnw -q -B clean package -DskipTests
+          echo "-> sudo systemctl restart controle-gastos"
+          sudo systemctl restart controle-gastos
+          echo "restart disparado"
+          REMOTE
+
+      - name: Health check (GET /api/health)
+        run: |
+          for i in $(seq 1 24); do
+            if curl -fsS --max-time 10 "$API_HEALTH_URL" | grep -q '"status":"UP"'; then
+              echo "OK - API respondeu {\"status\":\"UP\"} na tentativa $i"
+              exit 0
+            fi
+            echo "tentativa $i: ainda nao UP, nova checagem em 5s"
+            sleep 5
+          done
+          echo "::error::API nao respondeu {\"status\":\"UP\"} em ~2min apos o deploy"
+          exit 1
+
+      - name: Remover chave SSH
+        if: always()
+        run: rm -f "$HOME/.ssh/id_deploy"

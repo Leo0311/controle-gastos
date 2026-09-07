@@ -3,20 +3,25 @@
 Monorepo com três apps que compartilham um PostgreSQL: `controle-gastos/` (console
 Java, legado/congelado), `controle-gastos-api/` (API Spring Boot 4, Java 17, :8080) e
 `controle-gastos-web/` (Angular 18 + Material, :4200). Em produção: frontend no Render
-(Static Site, auto-deploy no push), API numa VM da Oracle Cloud (systemd, deploy
-manual — ver abaixo), banco no Neon.
+(Static Site, auto-deploy no push), API numa VM da Oracle Cloud (systemd; deploy
+automático por GitHub Actions no push que toque em `controle-gastos-api/` — ver abaixo),
+banco no Neon.
 
 ## Vale para qualquer tarefa
 
-- **`git push` na `master` publica SÓ o frontend** — Render Static Site, auto-deploy
-  na hora, sem staging nem PR. **A API NÃO sobe no push:** roda numa VM da Oracle
-  Cloud (serviço systemd `controle-gastos`) e só atualiza por deploy manual, feito
-  na própria VM — `git pull` na raiz do repo, depois
-  `cd controle-gastos-api && ./mvnw clean package -DskipTests` e
-  `sudo systemctl restart controle-gastos`. Ou seja: mexeu em `.java`, `schema.sql`
-  ou config do backend, o push **não** leva isso ao ar — avise o usuário que a API
-  precisa ser reimplantada à mão. Antes de um push que envolva schema, migração de
-  dados ou mexida em auth, diga o que vai ao ar e confirme.
+- **`git push` na `master` publica o frontend na hora** — Render Static Site, sem
+  staging nem PR.
+- **A API sobe por GitHub Actions** (`.github/workflows/deploy-api.yml`), disparado no
+  push na `master` **quando o diff toca `controle-gastos-api/**`** (push só de frontend/
+  README/console não roda nada). O workflow conecta na VM por SSH e faz `git pull
+  --ff-only` + `./mvnw clean package -DskipTests` + `sudo systemctl restart
+  controle-gastos`, depois checa `GET /api/health` pela URL pública — se não voltar
+  `{"status":"UP"}` em ~2min, o workflow **falha** e o GitHub manda e-mail. Fallback
+  manual na VM (se o workflow falhar): os mesmos três comandos, na raiz do repo.
+- **O workflow NÃO migra schema nem dados.** Mexeu em `schema.sql` ou numa entidade
+  JPA: aplique o SQL no Neon **à mão, ANTES do push** (o `ddl-auto=validate` derruba o
+  restart se o banco não bater — ver skill `banco-schema`). Antes de um push que
+  envolva schema, migração de dados ou mexida em auth, diga o que vai ao ar e confirme.
 - **Nunca use `Stop-Process` por nome ou regex** (`java`, `node`, …) — já matou a shell
   da própria sessão e os JVMs dos testes. Mate pelo dono da porta (skill `ambiente-local`).
 - **Não atualize dependências reativamente.** Nada de `npm audit fix --force`,

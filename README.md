@@ -5,9 +5,59 @@ Sistema de controle de gastos pessoais com autenticação, categorias e subcateg
 ## Produção
 
 - **Frontend**: https://controle-gastos-web-v8wf.onrender.com — [Render](https://render.com) Static Site (Blueprint em `render.yaml`), **auto-deploy a cada push na `master`**.
-- **API**: https://controle-gastos-leo.duckdns.org (base dos endpoints: `/api`) — VM na [Oracle Cloud](https://www.oracle.com/cloud/) (Always Free). Roda como serviço `systemd` (`controle-gastos`); nginx faz o proxy reverso com TLS via Let's Encrypt; as variáveis de ambiente (banco, JWT, e-mail) ficam em `/etc/controle-gastos.env`. **O deploy é manual, na VM**: `git pull` na raiz do repo, `cd controle-gastos-api && ./mvnw clean package -DskipTests`, `sudo systemctl restart controle-gastos`. Um push na `master` **não** atualiza a API. (O deploy em container pro Render foi descontinuado em setembro de 2026 — o `Dockerfile` correspondente saiu do repo, mas continua no histórico do Git.)
+- **API**: https://controle-gastos-leo.duckdns.org (base dos endpoints: `/api`) — VM na [Oracle Cloud](https://www.oracle.com/cloud/) (Always Free). Roda como serviço `systemd` (`controle-gastos`); nginx faz o proxy reverso com TLS via Let's Encrypt; as variáveis de ambiente (banco, JWT, e-mail) ficam em `/etc/controle-gastos.env`. **O deploy é automático** via GitHub Actions a cada push na `master` que mexa em `controle-gastos-api/` — ver ["Deploy da API"](#deploy-da-api) abaixo. (O deploy em container pro Render foi descontinuado em setembro de 2026 — o `Dockerfile` correspondente saiu do repo, mas continua no histórico do Git.)
 - **Banco**: PostgreSQL gerenciado pelo [Neon](https://neon.tech).
 - **Monitoramento**: `GET /api/health` (público, sem autenticação) responde `{"status":"UP"}` com HTTP 200 quando a API e o banco estão no ar, e `{"status":"DOWN"}` com HTTP 503 se a conexão com o banco falha. É o endpoint que um serviço externo de uptime (UptimeRobot etc.) consulta para alertar quando a API cai.
+
+### Deploy da API
+
+O deploy da API é feito pelo workflow **`.github/workflows/deploy-api.yml`** (GitHub Actions), que dispara:
+
+- **automaticamente** em todo push na `master` cujo diff toque em `controle-gastos-api/**` (ou no próprio arquivo do workflow) — um push que mexa só no frontend, no `README.md` ou no módulo de console **não** roda o deploy;
+- **à mão**, pelo botão *Run workflow* na aba **Actions** do GitHub (`workflow_dispatch`) — útil pra reimplantar sem um commit novo.
+
+O que ele faz, conectando na VM por SSH (chave privada guardada como secret do GitHub, nunca no repo):
+
+1. `git pull --ff-only` na raiz do repo na VM (falha de propósito se a working tree da VM tiver mudança local pendente);
+2. `cd controle-gastos-api && ./mvnw clean package -DskipTests`;
+3. `sudo systemctl restart controle-gastos`;
+4. consulta `GET /api/health` pela URL pública, repetindo por até ~2 min. Se não vier `{"status":"UP"}`, **o workflow falha** — e a falha dispara o e-mail padrão de "workflow failed" do GitHub (sem configuração extra).
+
+Como **não há migração automática de schema**, um push que mexa em `schema.sql` ou numa entidade JPA continua exigindo aplicar o SQL no Neon **à mão, antes** do deploy rodar (ver `controle-gastos-api` / skill `banco-schema`) — o `./mvnw package` com `ddl-auto=validate` quebra o restart se o banco não bater.
+
+#### Secrets necessários (Settings ▸ Secrets and variables ▸ Actions ▸ *New repository secret*)
+
+| Secret | Conteúdo | Obrigatório |
+| --- | --- | --- |
+| `VM_SSH_HOST` | host ou IP da VM (ex.: `controle-gastos-leo.duckdns.org`) | sim |
+| `VM_SSH_USER` | usuário SSH da VM (ex.: `ubuntu`) | sim |
+| `VM_SSH_KEY` | **chave privada** de deploy, PEM completo (`-----BEGIN …`) — um par dedicado, não a sua chave pessoal | sim |
+| `VM_REPO_PATH` | caminho absoluto da raiz do repo clonado na VM (ex.: `/home/ubuntu/controle-gastos`) | sim |
+| `VM_SSH_PORT` | porta SSH, se não for a 22 | não (default `22`) |
+| `VM_SSH_KNOWN_HOSTS` | saída de `ssh-keyscan <host>` rodado numa máquina confiável — fixa a identidade da VM. Sem esse secret, a host key é buscada por `ssh-keyscan` a cada execução (TOFU, mais frágil a MITM) | não (recomendado) |
+
+#### Preparo na VM (uma vez)
+
+- gere um par dedicado (`ssh-keygen -t ed25519 -f deploy_key -C github-actions-deploy`), acrescente `deploy_key.pub` ao `~/.ssh/authorized_keys` do usuário SSH e cadastre o conteúdo de `deploy_key` (privada) no secret `VM_SSH_KEY`;
+- libere `sudo` sem senha **só** pro restart, em `/etc/sudoers.d/controle-gastos-deploy`:
+
+  ```
+  <VM_SSH_USER> ALL=(root) NOPASSWD: /usr/bin/systemctl restart controle-gastos
+  ```
+
+  (confira o caminho com `which systemctl` — em algumas distros é `/bin/systemctl`);
+- garanta que o repo já está clonado em `VM_REPO_PATH` com a working tree limpa.
+
+#### Fallback manual
+
+Se o workflow falhar (ou pra rodar o deploy à mão por qualquer motivo), os mesmos passos direto na VM:
+
+```
+git pull --ff-only                                   # na raiz do repo
+cd controle-gastos-api && ./mvnw clean package -DskipTests
+sudo systemctl restart controle-gastos
+curl -s https://controle-gastos-leo.duckdns.org/api/health   # espera {"status":"UP"}
+```
 
 ## Estrutura do repositório
 
@@ -163,7 +213,7 @@ Quando uma build nova é publicada, o app detecta a versão nova assim que o ser
 - **Backend**: Java 17, Maven, Spring Boot 4, Spring Data JPA, Spring Security + JWT (jjwt), Spring Mail
 - **Banco de dados**: PostgreSQL (Neon em produção)
 - **Frontend**: Angular 18 (standalone components), Angular Material, Chart.js/ng2-charts (gráficos), xlsx-js-style (exportação/importação de planilhas), `@angular/service-worker` (PWA instalável)
-- **Deploy**: frontend no Render (Static Site, auto-deploy no push); API numa VM da Oracle Cloud (systemd + nginx, deploy manual — ver seção "Produção")
+- **Deploy**: frontend no Render (Static Site, auto-deploy no push); API numa VM da Oracle Cloud (systemd + nginx), deploy automático via GitHub Actions no push que toque em `controle-gastos-api/` — ver seção "Produção"
 
 ## Pré-requisitos
 
