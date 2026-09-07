@@ -31,7 +31,10 @@ import {
 import { MESES_ABREV, MESES_OPCOES } from '../../../core/meses';
 import { RendaFormDialogComponent, RendaFormDialogData } from '../renda-form-dialog/renda-form-dialog.component';
 import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog/meta-form-dialog.component';
-import { AtrasadasDialogComponent } from '../atrasadas-dialog/atrasadas-dialog.component';
+import {
+  ContasAPagarDialogComponent,
+  ContasAPagarDialogData
+} from '../contas-a-pagar-dialog/contas-a-pagar-dialog.component';
 
 // Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é
 // reconstruída ao trocar de período, não ao trocar de tema, então precisa ler
@@ -154,10 +157,13 @@ export class DashboardComponent implements OnInit {
   totalAnoSelecionado = 0;
   numeroGastosMes = 0;
 
-  // Contas atrasadas (PENDENTE com vencimento no passado, qualquer mês) - destaque
-  // fixo no topo do Dashboard, independente do mês/ano selecionado.
+  // Destaques fixos no topo do Dashboard (independentes do mês/ano selecionado):
+  // contas atrasadas (PENDENTE, vencimento no passado - vermelho) e contas que
+  // vencem hoje (PENDENTE, vencimento = hoje - âmbar). Conjuntos disjuntos.
   atrasadas: Gasto[] = [];
   totalAtrasadas = 0;
+  venceHoje: Gasto[] = [];
+  totalVenceHoje = 0;
 
   pizzaData: ChartData<'doughnut', number[], string> = { labels: [], datasets: [{ data: [] }] };
   // Não é mais `readonly`: as opções são reconstruídas (nova referência, pra
@@ -264,17 +270,20 @@ export class DashboardComponent implements OnInit {
       // disponível. Se a chamada falhar, segue com lista vazia (fatias sem emoji e
       // sem categoria conhecida caem na cor neutra).
       categorias: this.categoriaService.listarVisiveis().pipe(catchError(() => of<Categoria[]>([]))),
-      // Contas atrasadas - independentes do mês/ano; falha aqui não derruba o
-      // Dashboard, só esconde o destaque.
-      atrasadas: this.gastoService.atrasadas().pipe(catchError(() => of<Gasto[]>([])))
+      // Destaques de contas a pagar - independentes do mês/ano; falha aqui não
+      // derruba o Dashboard, só esconde o destaque.
+      atrasadas: this.gastoService.atrasadas().pipe(catchError(() => of<Gasto[]>([]))),
+      venceHoje: this.gastoService.venceHoje().pipe(catchError(() => of<Gasto[]>([])))
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias, atrasadas }) => {
+      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias, atrasadas, venceHoje }) => {
         this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
 
         this.atrasadas = atrasadas;
         this.totalAtrasadas = atrasadas.reduce((soma, g) => soma + g.valor, 0);
+        this.venceHoje = venceHoje;
+        this.totalVenceHoje = venceHoje.reduce((soma, g) => soma + g.valor, 0);
 
         this.categoriasPorId = new Map(categorias.map(c => [c.id!, c]));
         this.nomesCategoriaPizza = resumo.porCategoria.map(c => c.categoria);
@@ -398,12 +407,31 @@ export class DashboardComponent implements OnInit {
     );
   }
 
-  // Abre a lista de contas atrasadas, com "marcar como paga" por item. Ao fechar,
-  // recarrega o Dashboard (o pagamento pode ter movido gastos entre meses).
   abrirAtrasadas(): void {
-    const ref = this.dialog.open<AtrasadasDialogComponent, Gasto[], boolean>(
-      AtrasadasDialogComponent,
-      { data: this.atrasadas, width: '560px', maxWidth: '95vw' }
+    this.abrirContasAPagar({
+      titulo: 'Contas atrasadas',
+      instrucao: 'Contas de recorrência ou parcela com vencimento no passado e ainda não pagas. '
+        + 'Marcar como paga registra o valor e a data reais — o gasto passa para o mês do pagamento.',
+      gastos: this.atrasadas
+    });
+  }
+
+  abrirVenceHoje(): void {
+    this.abrirContasAPagar({
+      titulo: 'Contas que vencem hoje',
+      instrucao: 'Contas de recorrência ou parcela com vencimento hoje e ainda não pagas. '
+        + 'Marcar como paga registra o valor e a data reais.',
+      gastos: this.venceHoje
+    });
+  }
+
+  // Abre a lista de contas a pagar (atrasadas ou de hoje), com "marcar como paga"
+  // por item. Ao fechar, recarrega o Dashboard (o pagamento pode ter movido
+  // gastos entre meses).
+  private abrirContasAPagar(data: ContasAPagarDialogData): void {
+    const ref = this.dialog.open<ContasAPagarDialogComponent, ContasAPagarDialogData, boolean>(
+      ContasAPagarDialogComponent,
+      { data, width: '560px', maxWidth: '95vw' }
     );
     ref.afterClosed().subscribe((houvePagamento) => {
       if (houvePagamento) {

@@ -83,6 +83,11 @@ export class GastoService {
     return this.http.get<Gasto[]>(`${this.baseUrl}/atrasadas`);
   }
 
+  // Contas que vencem hoje (PENDENTE, vencimento hoje) - disjunto de atrasadas().
+  venceHoje(): Observable<Gasto[]> {
+    return this.http.get<Gasto[]>(`${this.baseUrl}/vence-hoje`);
+  }
+
   listarPorCategoria(categoria: string): Observable<Gasto[]> {
     return this.http.get<Gasto[]>(`${this.baseUrl}/categoria/${categoria}`);
   }

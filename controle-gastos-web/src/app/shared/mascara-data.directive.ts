@@ -37,8 +37,17 @@ export class MascaraDataDirective {
     const valorAntigo = input.value;
     const caretAntigo = input.selectionStart ?? valorAntigo.length;
 
-    const digitos = valorAntigo.replace(/\D/g, '').slice(0, 8);
-    const formatado = this.formatar(digitos);
+    // Quando o texto já tem as duas barras (é uma data "montada" que o usuário
+    // está editando por segmento), NÃO reagrupa os dígitos posicionalmente: isso
+    // jogaria os dígitos pros grupos errados - apagar um dígito do dia em
+    // "05/10/2026" faria virar "81/02/026" e o PtBrDateAdapter devolveria null
+    // ("Data é obrigatória"). Só limpa caractere inválido; o adapter já aceita
+    // d/M/aaaa. O reagrupamento só serve pra digitação da esquerda pra direita
+    // (inserir as barras), que acontece antes da 2ª barra existir.
+    const jaMontada = (valorAntigo.match(/\//g) ?? []).length >= 2;
+    const formatado = jaMontada
+      ? valorAntigo.replace(/[^\d/]/g, '').slice(0, 10)
+      : this.formatar(valorAntigo.replace(/\D/g, '').slice(0, 8));
 
     if (formatado === valorAntigo) {
       return;

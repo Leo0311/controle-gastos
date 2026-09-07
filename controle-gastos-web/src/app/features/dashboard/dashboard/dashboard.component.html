@@ -35,7 +35,7 @@
 } @else {
   @if (atrasadas.length > 0) {
     <mat-card
-      class="card-atrasadas clicavel"
+      class="card-alerta-conta atrasada clicavel"
       role="button"
       tabindex="0"
       (click)="abrirAtrasadas()"
@@ -44,11 +44,31 @@
       (keyup.space)="abrirAtrasadas()"
     >
       <mat-icon>warning</mat-icon>
-      <div class="card-atrasadas-texto">
-        <span class="card-atrasadas-titulo">
+      <div class="card-alerta-conta-texto">
+        <span class="card-alerta-conta-titulo">
           {{ atrasadas.length }} {{ atrasadas.length === 1 ? 'conta atrasada' : 'contas atrasadas' }}
         </span>
-        <span class="card-atrasadas-valor">{{ totalAtrasadas | currency:'BRL' }} em aberto — toque para pagar</span>
+        <span class="card-alerta-conta-valor">{{ totalAtrasadas | currency:'BRL' }} em aberto — toque para pagar</span>
+      </div>
+    </mat-card>
+  }
+
+  @if (venceHoje.length > 0) {
+    <mat-card
+      class="card-alerta-conta vence-hoje clicavel"
+      role="button"
+      tabindex="0"
+      (click)="abrirVenceHoje()"
+      (keyup.enter)="abrirVenceHoje()"
+      (keydown.space)="$event.preventDefault()"
+      (keyup.space)="abrirVenceHoje()"
+    >
+      <mat-icon>event</mat-icon>
+      <div class="card-alerta-conta-texto">
+        <span class="card-alerta-conta-titulo">
+          {{ venceHoje.length }} {{ venceHoje.length === 1 ? 'conta vence hoje' : 'contas vencem hoje' }}
+        </span>
+        <span class="card-alerta-conta-valor">{{ totalVenceHoje | currency:'BRL' }} — toque para pagar</span>
       </div>
     </mat-card>
   }

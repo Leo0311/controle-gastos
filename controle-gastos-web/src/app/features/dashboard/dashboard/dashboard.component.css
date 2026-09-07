@@ -29,46 +29,59 @@
   margin-bottom: 24px;
 }
 
-/* Destaque de contas atrasadas - faixa no topo do Dashboard, tom de alerta
-   (mesmos tokens do chip "Atrasada"). Clicável -> lista de quitação. */
-.card-atrasadas {
+/* Destaque de contas a pagar - faixa no topo do Dashboard, clicável -> lista de
+   quitação. A cor vem dos tokens de status (os mesmos dos chips): .atrasada usa o
+   crítico/vermelho (atraso real), .vence-hoje usa o atenção/âmbar. */
+.card-alerta-conta {
+  --cor-alerta: var(--status-critico-texto);
+  --cor-alerta-fundo: var(--status-critico-fundo);
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding: 12px 16px;
-  background: var(--status-critico-fundo);
-  border: 1px solid var(--status-critico-texto);
+  background: var(--cor-alerta-fundo);
+  border: 1px solid var(--cor-alerta);
   text-align: left;
 }
 
-.card-atrasadas mat-icon {
-  flex: none;
-  color: var(--status-critico-texto);
+.card-alerta-conta.vence-hoje {
+  --cor-alerta: var(--status-atencao-texto);
+  --cor-alerta-fundo: var(--status-atencao-fundo);
 }
 
-.card-atrasadas-texto {
+.card-alerta-conta mat-icon {
+  flex: none;
+  color: var(--cor-alerta);
+}
+
+.card-alerta-conta-texto {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.card-atrasadas-titulo {
+.card-alerta-conta-titulo {
   font-weight: 600;
-  color: var(--status-critico-texto);
+  color: var(--cor-alerta);
 }
 
-.card-atrasadas-valor {
+.card-alerta-conta-valor {
   font-size: 13px;
   color: var(--texto-secundario);
 }
 
-.card-atrasadas:focus-visible {
-  outline: 2px solid var(--status-critico-texto);
+.card-alerta-conta:focus-visible {
+  outline: 2px solid var(--cor-alerta);
   outline-offset: 2px;
+}
+
+/* O alerta colado no grid de cards ganha um respiro maior (o de cima, quando há
+   dois, fica com o gap menor de 12px entre eles). */
+.card-alerta-conta:has(+ .cards) {
+  margin-bottom: 16px;
 }
 
 .card-stat {

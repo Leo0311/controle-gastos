@@ -48,6 +48,27 @@ describe('MascaraDataDirective', () => {
     expect(input.value).toBe('15/03/2026');
   });
 
+  it('editar só um segmento não reagrupa os dígitos (apagar um dígito do dia)', () => {
+    // Estado: "05/10/2026", usuário apaga o "5" do dia -> "0/10/2026".
+    // A máscara NÃO pode transformar isso em "01/02/026" (o adapter aceita
+    // d/M/aaaa, então "0/10/2026" -> "8/10/2026" depois de digitar o dia funciona).
+    input.value = '0/10/2026';
+    input.setSelectionRange(1, 1);
+    diretiva.onInput();
+    expect(input.value).toBe('0/10/2026');
+
+    input.value = '8/10/2026';
+    input.setSelectionRange(1, 1);
+    diretiva.onInput();
+    expect(input.value).toBe('8/10/2026');
+  });
+
+  it('editar o mês numa data montada mantém dia e ano no lugar', () => {
+    input.value = '15/3/2026';
+    diretiva.onInput();
+    expect(input.value).toBe('15/3/2026');
+  });
+
   it('mantém o caret depois do último dígito digitado, pulando a barra', () => {
     input.value = '15';
     input.setSelectionRange(2, 2);

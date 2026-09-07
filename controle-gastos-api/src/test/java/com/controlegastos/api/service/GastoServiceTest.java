@@ -270,6 +270,13 @@ class GastoServiceTest {
         assertThat(service.atrasadas(USUARIO)).hasSize(1);
     }
 
+    @Test
+    void venceHoje_delegaParaRepositorioComHoje() {
+        when(repository.venceHoje(USUARIO, LocalDate.now())).thenReturn(List.of(new Gasto(), new Gasto()));
+
+        assertThat(service.venceHoje(USUARIO)).hasSize(2);
+    }
+
     // ---------- deduplicação da importação (achado M6) ----------
 
     @Test

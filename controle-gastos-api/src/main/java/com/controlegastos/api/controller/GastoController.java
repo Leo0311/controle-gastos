@@ -110,6 +110,13 @@ public class GastoController {
         return service.atrasadas(usuario.usuarioId());
     }
 
+    // Contas que vencem hoje (PENDENTE, vencimento_original = hoje) - destaque
+    // âmbar do Dashboard.
+    @GetMapping("/vence-hoje")
+    public List<Gasto> venceHoje(@AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.venceHoje(usuario.usuarioId());
+    }
+
     @GetMapping("/categoria/{categoria}")
     public List<Gasto> listarPorCategoria(
             @PathVariable String categoria, @AuthenticationPrincipal UsuarioPrincipal usuario) {

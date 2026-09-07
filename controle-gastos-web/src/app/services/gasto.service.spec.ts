@@ -74,4 +74,12 @@ describe('GastoService', () => {
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });
+
+  it('venceHoje faz GET /gastos/vence-hoje', () => {
+    service.venceHoje().subscribe();
+
+    const req = httpMock.expectOne(`${API_BASE_URL}/gastos/vence-hoje`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
 });

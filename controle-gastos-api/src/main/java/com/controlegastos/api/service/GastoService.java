@@ -312,6 +312,12 @@ public class GastoService {
         return repository.atrasadas(usuarioId, LocalDate.now());
     }
 
+    // Contas que vencem hoje: PENDENTE com vencimento_original = hoje. Destaque
+    // âmbar do Dashboard, irmão de atrasadas().
+    public List<Gasto> venceHoje(Integer usuarioId) {
+        return repository.venceHoje(usuarioId, LocalDate.now());
+    }
+
     // Confirma que a categoria (e a subcategoria, se houver) escolhidas existem e são
     // visíveis para o usuário, e espelha o nome delas nas colunas de texto legadas -
     // ver comentário na entidade Gasto sobre por que essas colunas continuam existindo.

@@ -120,6 +120,13 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
             + "AND g.vencimentoOriginal < :hoje ORDER BY g.vencimentoOriginal ASC, g.id ASC")
     List<Gasto> atrasadas(@Param("usuarioId") Integer usuarioId, @Param("hoje") LocalDate hoje);
 
+    // Contas que vencem HOJE: PENDENTE com vencimento_original = hoje. Disjunto de
+    // atrasadas() (que é estritamente < hoje). Destaque âmbar no Dashboard.
+    @Query("SELECT g FROM Gasto g WHERE g.usuarioId = :usuarioId "
+            + "AND g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "AND g.vencimentoOriginal = :hoje ORDER BY g.id ASC")
+    List<Gasto> venceHoje(@Param("usuarioId") Integer usuarioId, @Param("hoje") LocalDate hoje);
+
     // Apaga TODOS os gastos de uma recorrência (passados e futuros) numa tacada -
     // parte da exclusão em cascata da recorrência (ver
     // GastoService.excluirRecorrenciaEmCascata). Roda antes do delete da própria
