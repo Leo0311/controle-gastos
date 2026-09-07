@@ -66,6 +66,11 @@
 .card-alerta-conta-titulo {
   font-weight: 600;
   color: var(--cor-alerta);
+  /* com 1 conta o nome dela entra no título; corta com reticências se for longo,
+     pra o card não crescer (o nome completo aparece no diálogo ao tocar). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-alerta-conta-valor {

@@ -407,6 +407,22 @@ export class DashboardComponent implements OnInit {
     );
   }
 
+  // Título do card de alerta: com 1 conta só, nomeia a conta ("1 conta atrasada:
+  // Condomínio"); com mais de uma, texto genérico (nomes estourariam o card).
+  get tituloAtrasadas(): string {
+    return this.tituloAlerta(this.atrasadas, 'conta atrasada', 'contas atrasadas');
+  }
+
+  get tituloVenceHoje(): string {
+    return this.tituloAlerta(this.venceHoje, 'conta vence hoje', 'contas vencem hoje');
+  }
+
+  private tituloAlerta(gastos: Gasto[], singular: string, plural: string): string {
+    return gastos.length === 1
+      ? `1 ${singular}: ${gastos[0].descricao}`
+      : `${gastos.length} ${plural}`;
+  }
+
   abrirAtrasadas(): void {
     this.abrirContasAPagar({
       titulo: 'Contas atrasadas',

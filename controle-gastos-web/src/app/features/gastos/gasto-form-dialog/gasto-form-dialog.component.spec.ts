@@ -50,6 +50,31 @@ describe('GastoFormDialogComponent', () => {
     expect(criarComponente()).toBeTruthy();
   });
 
+  describe('validador da Data x tipo de lançamento (reorder do form)', () => {
+    function setTipoEspecial(c: GastoFormDialogComponent, ativo: boolean): void {
+      (c as unknown as { atualizarValidadorData(a: boolean): void }).atualizarValidadorData(ativo);
+    }
+
+    it('modo especial (recorrente/parcela) tira o "required" da Data - ela some do form e não pode bloquear o salvar', () => {
+      const c = criarComponente();
+      c.form.controls.data.setValue(null);
+      expect(c.form.controls.data.invalid).toBeTrue();
+
+      setTipoEspecial(c, true);
+
+      expect(c.form.controls.data.valid).toBeTrue();
+    });
+
+    it('voltar pro modo avulso restaura o "required" da Data', () => {
+      const c = criarComponente();
+      setTipoEspecial(c, true);
+      setTipoEspecial(c, false);
+      c.form.controls.data.setValue(null);
+
+      expect(c.form.controls.data.invalid).toBeTrue();
+    });
+  });
+
   describe('aplicarSugestao', () => {
     const subs: Subcategoria[] = [
       { id: 20, nome: 'Supermercado', emoji: '🛒', categoriaId: 5 },

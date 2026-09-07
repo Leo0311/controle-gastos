@@ -285,6 +285,7 @@ export class GastoFormDialogComponent implements OnInit {
       definirHabilitado(this.form.controls.parcelado, !ativo);
       this.atualizarValidadoresDiaDoMes(!!ativo);
       this.atualizarValidadoresMesesGerar(!!ativo);
+      this.atualizarValidadorData(!!ativo);
     });
     this.form.controls.parcelado.valueChanges.subscribe((ativo) => {
       definirHabilitado(this.form.controls.recorrente, !ativo);
@@ -292,7 +293,22 @@ export class GastoFormDialogComponent implements OnInit {
       dataPrimeiraParcela.setValidators(ativo ? [Validators.required] : []);
       dataPrimeiraParcela.updateValueAndValidity();
       this.configurarValidadoresNumeroParcelas(!!ativo);
+      this.atualizarValidadorData(!!ativo);
     });
+  }
+
+  // O campo "Data" (data simples do gasto avulso) só é exigido quando nenhum dos
+  // dois tipos especiais está ativo - no modo recorrente/parcela a data vem de
+  // "Dia do mês" / "Data da 1ª parcela". Sem isto, limpar a Data e depois marcar
+  // "Tornar recorrente" deixava o form inválido por um erro num campo escondido.
+  // (recorrente e parcelado são mutuamente exclusivos, então basta olhar o que
+  // acabou de mudar.)
+  private atualizarValidadorData(tipoEspecialAtivo: boolean): void {
+    const data = this.form.controls.data;
+    data.setValidators(tipoEspecialAtivo ? [] : [Validators.required]);
+    // emitEvent: false - não precisa reprocessar as opções de orçamento (a data
+    // não mudou, só a regra de validação dela).
+    data.updateValueAndValidity({ emitEvent: false });
   }
 
   private aplicarLimites(limites: CompraParceladaLimites): void {

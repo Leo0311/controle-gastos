@@ -72,6 +72,20 @@
       }
     </mat-form-field>
 
+    <!-- Tipo de lançamento ANTES da data: assim o campo de data já aparece na
+         forma certa (Data simples / Dia do mês / Data da 1ª parcela) e não muda
+         de forma embaixo do dedo do usuário depois de preenchida. -->
+    @if (!editando) {
+      <div class="opcoes-especiais">
+        <mat-checkbox formControlName="recorrente">
+          Tornar recorrente (todo mês)
+        </mat-checkbox>
+        <mat-checkbox formControlName="parcelado">
+          Parcelar compra
+        </mat-checkbox>
+      </div>
+    }
+
     @if (editando || (!form.controls.recorrente.value && !form.controls.parcelado.value)) {
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Data</mat-label>
@@ -82,17 +96,6 @@
           <mat-error>Data é obrigatória.</mat-error>
         }
       </mat-form-field>
-    }
-
-    @if (!editando) {
-      <div class="opcoes-especiais">
-        <mat-checkbox formControlName="recorrente">
-          Tornar recorrente (todo mês)
-        </mat-checkbox>
-        <mat-checkbox formControlName="parcelado">
-          Parcelar compra
-        </mat-checkbox>
-      </div>
     }
 
     @if (!editando && form.controls.recorrente.value) {
