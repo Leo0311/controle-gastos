@@ -1,6 +1,7 @@
 import { Gasto } from '../../../models/gasto.model';
 import {
   calcularSugestaoCategoria,
+  combinarSugestoes,
   mesmaSugestao,
   normalizarDescricao,
   sugestaoDeveAparecer,
@@ -51,6 +52,45 @@ describe('sugestao-categoria', () => {
         gasto('Uber B', 4, 8, '2026-05-20')
       ];
       expect(calcularSugestaoCategoria('uber', historico)).toEqual({ categoriaId: 4, subcategoriaId: 8 });
+    });
+  });
+
+  describe('combinarSugestoes (plano A + plano B)', () => {
+    it('histórico vazio: usa o dicionário sozinho (plano B)', () => {
+      expect(combinarSugestoes(null, { categoriaId: 4, subcategoriaId: 9 }))
+        .toEqual({ categoriaId: 4, subcategoriaId: 9 });
+      expect(combinarSugestoes(null, null)).toBeNull();
+    });
+
+    it('cenário 1 - histórico com categoria E subcategoria: usa o histórico puro, ignora o dicionário', () => {
+      // o dicionário aponta a mesma categoria com OUTRA subcategoria - não deve ser usado
+      expect(combinarSugestoes({ categoriaId: 3, subcategoriaId: 7 }, { categoriaId: 3, subcategoriaId: 9 }))
+        .toEqual({ categoriaId: 3, subcategoriaId: 7 });
+    });
+
+    it('cenário 2 - histórico só com categoria e dicionário concorda na categoria e tem subcategoria: completa com a sub do dicionário', () => {
+      expect(combinarSugestoes({ categoriaId: 3, subcategoriaId: null }, { categoriaId: 3, subcategoriaId: 9 }))
+        .toEqual({ categoriaId: 3, subcategoriaId: 9 });
+    });
+
+    it('cenário 3 - histórico só com categoria mas dicionário discorda da categoria: mantém o histórico sem subcategoria', () => {
+      expect(combinarSugestoes({ categoriaId: 3, subcategoriaId: null }, { categoriaId: 4, subcategoriaId: 9 }))
+        .toEqual({ categoriaId: 3, subcategoriaId: null });
+    });
+
+    it('cenário 3 - histórico só com categoria e dicionário sem entrada (null): mantém o histórico', () => {
+      expect(combinarSugestoes({ categoriaId: 3, subcategoriaId: null }, null))
+        .toEqual({ categoriaId: 3, subcategoriaId: null });
+    });
+
+    it('cenário 3 - histórico só com categoria e dicionário concorda mas também sem subcategoria: mantém o histórico', () => {
+      expect(combinarSugestoes({ categoriaId: 3, subcategoriaId: null }, { categoriaId: 3, subcategoriaId: null }))
+        .toEqual({ categoriaId: 3, subcategoriaId: null });
+    });
+
+    it('nunca troca a categoria do histórico pela do dicionário, mesmo o dicionário tendo subcategoria', () => {
+      const r = combinarSugestoes({ categoriaId: 3, subcategoriaId: null }, { categoriaId: 8, subcategoriaId: 2 });
+      expect(r?.categoriaId).toBe(3);
     });
   });
 

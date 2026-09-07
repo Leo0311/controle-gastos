@@ -22,6 +22,7 @@ import { CompraParceladaService } from '../../../services/compra-parcelada.servi
 import { NotificacaoService } from '../../../core/notificacao.service';
 import {
   calcularSugestaoCategoria,
+  combinarSugestoes,
   mesmaSugestao,
   sugestaoDeveAparecer,
   SugestaoCategoria
@@ -371,11 +372,14 @@ export class GastoFormDialogComponent implements OnInit {
     return aparece ? this.sugestaoBruta : null;
   }
 
-  // Prioridade: o histórico pessoal do usuário sempre ganha; o dicionário de
-  // palavras-chave (ver dicionario-categorias.ts) só entra como plano B, quando
-  // o histórico não indica nada - assim termos que o usuário nunca cadastrou
-  // ("café da manhã", "farmácia") ainda geram sugestão, mas sem sobrepor o que
-  // ele já classificou do próprio jeito.
+  // Prioridade: na CATEGORIA, o histórico pessoal do usuário sempre ganha; o
+  // dicionário de palavras-chave (ver dicionario-categorias.ts) entra como plano
+  // B quando o histórico não indica nada - assim termos que o usuário nunca
+  // cadastrou ("café da manhã", "farmácia") ainda geram sugestão. E quando o
+  // histórico acha a categoria mas nenhuma subcategoria (ex.: "aluguel" sempre
+  // lançado só como Moradia), o dicionário pode COMPLETAR a subcategoria se
+  // concordar na categoria - a categoria do histórico nunca é trocada. Ver
+  // combinarSugestoes.
   private recalcularSugestaoSeNovo(): void {
     if (!this.editando) {
       this.recalcularSugestao(this.form.controls.descricao.value ?? '');
@@ -383,8 +387,14 @@ export class GastoFormDialogComponent implements OnInit {
   }
 
   private recalcularSugestao(texto: string): void {
-    const combo = calcularSugestaoCategoria(texto, this.gastosAnteriores)
-      ?? sugerirPorDicionario(texto, this.todasCategorias, this.todasSubcategorias);
+    const historico = calcularSugestaoCategoria(texto, this.gastosAnteriores);
+    // Consulta o dicionário quando o histórico não achou nada OU achou categoria
+    // sem subcategoria (aí ele pode completar a subcategoria). Quando o histórico
+    // já traz subcategoria, ele vence sozinho e o dicionário nem é chamado.
+    const dicionario = !historico || historico.subcategoriaId == null
+      ? sugerirPorDicionario(texto, this.todasCategorias, this.todasSubcategorias)
+      : null;
+    const combo = combinarSugestoes(historico, dicionario);
     // O "x" (dispensar) só perde o efeito quando a sugestão muda de conteúdo -
     // digitar mais uma letra sem mudar a combinação não faz o chip voltar.
     if (!mesmaSugestao(combo, this.sugestaoBruta)) {

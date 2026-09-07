@@ -104,3 +104,33 @@ export function calcularSugestaoCategoria(texto: string, gastos: Gasto[]): Suges
 
   return contagem.get(melhorChave)!.combo;
 }
+
+/**
+ * Junta o resultado do plano A (histórico pessoal, `calcularSugestaoCategoria`)
+ * com o do plano B (dicionário de palavras-chave, `sugerirPorDicionario`),
+ * preservando a prioridade do histórico:
+ *
+ * - Histórico não achou nada → usa o dicionário (plano B sozinho).
+ * - Histórico achou categoria **e** subcategoria → usa o histórico puro; o
+ *   dicionário é ignorado.
+ * - Histórico achou **só a categoria** (sem subcategoria) → se o dicionário
+ *   apontar a MESMA categoria e tiver uma subcategoria, completa a sugestão com
+ *   essa subcategoria; caso contrário (categoria diferente, ou dicionário sem
+ *   subcategoria/sem entrada) mantém o histórico como veio. A categoria vinda do
+ *   histórico nunca é trocada pela do dicionário.
+ */
+export function combinarSugestoes(
+  historico: SugestaoCategoria | null,
+  dicionario: SugestaoCategoria | null
+): SugestaoCategoria | null {
+  if (!historico) {
+    return dicionario;
+  }
+  if (historico.subcategoriaId != null) {
+    return historico;
+  }
+  if (dicionario && dicionario.categoriaId === historico.categoriaId && dicionario.subcategoriaId != null) {
+    return { categoriaId: historico.categoriaId, subcategoriaId: dicionario.subcategoriaId };
+  }
+  return historico;
+}

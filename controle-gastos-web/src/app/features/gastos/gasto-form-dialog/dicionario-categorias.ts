@@ -6,8 +6,10 @@ import { normalizarDescricao, SugestaoCategoria } from './sugestao-categoria';
  * indica nada (ver `calcularSugestaoCategoria`), tenta casar a descrição digitada
  * contra este dicionário de palavras-chave comuns em português, sempre apontando
  * para categoria/subcategoria **padrão do sistema** — garantidas existir para
- * todo usuário. O histórico pessoal SEMPRE tem prioridade; este dicionário só
- * entra quando ele não encontra nada.
+ * todo usuário. O histórico pessoal SEMPRE tem prioridade na CATEGORIA; este
+ * dicionário só entra quando o histórico não encontra nada — ou, quando o
+ * histórico acha a categoria mas nenhuma subcategoria, para **completar** a
+ * subcategoria (e só ela) se concordar na categoria. Ver `combinarSugestoes`.
  *
  * Para editar depois: cada entrada liga uma lista de `termos` a um par
  * categoria/subcategoria do sistema, com os nomes EXATOS como estão no

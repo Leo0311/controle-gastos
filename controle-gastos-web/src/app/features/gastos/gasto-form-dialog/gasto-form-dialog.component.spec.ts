@@ -12,7 +12,9 @@ import { GastoRecorrenteService } from '../../../services/gasto-recorrente.servi
 import { CompraParceladaService } from '../../../services/compra-parcelada.service';
 import { NotificacaoService } from '../../../core/notificacao.service';
 import { ConfigService } from '../../../services/config.service';
-import { Subcategoria } from '../../../models/categoria.model';
+import { Categoria, Subcategoria } from '../../../models/categoria.model';
+import { Gasto } from '../../../models/gasto.model';
+import { SugestaoCategoria } from './sugestao-categoria';
 
 const LIMITES = { parcelasMin: 2, parcelasMax: 120, primeiraParcelaMesesAtrasMax: 12, primeiraParcelaMesesFrenteMax: 2 };
 
@@ -92,6 +94,65 @@ describe('GastoFormDialogComponent', () => {
 
       expect(c.form.controls.categoriaId.value).toBe(5);
       expect(c.form.controls.subcategoriaId.value).toBeNull();
+    });
+  });
+
+  describe('recalcularSugestao (plano A do histórico + plano B do dicionário)', () => {
+    // Categorias/subcategorias do sistema que o dicionário resolve para "aluguel":
+    // entrada { termos: ['aluguel', ...], categoria: 'Moradia', subcategoria: 'Aluguel' }.
+    const MORADIA: Categoria = { id: 10, nome: 'Moradia', emoji: '🏠', usuarioId: null };
+    const SUB_ALUGUEL: Subcategoria = { id: 100, nome: 'Aluguel', emoji: '🔑', categoriaId: 10, usuarioId: null };
+    const SUB_CONDOMINIO: Subcategoria = { id: 101, nome: 'Condomínio', emoji: '🏢', categoriaId: 10, usuarioId: null };
+
+    function comHistorico(gastos: Gasto[]): GastoFormDialogComponent {
+      const c = criarComponente();
+      const priv = c as unknown as {
+        gastosAnteriores: Gasto[];
+        todasCategorias: Categoria[];
+        todasSubcategorias: Subcategoria[];
+        recalcularSugestao(texto: string): void;
+        sugestaoBruta: (SugestaoCategoria & { rotulo: string }) | null;
+      };
+      priv.gastosAnteriores = gastos;
+      priv.todasCategorias = [MORADIA];
+      priv.todasSubcategorias = [SUB_ALUGUEL, SUB_CONDOMINIO];
+      return c;
+    }
+
+    function sugestaoApos(c: GastoFormDialogComponent, texto: string): SugestaoCategoria | null {
+      const priv = c as unknown as {
+        recalcularSugestao(texto: string): void;
+        sugestaoBruta: (SugestaoCategoria & { rotulo: string }) | null;
+      };
+      priv.recalcularSugestao(texto);
+      const s = priv.sugestaoBruta;
+      return s ? { categoriaId: s.categoriaId, subcategoriaId: s.subcategoriaId } : null;
+    }
+
+    it('cenário 1 - histórico já traz categoria+subcategoria: mantém a do histórico, mesmo o dicionário sugerindo outra', () => {
+      // "aluguel" sempre lançado como Moradia > Condomínio; o dicionário diria Moradia > Aluguel
+      const c = comHistorico([
+        { descricao: 'Aluguel', valor: 1500, categoriaId: 10, subcategoriaId: 101, data: '2026-07-01' }
+      ]);
+
+      expect(sugestaoApos(c, 'aluguel')).toEqual({ categoriaId: 10, subcategoriaId: 101 });
+    });
+
+    it('cenário 2 - histórico só com a categoria: o dicionário completa a subcategoria (Moradia > Aluguel)', () => {
+      // gastos antigos de "aluguel" categorizados só como Moradia, sem subcategoria
+      const c = comHistorico([
+        { descricao: 'Aluguel', valor: 1500, categoriaId: 10, subcategoriaId: null, data: '2026-07-01' }
+      ]);
+
+      expect(sugestaoApos(c, 'aluguel')).toEqual({ categoriaId: 10, subcategoriaId: 100 });
+    });
+
+    it('cenário 3 - histórico só com a categoria e o dicionário não tem entrada pro termo: mantém a categoria sem subcategoria', () => {
+      const c = comHistorico([
+        { descricao: 'Xpto mensal', valor: 90, categoriaId: 10, subcategoriaId: null, data: '2026-07-01' }
+      ]);
+
+      expect(sugestaoApos(c, 'xpto mensal')).toEqual({ categoriaId: 10, subcategoriaId: null });
     });
   });
 });

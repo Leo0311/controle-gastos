@@ -70,9 +70,12 @@ categoria/subcategoria: termo de uma palavra casa como palavra inteira ("água" 
 casa dentro de "aguardar"), termo com várias palavras casa como trecho contíguo, e
 quando vários casam vence o mais específico. Se a subcategoria do dicionário não
 existir naquela categoria, a sugestão degrada para só a categoria — nunca quebra.
-O histórico pessoal **sempre** tem prioridade: o dicionário só é consultado quando
-o histórico não encontra nada, e termos sem correspondência em nenhum dos dois
-continuam sem mostrar sugestão.
+O histórico pessoal **sempre** tem prioridade na categoria: o dicionário só é
+consultado quando o histórico não encontra nada — ou, quando o histórico acha a
+categoria mas nunca uma subcategoria (ex.: gastos de "aluguel" lançados só como
+Moradia), para **completar** a subcategoria, e só ela, se concordar na categoria.
+A categoria que veio do histórico nunca é trocada pela do dicionário. Termos sem
+correspondência em nenhum dos dois continuam sem mostrar sugestão.
 
 ### Gastos recorrentes
 Um gasto fixo (aluguel, assinatura etc.) pode ser marcado como recorrente — no próprio formulário de gasto ("Tornar recorrente (todo mês)") ou na tela dedicada **Recorrentes** — informando o dia do mês em que deve ser lançado e "Gerar para os próximos meses" (1 a 12, padrão 12): ao salvar, os gastos desses meses já são lançados imediatamente (a partir do mês atual), então meses futuros já aparecem no Dashboard/Análises sem precisar esperar o usuário abrir aquele mês depois que ele chegar. Passado esse horizonte pré-gerado, a recorrência continua lançando os meses seguintes normalmente conforme o tempo passa: como não há um job agendado que rode isso periodicamente, o lançamento é verificado sob demanda, de forma transparente (sem popup), toda vez que o Dashboard ou a tela de Gastos são abertos — nunca duplica nenhum lançamento. Em meses com menos dias que o dia configurado (ex: dia 31 em fevereiro), o lançamento cai no último dia válido do mês. Gastos gerados automaticamente aparecem marcados com 🔁 na listagem. A tela **Recorrentes** lista as recorrências ativas (chip verde) e pausadas (chip cinza), com opção de editar, pausar/reativar (sem excluir) e excluir — excluir uma recorrência remove **todos** os lançamentos gerados por ela (passados e futuros) e a própria recorrência, numa transação única; excluir um lançamento dela pela tela de Gastos dispara exatamente a mesma cascata (a interface confirma isso antes). É definitiva — não há como desfazer nem reativar depois.
