@@ -16,6 +16,7 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.model.GastoRecorrente;
+import com.controlegastos.api.model.StatusPagamento;
 import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.GastoRecorrenteRepository;
@@ -139,6 +140,12 @@ public class GastoService {
         // marcar um gasto como "gerado automaticamente".
         gasto.setGastoRecorrenteId(null);
         gasto.setCompraParceladaId(null);
+        // Gasto avulso não tem conceito de vencimento: nasce PAGO com a própria
+        // data informada. O cliente nunca injeta status (o campo é do servidor);
+        // dataPagamento é preenchida em salvar(), depois do default de data.
+        gasto.setStatusPagamento(StatusPagamento.PAGO);
+        gasto.setVencimentoOriginal(null);
+        gasto.setDataPagamento(null);
         if (rejeitarDuplicata) {
             rejeitarSeDuplicata(gasto, usuarioId);
         }
@@ -194,7 +201,20 @@ public class GastoService {
         if (gasto.getData() == null) {
             gasto.setData(LocalDate.now());
         }
+        aplicarStatusPadrao(gasto);
         return repository.save(gasto);
+    }
+
+    // Fallback de status pra qualquer gasto que chega em salvar() sem ele definido
+    // (só o fluxo avulso passa por aqui hoje - a recorrência monta o Gasto já com
+    // PENDENTE + vencimento). PAGO sem data de pagamento assume a própria data.
+    private void aplicarStatusPadrao(Gasto gasto) {
+        if (gasto.getStatusPagamento() == null) {
+            gasto.setStatusPagamento(StatusPagamento.PAGO);
+        }
+        if (gasto.getStatusPagamento() == StatusPagamento.PAGO && gasto.getDataPagamento() == null) {
+            gasto.setDataPagamento(gasto.getData());
+        }
     }
 
     public Gasto atualizar(Integer id, Gasto dados, Integer usuarioId) {
@@ -211,6 +231,7 @@ public class GastoService {
             existente.setDescricao(dados.getDescricao());
             existente.setValor(dados.getValor());
             existente.setData(dados.getData() != null ? dados.getData() : existente.getData());
+            sincronizarPagamentoComEdicaoManual(existente);
         }
         existente.setCategoria(dados.getCategoria());
         existente.setSubcategoria(dados.getSubcategoria());
@@ -218,6 +239,77 @@ public class GastoService {
         existente.setSubcategoriaId(dados.getSubcategoriaId());
         existente.setOrcamentoId(dados.getOrcamentoId());
         return repository.save(existente);
+    }
+
+    // A edição manual de descrição/valor/data de um gasto (feita pelo formulário de
+    // gasto, não pelo fluxo de "marcar como paga") reflete nos campos de pagamento
+    // conforme a natureza do gasto:
+    //  - avulso: continua PAGO, data de pagamento acompanha a data;
+    //  - recorrência ainda PENDENTE: a nova data passa a ser o vencimento;
+    //  - recorrência já PAGA: a nova data é a data real do pagamento (vencimento
+    //    original preservado).
+    private void sincronizarPagamentoComEdicaoManual(Gasto gasto) {
+        if (gasto.getGastoRecorrenteId() == null) {
+            gasto.setDataPagamento(gasto.getData());
+        } else if (gasto.getStatusPagamento() == StatusPagamento.PENDENTE) {
+            gasto.setVencimentoOriginal(gasto.getData());
+        } else {
+            gasto.setDataPagamento(gasto.getData());
+        }
+    }
+
+    // Confirma o pagamento de um gasto de recorrência/parcela: valor (pré-preenchido
+    // no frontend com o previsto, mas editável) e data (padrão hoje, editável). A
+    // data do gasto passa a ser a data real do pagamento - isso pode mover o gasto
+    // de mês nos totais/Dashboard/Análises/Orçamentos (regime de caixa, comportamento
+    // desejado); o vencimento original fica preservado à parte pra permitir desfazer.
+    // Serve também pra EDITAR um pagamento já feito (só re-seta valor/data).
+    public Gasto pagar(Integer id, BigDecimal valor, LocalDate data, Integer usuarioId) {
+        Gasto gasto = buscarPorId(id, usuarioId);
+        if (gasto.getGastoRecorrenteId() == null && gasto.getCompraParceladaId() == null) {
+            throw new IllegalArgumentException(
+                    "Gasto avulso já é considerado pago - não há pagamento a confirmar.");
+        }
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Valor deve ser maior que zero.");
+        }
+        LocalDate dataPagamento = data != null ? data : LocalDate.now();
+        validarData(dataPagamento);
+        // Só na 1ª confirmação: o gasto PENDENTE está datado no vencimento, então
+        // guarda-se essa data antes de sobrescrever com a data real. Numa edição de
+        // pagamento já feito, vencimentoOriginal já está preenchido e não muda.
+        if (gasto.getVencimentoOriginal() == null) {
+            gasto.setVencimentoOriginal(gasto.getData());
+        }
+        gasto.setValor(valor);
+        gasto.setData(dataPagamento);
+        gasto.setDataPagamento(dataPagamento);
+        gasto.setStatusPagamento(StatusPagamento.PAGO);
+        return repository.save(gasto);
+    }
+
+    // Desfaz o pagamento: status volta a PENDENTE e a data do gasto volta a ser o
+    // vencimento original (o gasto volta pro mês do vencimento nos totais). O valor
+    // fica como estava - se foi editado na confirmação, continua editado.
+    public Gasto desfazerPagamento(Integer id, Integer usuarioId) {
+        Gasto gasto = buscarPorId(id, usuarioId);
+        if (gasto.getGastoRecorrenteId() == null && gasto.getCompraParceladaId() == null) {
+            throw new IllegalArgumentException("Gasto avulso não tem pagamento a desfazer.");
+        }
+        if (gasto.getStatusPagamento() != StatusPagamento.PAGO || gasto.getVencimentoOriginal() == null) {
+            throw new IllegalArgumentException(
+                    "Este gasto não está pago ou não tem vencimento original para restaurar.");
+        }
+        gasto.setData(gasto.getVencimentoOriginal());
+        gasto.setStatusPagamento(StatusPagamento.PENDENTE);
+        gasto.setDataPagamento(null);
+        return repository.save(gasto);
+    }
+
+    // Contas atrasadas do usuário: PENDENTE com vencimento no passado, qualquer mês.
+    // Usado no destaque de atrasadas do Dashboard.
+    public List<Gasto> atrasadas(Integer usuarioId) {
+        return repository.atrasadas(usuarioId, LocalDate.now());
     }
 
     // Confirma que a categoria (e a subcategoria, se houver) escolhidas existem e são
@@ -444,15 +536,22 @@ public class GastoService {
         // gasto.getData() pode vir null aqui - salvar()/salvarParcelas() só aplicam o
         // default (hoje) DEPOIS de validar(); nesse caso não há data pra checar ainda.
         if (gasto.getData() != null) {
-            LocalDate hoje = LocalDate.now();
-            if (gasto.getData().isBefore(hoje.minusYears(GASTO_ANOS_PASSADO_MAXIMO))) {
-                throw new IllegalArgumentException(
-                        "Data do gasto não pode ser anterior a " + GASTO_ANOS_PASSADO_MAXIMO + " anos atrás.");
-            }
-            if (gasto.getData().isAfter(hoje.plusYears(GASTO_ANOS_FUTURO_MAXIMO))) {
-                throw new IllegalArgumentException(
-                        "Data do gasto não pode ser mais de " + GASTO_ANOS_FUTURO_MAXIMO + " anos no futuro.");
-            }
+            validarData(gasto.getData());
+        }
+    }
+
+    // Janela grosseira de data (ver comentário nas constantes) - extraída pra o
+    // fluxo de pagamento (GastoService.pagar) validar a data real informada com o
+    // mesmo critério do cadastro.
+    private void validarData(LocalDate data) {
+        LocalDate hoje = LocalDate.now();
+        if (data.isBefore(hoje.minusYears(GASTO_ANOS_PASSADO_MAXIMO))) {
+            throw new IllegalArgumentException(
+                    "Data do gasto não pode ser anterior a " + GASTO_ANOS_PASSADO_MAXIMO + " anos atrás.");
+        }
+        if (data.isAfter(hoje.plusYears(GASTO_ANOS_FUTURO_MAXIMO))) {
+            throw new IllegalArgumentException(
+                    "Data do gasto não pode ser mais de " + GASTO_ANOS_FUTURO_MAXIMO + " anos no futuro.");
         }
     }
 }

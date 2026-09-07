@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../core/api.constants';
 import { CompraParcelada } from '../models/compra-parcelada.model';
+import { Gasto } from '../models/gasto.model';
 
 @Injectable({
   providedIn: 'root'
@@ -26,5 +27,11 @@ export class CompraParceladaService {
   // futuras (ainda não vencidas), mantendo as passadas como histórico.
   excluir(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  // Ação em lote: marca como pagas todas as parcelas vencidas (<= hoje) e ainda
+  // pendentes desta compra, com valor/data previstos. Devolve as quitadas.
+  pagarVencidas(id: number): Observable<Gasto[]> {
+    return this.http.post<Gasto[]>(`${this.baseUrl}/${id}/pagar-vencidas`, {});
   }
 }

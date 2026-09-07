@@ -38,6 +38,9 @@ public class RateLimitAutenticadoFilter extends OncePerRequestFilter {
 
     static final Regra GASTOS_ESCRITA = new Regra("gastos-escrita", 400, Duration.ofSeconds(10));
     static final Regra COMPRAS_PARCELADAS = new Regra("compras-parceladas", 20, Duration.ofMinutes(1));
+    // "lancar-pendentes" e as duas ações em lote de pagamento vencido (pagar-vencidas
+    // de recorrência e de compra parcelada) - operações que ninguém dispara em rajada
+    // de propósito, mas que fazem trabalho no banco.
     static final Regra LANCAR_PENDENTES = new Regra("lancar-pendentes", 60, Duration.ofMinutes(1));
 
     private static final int LIMITE_PODA = 10_000;
@@ -75,15 +78,18 @@ public class RateLimitAutenticadoFilter extends OncePerRequestFilter {
         String metodo = request.getMethod();
         String uri = request.getRequestURI();
 
-        boolean escrita = "POST".equalsIgnoreCase(metodo) || "PUT".equalsIgnoreCase(metodo);
+        boolean escrita = "POST".equalsIgnoreCase(metodo) || "PUT".equalsIgnoreCase(metodo)
+                || "PATCH".equalsIgnoreCase(metodo);
+        if ("POST".equalsIgnoreCase(metodo)
+                && (uri.equals("/api/gastos-recorrentes/lancar-pendentes")
+                    || uri.endsWith("/pagar-vencidas"))) {
+            return LANCAR_PENDENTES;
+        }
         if (escrita && (uri.equals("/api/gastos") || uri.startsWith("/api/gastos/"))) {
             return GASTOS_ESCRITA;
         }
         if ("POST".equalsIgnoreCase(metodo) && uri.equals("/api/compras-parceladas")) {
             return COMPRAS_PARCELADAS;
-        }
-        if ("POST".equalsIgnoreCase(metodo) && uri.equals("/api/gastos-recorrentes/lancar-pendentes")) {
-            return LANCAR_PENDENTES;
         }
         return null;
     }

@@ -131,6 +131,15 @@ Moradia), para **completar** a subcategoria, e só ela, se concordar na categori
 A categoria que veio do histórico nunca é trocada pela do dicionário. Termos sem
 correspondência em nenhum dos dois continuam sem mostrar sugestão.
 
+### Status de pagamento (Pendente / Pago / Atrasada)
+Gastos que vêm de uma **recorrência** ou de uma **compra parcelada** passaram do regime de competência para o de **caixa**: ao serem pré-gerados eles entram como **Pendente** (previsto, ainda não pago), não mais já quitados. Cada um guarda o **vencimento original** e, quando pago, a **data real do pagamento**. "Atrasada" não é um estado gravado — é calculado na leitura: Pendente + vencimento no passado. Um **gasto avulso** (sem vínculo com recorrência/parcela) não tem vencimento: nasce direto **Pago** com a própria data informada no cadastro, exibe o chip "Pago" por consistência visual, mas não tem nenhuma ação de pagamento.
+
+O chip de status (Pendente âmbar / Pago verde / Atrasada vermelho) aparece na tela de **Gastos**, na aba **Próximas contas** e — como badge agregado ("N atrasada(s)", "N pendente(s)" ou "em dia", além do chip Ativo/Pausado) — nas abas **Recorrentes** e **Parceladas**.
+
+**Marcar como paga** (no menu ⋮ de Gastos, no cartão do mobile e por item em Próximas contas) abre um diálogo com o **valor** (pré-preenchido com o previsto, editável) e a **data** (padrão hoje, editável). Ao confirmar, o status vira Pago e a **data do gasto é substituída pela data real do pagamento** — o que pode mover o gasto de mês nos totais do Dashboard/Análises/Orçamentos (é o comportamento desejado do regime de caixa); o vencimento original fica preservado à parte. É **reversível**: "Desfazer pagamento" volta o status para Pendente e a data para o vencimento original (o valor não é alterado). "Editar pagamento" reabre o mesmo diálogo para um gasto já pago. Um gasto Pendente/Atrasada continua contando no total do mês do vencimento, igual aos pré-gerados sempre contaram — pagar só o realoca pela data real.
+
+**Ação em lote:** na aba Recorrentes/Parceladas, "Marcar contas vencidas como pagas" quita de uma vez todas as ocorrências vencidas (vencimento ≤ hoje) e ainda pendentes daquela recorrência/compra, com o valor e a data previstos de cada uma — sem confirmar item a item; as ocorrências futuras não são tocadas. Em Próximas contas, "Marcar mês como pago" faz o mesmo para as contas vencidas de um mês.
+
 ### Gastos recorrentes
 Um gasto fixo (aluguel, assinatura etc.) pode ser marcado como recorrente — no próprio formulário de gasto ("Tornar recorrente (todo mês)") ou na tela dedicada **Recorrentes** — informando o dia do mês em que deve ser lançado e "Gerar para os próximos meses" (1 a 12, padrão 12): ao salvar, os gastos desses meses já são lançados imediatamente, **a partir do mês atual — inclusive quando o dia do vencimento ainda não chegou** (uma recorrência "todo dia 10" criada no dia 6 já entra no mês corrente, datada no dia 10). Assim ela aparece de imediato na tela de Gastos, em "Próximas contas" e no total do mês no Dashboard/Análises, em vez de ficar invisível até o dia chegar — o mesmo que já acontece com os meses futuros pré-gerados e com a 1ª parcela de uma compra parcelada. Passado esse horizonte pré-gerado, a recorrência continua lançando os meses seguintes normalmente conforme o tempo passa: como não há um job agendado que rode isso periodicamente, o lançamento é verificado sob demanda, de forma transparente (sem popup), toda vez que o Dashboard ou a tela de Gastos são abertos — nunca duplica nenhum lançamento (nem o do mês corrente já pré-gerado). Em meses com menos dias que o dia configurado (ex: dia 31 em fevereiro), o lançamento cai no último dia válido do mês. Gastos gerados automaticamente aparecem marcados com 🔁 na listagem. A tela **Recorrentes** lista as recorrências ativas (chip verde) e pausadas (chip cinza), com opção de editar, pausar/reativar (sem excluir) e excluir — excluir uma recorrência remove **todos** os lançamentos gerados por ela (passados e futuros) e a própria recorrência, numa transação única; excluir um lançamento dela pela tela de Gastos dispara exatamente a mesma cascata (a interface confirma isso antes). É definitiva — não há como desfazer nem reativar depois.
 
@@ -141,16 +150,20 @@ Diferente de um gasto recorrente (que se repete indefinidamente), uma compra par
 
 ### Calendário de contas a pagar
 A tela **Recorrentes e Parceladas** tem uma terceira aba, **"Próximas contas"**, com a
-visão cronológica de tudo que já está comprometido para o futuro: todos os gastos com
-data igual ou posterior a hoje que vieram de uma recorrência (🔁) ou de uma parcela
-(💳), em ordem de data e **agrupados por mês**, com o **total de cada mês** no
-cabeçalho do grupo. Cada mês é um painel expansível (`mat-expansion-panel`, mesmo
+visão cronológica das contas ainda **não pagas**: os gastos de uma recorrência (🔁) ou
+de uma parcela (💳) que vencem daqui pra frente **mais os já vencidos (atrasados)** —
+gastos já pagos não entram (o dinheiro já saiu). Em ordem de data e **agrupados por
+mês**, com o **total de cada mês** e a contagem de vencidas no cabeçalho do grupo. Cada
+item tem o chip de status e um botão **"Marcar como paga"**; quando o mês tem contas
+vencidas, o cabeçalho ganha **"Marcar mês como pago"**. Cada mês é um painel expansível (`mat-expansion-panel`, mesmo
 padrão do ranking de Análises): o cabeçalho com o nome do mês e o total fica sempre
 visível, e clicar nele abre/fecha a lista de lançamentos daquele mês (dia, ícone da
 origem, descrição e valor). O **mês mais próximo já abre expandido**; os demais
 começam colapsados, para a agenda inteira caber numa olhada. É uma lista/agenda (não
-uma grade de calendário), pensada para funcionar bem no mobile. Usa os campos
-`gastoRecorrenteId`/`compraParceladaId` que a API já devolve — sem endpoint novo.
+uma grade de calendário), pensada para funcionar bem no mobile. O agrupamento por mês e
+o cálculo de status são feitos no cliente, a partir dos campos que a API já devolve; só
+o registro do pagamento em si (`PATCH /api/gastos/{id}/pagar` e as ações em lote) usa
+endpoint próprio.
 
 Só os **primeiros 12 meses** são renderizados de início; no fim da lista, um botão
 **"Ver mais 12 meses"** revela o próximo bloco, acumulando, e ao lado um
@@ -177,7 +190,7 @@ Limite de valor por categoria e mês/ano, com edição. A subcategoria é opcion
 No Dashboard, o usuário define uma renda mensal (global, vale para todos os meses) e, por mês, uma meta de economia (valor que deseja ter sobrando no fim daquele mês). O app calcula `renda − total gasto no mês = economia projetada` e compara com a meta, mostrando o progresso numa barra colorida (verde/amarelo/vermelho) que leva em conta quantos dias do mês já passaram. O aviso exibido quando falta informação deixa claro qual dos dois falta: se a renda (global) já está definida mas falta só a meta do mês selecionado, ou se falta definir a renda primeiro.
 
 ### Dashboard
-Dois cards de totais do mês/ano selecionado (o card do mês também mostra quantos gastos estão cadastrados no período), gráfico de pizza (distribuição por categoria, sempre do mês/ano selecionado, independente do toggle abaixo) e um gráfico de barras que muda de acordo com o toggle "Destacar mês"/"Destacar ano": com "Destacar mês" (padrão), mostra o total gasto em cada dia do mês selecionado (dia 1 até o último dia); com "Destacar ano", mostra os 12 meses (Jan-Dez) do ano selecionado — com rolagem horizontal quando as barras não cabem na tela, especialmente no mobile. Os cards de total e ambos os gráficos são clicáveis (os cards também respondem a Enter e Espaço quando focados pelo teclado), abrindo o detalhamento dos gastos do dia/mês/categoria selecionado.
+Quando há **contas atrasadas** (Pendente com vencimento no passado, de qualquer mês), um destaque em tom de alerta no topo mostra o **contador e o valor total em aberto** e abre uma lista de quitação (marcar cada uma como paga sem sair do Dashboard). Dois cards de totais do mês/ano selecionado (o card do mês também mostra quantos gastos estão cadastrados no período), gráfico de pizza (distribuição por categoria, sempre do mês/ano selecionado, independente do toggle abaixo) e um gráfico de barras que muda de acordo com o toggle "Destacar mês"/"Destacar ano": com "Destacar mês" (padrão), mostra o total gasto em cada dia do mês selecionado (dia 1 até o último dia); com "Destacar ano", mostra os 12 meses (Jan-Dez) do ano selecionado — com rolagem horizontal quando as barras não cabem na tela, especialmente no mobile. Os cards de total e ambos os gráficos são clicáveis (os cards também respondem a Enter e Espaço quando focados pelo teclado), abrindo o detalhamento dos gastos do dia/mês/categoria selecionado.
 
 ### Estado de erro de carregamento
 Quando uma chamada à API falha (backend fora do ar, erro de rede), Dashboard, Gastos, Orçamentos, Análises, Recorrentes e Categorias mostram um **estado de erro claro** no lugar do conteúdo — ícone, "Não foi possível carregar [X]. Verifique se a API está no ar." e um botão **"Tentar novamente"** que refaz o carregamento — em vez de cair no _empty state_ ("Nenhum gasto cadastrado ainda."), que parecia "sem dados" quando na verdade houve uma falha. É um componente compartilhado (`app-erro-carregamento`, contrapartida do `app-empty-state`). Ao refiltrar (mês/ano/categoria) e a chamada falhar, os dados antigos são limpos antes de mostrar o erro, pra não exibir informação desatualizada com o filtro errado. Na tela de Recorrentes/Parceladas/Próximas contas, cada aba carrega e trata o erro separadamente, com seu próprio botão de repetir. Importante porque qualquer indisponibilidade da API — restart durante o deploy manual, queda da VM, erro de rede — precisa aparecer como falha explícita, não como "você não tem nada cadastrado".

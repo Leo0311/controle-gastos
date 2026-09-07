@@ -1,0 +1,28 @@
+<h2 mat-dialog-title>Contas atrasadas</h2>
+
+<mat-dialog-content class="conteudo">
+  <p class="instrucao">
+    Contas de recorrência ou parcela com vencimento no passado e ainda não pagas.
+    Marcar como paga registra o valor e a data reais — o gasto passa para o mês do pagamento.
+  </p>
+
+  @for (gasto of atrasadas; track gasto.id) {
+    <div class="item-atrasada">
+      <div class="item-info">
+        <span class="item-descricao">{{ gasto.descricao }}</span>
+        <span class="item-meta">
+          Venceu em {{ (gasto.vencimentoOriginal ?? gasto.data) | date:'dd/MM/yyyy':'UTC' }}
+          · {{ gasto.valor | currency:'BRL' }}
+        </span>
+      </div>
+      <button mat-stroked-button (click)="marcarComoPaga(gasto)">
+        <mat-icon>check_circle</mat-icon>
+        Pagar
+      </button>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="fechar()">Fechar</button>
+</mat-dialog-actions>

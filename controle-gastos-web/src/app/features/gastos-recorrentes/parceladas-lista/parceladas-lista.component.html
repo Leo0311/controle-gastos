@@ -19,6 +19,13 @@
         <div class="info-recorrente">
           <div class="linha-titulo">
             <span class="descricao">{{ parcelada.descricao }}</span>
+            @if (statusBadge(parcelada.id).atrasadas > 0) {
+              <mat-chip class="chip-status-atrasada">{{ statusBadge(parcelada.id).atrasadas }} atrasada{{ statusBadge(parcelada.id).atrasadas > 1 ? 's' : '' }}</mat-chip>
+            } @else if (statusBadge(parcelada.id).pendentes > 0) {
+              <mat-chip class="chip-status-pendente">{{ statusBadge(parcelada.id).pendentes }} pendente{{ statusBadge(parcelada.id).pendentes > 1 ? 's' : '' }}</mat-chip>
+            } @else {
+              <mat-chip class="chip-status-pago">em dia</mat-chip>
+            }
           </div>
           <div class="linha-detalhes">
             <span>{{ categoriaLabel(parcelada.categoriaId) }}</span>
@@ -42,9 +49,21 @@
           </div>
         </div>
 
-        <button mat-icon-button (click)="excluirParcelada(parcelada)" aria-label="Excluir compra parcelada" title="Excluir">
-          <mat-icon color="warn">delete</mat-icon>
+        <button mat-icon-button [matMenuTriggerFor]="menuParcelada" aria-label="Mais ações">
+          <mat-icon>more_vert</mat-icon>
         </button>
+        <mat-menu #menuParcelada="matMenu">
+          @if (temVencidas(parcelada.id)) {
+            <button mat-menu-item (click)="marcarVencidasComoPagas(parcelada)">
+              <mat-icon>check_circle</mat-icon>
+              <span>Marcar parcelas vencidas como pagas</span>
+            </button>
+          }
+          <button mat-menu-item (click)="excluirParcelada(parcelada)">
+            <mat-icon color="warn">delete</mat-icon>
+            <span>Excluir</span>
+          </button>
+        </mat-menu>
       </div>
     }
   </div>

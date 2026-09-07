@@ -1,0 +1,38 @@
+<h2 mat-dialog-title>{{ titulo }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="confirmar()">
+  <mat-dialog-content class="form-content">
+    <p class="instrucao">
+      <strong>{{ descricao }}</strong><br>
+      Confirme o valor efetivamente pago e a data do pagamento. Pagar numa data de
+      outro mês move o gasto para esse mês nos totais.
+    </p>
+
+    <mat-form-field appearance="outline" class="campo-largo">
+      <mat-label>Valor pago</mat-label>
+      <span matTextPrefix>R$&nbsp;</span>
+      <input matInput appMascaraMoeda placeholder="0,00" formControlName="valor">
+      @if (form.controls.valor.hasError('required')) {
+        <mat-error>Valor é obrigatório.</mat-error>
+      }
+      @if (form.controls.valor.hasError('min')) {
+        <mat-error>Valor deve ser maior que zero.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="campo-largo">
+      <mat-label>Data do pagamento</mat-label>
+      <input matInput appMascaraData [matDatepicker]="picker" formControlName="data">
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-datepicker #picker [touchUi]="(telaPequena$ | async) ?? false"></mat-datepicker>
+      @if (form.controls.data.hasError('required')) {
+        <mat-error>Data é obrigatória.</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+    <button mat-raised-button color="primary" type="submit">Confirmar</button>
+  </mat-dialog-actions>
+</form>

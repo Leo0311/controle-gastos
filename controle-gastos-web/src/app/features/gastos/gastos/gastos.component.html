@@ -182,6 +182,15 @@
         <td mat-cell *matCellDef="let gasto">{{ gasto.data | date:'dd/MM/yyyy':'UTC' }}</td>
       </ng-container>
 
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let gasto">
+          <mat-chip [class]="'chip-status-' + classeStatus(statusGasto(gasto))">
+            {{ rotuloStatus(statusGasto(gasto)) }}
+          </mat-chip>
+        </td>
+      </ng-container>
+
       <ng-container matColumnDef="acoes">
         <th mat-header-cell *matHeaderCellDef>Ações</th>
         <td mat-cell *matCellDef="let gasto">
@@ -193,6 +202,23 @@
               <mat-icon>edit</mat-icon>
               <span>Editar</span>
             </button>
+            @if (ehGastoDeConta(gasto)) {
+              @if (statusGasto(gasto) === 'PAGO') {
+                <button mat-menu-item (click)="editarPagamento(gasto)">
+                  <mat-icon>payments</mat-icon>
+                  <span>Editar pagamento</span>
+                </button>
+                <button mat-menu-item (click)="desfazerPagamento(gasto)">
+                  <mat-icon>undo</mat-icon>
+                  <span>Desfazer pagamento</span>
+                </button>
+              } @else {
+                <button mat-menu-item (click)="marcarComoPaga(gasto)">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Marcar como paga</span>
+                </button>
+              }
+            }
             @if (gasto.compraParceladaId) {
               <!-- Parcela não é excluível sozinha (deixaria o parcelamento incoerente);
                    a remoção é pela compra parcelada inteira, na aba Parceladas. -->
@@ -235,6 +261,9 @@
                   <span class="cartao-marca" role="img" aria-label="Parcela de uma compra parcelada"
                     title="Parcela de uma compra parcelada">💳</span>
                 }
+                <mat-chip [class]="'cartao-chip-status chip-status-' + classeStatus(statusGasto(gasto))">
+                  {{ rotuloStatus(statusGasto(gasto)) }}
+                </mat-chip>
               </span>
               <span class="cartao-secundario">
                 <span>{{ categoriaEmoji(gasto.categoriaId) }} {{ gasto.categoria }}{{ gasto.subcategoria ? ' / ' + gasto.subcategoria : '' }}</span>
@@ -271,6 +300,23 @@
               <mat-icon>edit</mat-icon>
               Editar
             </button>
+            @if (ehGastoDeConta(gasto)) {
+              @if (statusGasto(gasto) === 'PAGO') {
+                <button mat-stroked-button (click)="editarPagamento(gasto)">
+                  <mat-icon>payments</mat-icon>
+                  Editar pagamento
+                </button>
+                <button mat-stroked-button (click)="desfazerPagamento(gasto)">
+                  <mat-icon>undo</mat-icon>
+                  Desfazer pagamento
+                </button>
+              } @else {
+                <button mat-stroked-button (click)="marcarComoPaga(gasto)">
+                  <mat-icon>check_circle</mat-icon>
+                  Marcar como paga
+                </button>
+              }
+            }
             @if (!gasto.compraParceladaId) {
               <button mat-stroked-button (click)="excluir(gasto)">
                 <mat-icon color="warn">delete</mat-icon>

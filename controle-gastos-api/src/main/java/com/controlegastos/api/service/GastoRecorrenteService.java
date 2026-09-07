@@ -5,6 +5,7 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.model.GastoRecorrente;
+import com.controlegastos.api.model.StatusPagamento;
 import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.GastoRecorrenteRepository;
@@ -117,6 +118,35 @@ public class GastoRecorrenteService {
         return lancados;
     }
 
+    // Ação em lote: marca como pagas todas as ocorrências PENDENTES desta
+    // recorrência cujo vencimento já chegou (<= hoje), usando o valor e a data
+    // previstos de cada uma - sem confirmação item a item. Ocorrências de meses
+    // futuros pré-geradas ficam intactas (não se paga uma conta que ainda não
+    // venceu). Devolve os gastos que foram quitados.
+    @Transactional
+    public List<Gasto> pagarVencidas(Integer recorrenteId, Integer usuarioId) {
+        buscarPorId(recorrenteId, usuarioId); // valida escopo do usuário
+        LocalDate hoje = LocalDate.now();
+        List<Gasto> pendentes = gastoRepository
+                .findByGastoRecorrenteIdAndStatusPagamento(recorrenteId, StatusPagamento.PENDENTE);
+
+        List<Gasto> quitados = new ArrayList<>();
+        for (Gasto gasto : pendentes) {
+            LocalDate vencimento = gasto.getVencimentoOriginal() != null
+                    ? gasto.getVencimentoOriginal() : gasto.getData();
+            if (vencimento.isAfter(hoje)) {
+                continue;
+            }
+            gasto.setVencimentoOriginal(vencimento);
+            gasto.setData(vencimento);
+            gasto.setDataPagamento(vencimento);
+            gasto.setStatusPagamento(StatusPagamento.PAGO);
+            quitados.add(gasto);
+        }
+        gastoRepository.saveAll(quitados);
+        return quitados;
+    }
+
     // Pré-gera os gastos dos próximos "mesesGerar" meses (1 a 12, já validado em
     // validar()) a partir de hoje - chamada ao criar ou editar uma recorrência.
     //
@@ -143,7 +173,7 @@ public class GastoRecorrenteService {
 
         Set<YearMonth> jaLancados = recorrenciaNova
                 ? Collections.emptySet()
-                : gastoRepository.datasDosGastosDaRecorrente(recorrente.getId(), hoje.withDayOfMonth(1)).stream()
+                : gastoRepository.vencimentosDosGastosDaRecorrente(recorrente.getId(), hoje.withDayOfMonth(1)).stream()
                         .map(YearMonth::from)
                         .collect(Collectors.toSet());
 
@@ -187,6 +217,9 @@ public class GastoRecorrenteService {
         gasto.setData(data);
         gasto.setUsuarioId(usuarioId);
         gasto.setGastoRecorrenteId(recorrente.getId());
+        // Pré-gerado = previsto, ainda não pago. A data do lançamento é o vencimento.
+        gasto.setStatusPagamento(StatusPagamento.PENDENTE);
+        gasto.setVencimentoOriginal(data);
         return gasto;
     }
 
@@ -205,7 +238,7 @@ public class GastoRecorrenteService {
         LocalDate inicioMes = referencia.withDayOfMonth(1);
         LocalDate fimMes = referencia.withDayOfMonth(referencia.lengthOfMonth());
         boolean jaLancado = gastoRepository
-                .existsByGastoRecorrenteIdAndDataBetween(recorrente.getId(), inicioMes, fimMes);
+                .existsByGastoRecorrenteIdAndVencimentoOriginalBetween(recorrente.getId(), inicioMes, fimMes);
         if (jaLancado) {
             return Optional.empty();
         }
@@ -218,6 +251,8 @@ public class GastoRecorrenteService {
         gasto.setOrcamentoId(recorrente.getOrcamentoId());
         gasto.setData(dataLancamento);
         gasto.setGastoRecorrenteId(recorrente.getId());
+        gasto.setStatusPagamento(StatusPagamento.PENDENTE);
+        gasto.setVencimentoOriginal(dataLancamento);
         try {
             return Optional.of(gastoService.cadastrarVinculadoARecorrente(gasto, usuarioId));
         } catch (DataIntegrityViolationException e) {

@@ -1,6 +1,7 @@
 package com.controlegastos.api.controller;
 
 import com.controlegastos.api.model.CompraParcelada;
+import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.security.UsuarioPrincipal;
 import com.controlegastos.api.service.CompraParceladaService;
 import lombok.RequiredArgsConstructor;
@@ -43,5 +44,12 @@ public class CompraParceladaController {
     public ResponseEntity<Void> excluir(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
         service.excluir(id, usuario.usuarioId());
         return ResponseEntity.noContent().build();
+    }
+
+    // Ação em lote: marca como pagas todas as parcelas vencidas (<= hoje) e ainda
+    // PENDENTES desta compra, com valor/data previstos. Devolve as quitadas.
+    @PostMapping("/{id}/pagar-vencidas")
+    public List<Gasto> pagarVencidas(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.pagarVencidas(id, usuario.usuarioId());
     }
 }

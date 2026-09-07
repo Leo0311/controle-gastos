@@ -238,3 +238,32 @@ html.tema-escuro .mat-mdc-raised-button.mat-warn {
   --mdc-snackbar-supporting-text-color: #fff;
   --mat-mdc-snack-bar-button-color: #fff;
 }
+
+// Chip de status de pagamento de uma conta (Pendente / Pago / Atrasada), usado em
+// Gastos, Próximas contas e nas abas Recorrentes/Parceladas. Mesmo padrão do
+// .chip-ativo/.chip-pausado: mat-chip (MDC) não tema por background/color comuns,
+// precisa das custom properties do MDC, e os tokens de status já têm valor
+// próprio no modo escuro. Pago = verde ("quitado"); Pendente = âmbar ("previsto,
+// falta pagar"); Atrasada = vermelho (alerta).
+.chip-status-pago,
+.chip-status-pendente,
+.chip-status-atrasada {
+  font-size: 11px;
+  min-height: 22px;
+  padding: 0 8px;
+}
+
+.chip-status-pago {
+  --mdc-chip-elevated-container-color: var(--status-ok-fundo);
+  --mdc-chip-label-text-color: var(--status-ok-texto);
+}
+
+.chip-status-pendente {
+  --mdc-chip-elevated-container-color: var(--status-atencao-fundo);
+  --mdc-chip-label-text-color: var(--status-atencao-texto);
+}
+
+.chip-status-atrasada {
+  --mdc-chip-elevated-container-color: var(--status-critico-fundo);
+  --mdc-chip-label-text-color: var(--status-critico-texto);
+}

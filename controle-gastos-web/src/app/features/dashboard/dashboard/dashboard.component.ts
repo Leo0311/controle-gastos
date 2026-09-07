@@ -31,6 +31,7 @@ import {
 import { MESES_ABREV, MESES_OPCOES } from '../../../core/meses';
 import { RendaFormDialogComponent, RendaFormDialogData } from '../renda-form-dialog/renda-form-dialog.component';
 import { MetaFormDialogComponent, MetaFormDialogData } from '../meta-form-dialog/meta-form-dialog.component';
+import { AtrasadasDialogComponent } from '../atrasadas-dialog/atrasadas-dialog.component';
 
 // Cor única das barras (gráfico de série única). Fixa nos dois temas: a série é
 // reconstruída ao trocar de período, não ao trocar de tema, então precisa ler
@@ -153,6 +154,11 @@ export class DashboardComponent implements OnInit {
   totalAnoSelecionado = 0;
   numeroGastosMes = 0;
 
+  // Contas atrasadas (PENDENTE com vencimento no passado, qualquer mês) - destaque
+  // fixo no topo do Dashboard, independente do mês/ano selecionado.
+  atrasadas: Gasto[] = [];
+  totalAtrasadas = 0;
+
   pizzaData: ChartData<'doughnut', number[], string> = { labels: [], datasets: [{ data: [] }] };
   // Não é mais `readonly`: as opções são reconstruídas (nova referência, pra
   // o ng2-charts perceber a mudança e re-renderizar) toda vez que o tema muda,
@@ -257,12 +263,18 @@ export class DashboardComponent implements OnInit {
       // parte, pra não haver corrida: a pizza só monta quando a cor já está
       // disponível. Se a chamada falhar, segue com lista vazia (fatias sem emoji e
       // sem categoria conhecida caem na cor neutra).
-      categorias: this.categoriaService.listarVisiveis().pipe(catchError(() => of<Categoria[]>([])))
+      categorias: this.categoriaService.listarVisiveis().pipe(catchError(() => of<Categoria[]>([]))),
+      // Contas atrasadas - independentes do mês/ano; falha aqui não derruba o
+      // Dashboard, só esconde o destaque.
+      atrasadas: this.gastoService.atrasadas().pipe(catchError(() => of<Gasto[]>([])))
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias }) => {
+      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias, atrasadas }) => {
         this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
+
+        this.atrasadas = atrasadas;
+        this.totalAtrasadas = atrasadas.reduce((soma, g) => soma + g.valor, 0);
 
         this.categoriasPorId = new Map(categorias.map(c => [c.id!, c]));
         this.nomesCategoriaPizza = resumo.porCategoria.map(c => c.categoria);
@@ -384,6 +396,20 @@ export class DashboardComponent implements OnInit {
       DashboardDetalheDialogComponent,
       { data, width: '640px', maxWidth: '95vw' }
     );
+  }
+
+  // Abre a lista de contas atrasadas, com "marcar como paga" por item. Ao fechar,
+  // recarrega o Dashboard (o pagamento pode ter movido gastos entre meses).
+  abrirAtrasadas(): void {
+    const ref = this.dialog.open<AtrasadasDialogComponent, Gasto[], boolean>(
+      AtrasadasDialogComponent,
+      { data: this.atrasadas, width: '560px', maxWidth: '95vw' }
+    );
+    ref.afterClosed().subscribe((houvePagamento) => {
+      if (houvePagamento) {
+        this.carregar();
+      }
+    });
   }
 
   get progressoMeta():

@@ -18,6 +18,15 @@ export interface Gasto {
   // Preenchido pela API só quando o gasto é uma parcela de uma compra parcelada (ver
   // CompraParcelada) - usado só para exibir o ícone 💳 na listagem.
   compraParceladaId?: number | null;
+  // Status de pagamento. Gasto avulso vem sempre 'PAGO'; só gasto de recorrência/
+  // parcela pode vir 'PENDENTE'. "Atrasada" NÃO é um valor da API - é calculado no
+  // cliente (PENDENTE + vencimentoOriginal no passado) - ver core/status-conta.ts.
+  statusPagamento?: 'PENDENTE' | 'PAGO';
+  // Dia do vencimento original (ISO yyyy-MM-dd), preservado mesmo depois de pago.
+  // null para gasto avulso (não tem vencimento).
+  vencimentoOriginal?: string | null;
+  // Data real do pagamento (ISO yyyy-MM-dd). Para avulso = a própria data.
+  dataPagamento?: string | null;
 }
 
 // Uma página da listagem da tela de Gastos (GET /api/gastos/pagina) - espelha o

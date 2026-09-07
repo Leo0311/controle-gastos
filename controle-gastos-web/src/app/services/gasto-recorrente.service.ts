@@ -41,4 +41,10 @@ export class GastoRecorrenteService {
   lancarPendentes(): Observable<Gasto[]> {
     return this.http.post<Gasto[]>(`${this.baseUrl}/lancar-pendentes`, {});
   }
+
+  // Ação em lote: marca como pagas todas as ocorrências vencidas (<= hoje) e ainda
+  // pendentes desta recorrência, com valor/data previstos. Devolve as quitadas.
+  pagarVencidas(id: number): Observable<Gasto[]> {
+    return this.http.post<Gasto[]>(`${this.baseUrl}/${id}/pagar-vencidas`, {});
+  }
 }

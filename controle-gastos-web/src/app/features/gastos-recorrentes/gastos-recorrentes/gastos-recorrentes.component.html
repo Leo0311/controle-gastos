@@ -6,6 +6,7 @@
       [categoriasPorId]="categoriasPorId"
       [subcategoriasPorId]="subcategoriasPorId"
       [lancamentosFuturosPorRecorrente]="lancamentosFuturosPorRecorrente"
+      [statusPorRecorrente]="statusPorRecorrente"
       (recorrenciaAlternada)="carregarCalendario()">
     </app-recorrentes-lista>
   </mat-tab>
@@ -13,7 +14,9 @@
   <mat-tab label="Parceladas">
     <app-parceladas-lista
       [categoriasPorId]="categoriasPorId"
-      [subcategoriasPorId]="subcategoriasPorId">
+      [subcategoriasPorId]="subcategoriasPorId"
+      [statusPorParcelada]="statusPorParcelada"
+      (parceladaAlternada)="carregarCalendario()">
     </app-parceladas-lista>
   </mat-tab>
 
@@ -22,7 +25,8 @@
       [calendario]="calendario"
       [carregando]="carregandoCalendario"
       [erro]="erroCalendario"
-      (tentarNovamente)="carregarCalendario()">
+      (tentarNovamente)="carregarCalendario()"
+      (contaPaga)="carregarCalendario()">
     </app-proximas-contas>
   </mat-tab>
 </mat-tab-group>

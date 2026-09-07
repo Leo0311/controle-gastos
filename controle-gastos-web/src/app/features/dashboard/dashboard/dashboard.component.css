@@ -29,6 +29,48 @@
   margin-bottom: 24px;
 }
 
+/* Destaque de contas atrasadas - faixa no topo do Dashboard, tom de alerta
+   (mesmos tokens do chip "Atrasada"). Clicável -> lista de quitação. */
+.card-atrasadas {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--status-critico-fundo);
+  border: 1px solid var(--status-critico-texto);
+  text-align: left;
+}
+
+.card-atrasadas mat-icon {
+  flex: none;
+  color: var(--status-critico-texto);
+}
+
+.card-atrasadas-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.card-atrasadas-titulo {
+  font-weight: 600;
+  color: var(--status-critico-texto);
+}
+
+.card-atrasadas-valor {
+  font-size: 13px;
+  color: var(--texto-secundario);
+}
+
+.card-atrasadas:focus-visible {
+  outline: 2px solid var(--status-critico-texto);
+  outline-offset: 2px;
+}
+
 .card-stat {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
   border: 2px solid transparent;

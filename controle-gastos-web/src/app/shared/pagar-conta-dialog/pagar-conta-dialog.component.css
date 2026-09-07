@@ -1,0 +1,22 @@
+.form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 320px;
+}
+
+@media (max-width: 599px) {
+  .form-content {
+    min-width: 0;
+  }
+}
+
+.instrucao {
+  margin: 0 0 8px;
+  color: var(--texto-secundario);
+  font-size: 14px;
+}
+
+.campo-largo {
+  width: 100%;
+}

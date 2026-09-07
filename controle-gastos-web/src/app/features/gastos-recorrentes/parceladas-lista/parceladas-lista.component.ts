@@ -1,7 +1,9 @@
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -13,6 +15,7 @@ import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.com
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
 import { NotificacaoService } from '../../../core/notificacao.service';
 import { rotuloCategoria, rotuloSubcategoria } from '../categoria-rotulo';
+import { ResumoStatusConta } from '../../../core/status-conta';
 
 /**
  * Aba "Parceladas" (achado M8). Lista as compras parceladas e permite excluí-las;
@@ -26,6 +29,8 @@ import { rotuloCategoria, rotuloSubcategoria } from '../categoria-rotulo';
     CurrencyPipe,
     MatButtonModule,
     MatIconModule,
+    MatChipsModule,
+    MatMenuModule,
     MatDialogModule,
     MatProgressSpinnerModule,
     EmptyStateComponent,
@@ -38,6 +43,8 @@ export class ParceladasListaComponent implements OnInit {
 
   @Input() categoriasPorId = new Map<number, Categoria>();
   @Input() subcategoriasPorId = new Map<number, Subcategoria>();
+  @Input() statusPorParcelada = new Map<number, ResumoStatusConta>();
+  @Output() parceladaAlternada = new EventEmitter<void>();
 
   private readonly parceladaService = inject(CompraParceladaService);
   private readonly dialog = inject(MatDialog);
@@ -84,6 +91,7 @@ export class ParceladasListaComponent implements OnInit {
         next: () => {
           this.notificacao.sucesso('Compra parcelada excluída com sucesso!');
           this.carregar();
+          this.parceladaAlternada.emit();
         },
         error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
       });
@@ -98,6 +106,39 @@ export class ParceladasListaComponent implements OnInit {
 
   parcelamentoIncompleto(parcelada: CompraParcelada): boolean {
     return parcelada.parcelasLancadas != null && parcelada.parcelasLancadas < parcelada.numeroParcelas;
+  }
+
+  statusBadge(parceladaId: number | undefined): ResumoStatusConta {
+    return (parceladaId != null ? this.statusPorParcelada.get(parceladaId) : null)
+      ?? { pendentes: 0, atrasadas: 0 };
+  }
+
+  temVencidas(parceladaId: number | undefined): boolean {
+    return this.statusBadge(parceladaId).atrasadas > 0;
+  }
+
+  // "Marcar parcelas vencidas como pagas": quita de uma vez as parcelas vencidas e
+  // ainda pendentes, com valor/data previstos - sem confirmar parcela a parcela.
+  marcarVencidasComoPagas(parcelada: CompraParcelada): void {
+    const atrasadas = this.statusBadge(parcelada.id).atrasadas;
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'Marcar parcelas vencidas como pagas',
+        mensagem: `Marcar as ${atrasadas} parcela(s) vencida(s) de "${parcelada.descricao}" como pagas, cada `
+          + 'uma no valor e na data previstos. As parcelas futuras não são afetadas.',
+        textoConfirmar: 'Marcar como pagas',
+        textoProcessando: 'Marcando…',
+        acao: () => this.parceladaService.pagarVencidas(parcelada.id!)
+      }
+    });
+    ref.afterClosed().subscribe((feito) => {
+      if (!feito) {
+        return;
+      }
+      this.notificacao.sucesso('Parcelas vencidas marcadas como pagas.');
+      this.carregar();
+      this.parceladaAlternada.emit();
+    });
   }
 
   categoriaLabel(categoriaId: number): string {

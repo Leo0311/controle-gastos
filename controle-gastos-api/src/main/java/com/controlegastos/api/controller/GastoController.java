@@ -2,6 +2,7 @@ package com.controlegastos.api.controller;
 
 import com.controlegastos.api.dto.ComparacaoMensalDTO;
 import com.controlegastos.api.dto.GastoPaginaDTO;
+import com.controlegastos.api.dto.PagamentoDTO;
 import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.ResumoDTO;
 import com.controlegastos.api.dto.TotalDiarioDTO;
@@ -17,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -82,6 +84,30 @@ public class GastoController {
     public ResponseEntity<Void> excluir(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
         service.excluir(id, usuario.usuarioId());
         return ResponseEntity.noContent().build();
+    }
+
+    // Confirma o pagamento de um gasto de recorrência/parcela (também serve pra
+    // editar um pagamento já feito). Pagar fora do vencimento move o gasto de mês
+    // nos totais - comportamento desejado (regime de caixa).
+    @PatchMapping("/{id}/pagar")
+    public Gasto pagar(
+            @PathVariable Integer id,
+            @RequestBody PagamentoDTO pagamento,
+            @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.pagar(id, pagamento.valor(), pagamento.data(), usuario.usuarioId());
+    }
+
+    // Desfaz o pagamento: status volta a PENDENTE e a data volta ao vencimento original.
+    @PatchMapping("/{id}/desfazer-pagamento")
+    public Gasto desfazerPagamento(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.desfazerPagamento(id, usuario.usuarioId());
+    }
+
+    // Contas atrasadas (PENDENTE com vencimento no passado, qualquer mês) - destaque
+    // do Dashboard.
+    @GetMapping("/atrasadas")
+    public List<Gasto> atrasadas(@AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.atrasadas(usuario.usuarioId());
     }
 
     @GetMapping("/categoria/{categoria}")

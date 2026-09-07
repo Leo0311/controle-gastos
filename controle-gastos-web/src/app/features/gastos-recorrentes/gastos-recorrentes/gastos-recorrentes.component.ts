@@ -11,6 +11,8 @@ import {
   contarLancamentosFuturosPorRecorrente,
   hojeIso
 } from '../proximas-contas';
+import { Gasto } from '../../../models/gasto.model';
+import { ResumoStatusConta, agregarStatus } from '../../../core/status-conta';
 import { RecorrentesListaComponent } from '../recorrentes-lista/recorrentes-lista.component';
 import { ParceladasListaComponent } from '../parceladas-lista/parceladas-lista.component';
 import { ProximasContasComponent } from '../proximas-contas/proximas-contas.component';
@@ -52,6 +54,11 @@ export class GastosRecorrentesComponent implements OnInit {
 
   calendario: GrupoMesCalendario[] = [];
   lancamentosFuturosPorRecorrente = new Map<number, number>();
+  // Contagem de pendentes/atrasadas por recorrência e por compra parcelada, da
+  // mesma leitura de gastos - alimenta o badge agregado das abas Recorrentes e
+  // Parceladas.
+  statusPorRecorrente = new Map<number, ResumoStatusConta>();
+  statusPorParcelada = new Map<number, ResumoStatusConta>();
   carregandoCalendario = false;
   erroCalendario = false;
 
@@ -75,6 +82,8 @@ export class GastosRecorrentesComponent implements OnInit {
         const hoje = hojeIso();
         this.calendario = agruparProximasContas(gastos, hoje);
         this.lancamentosFuturosPorRecorrente = contarLancamentosFuturosPorRecorrente(gastos, hoje);
+        this.statusPorRecorrente = this.agregarPorFonte(gastos, hoje, (g) => g.gastoRecorrenteId);
+        this.statusPorParcelada = this.agregarPorFonte(gastos, hoje, (g) => g.compraParceladaId);
         this.carregandoCalendario = false;
       },
       error: () => {
@@ -83,5 +92,25 @@ export class GastosRecorrentesComponent implements OnInit {
         this.erroCalendario = true;
       }
     });
+  }
+
+  private agregarPorFonte(
+    gastos: Gasto[], hoje: string, chave: (g: Gasto) => number | null | undefined
+  ): Map<number, ResumoStatusConta> {
+    const porFonte = new Map<number, Gasto[]>();
+    for (const gasto of gastos) {
+      const id = chave(gasto);
+      if (id == null) {
+        continue;
+      }
+      const lista = porFonte.get(id) ?? [];
+      lista.push(gasto);
+      porFonte.set(id, lista);
+    }
+    const resultado = new Map<number, ResumoStatusConta>();
+    for (const [id, lista] of porFonte) {
+      resultado.set(id, agregarStatus(lista, hoje));
+    }
+    return resultado;
   }
 }

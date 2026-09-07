@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -32,6 +33,19 @@ import { ImportacaoGastosOrquestrador } from '../importacao/importacao-gastos.or
 import { NotificacaoService } from '../../../core/notificacao.service';
 import { MESES_NOMES, MESES_OPCOES } from '../../../core/meses';
 import { emojiDaCategoria } from '../../../core/categoria-emoji';
+import {
+  StatusConta,
+  classeStatus,
+  ehGastoDeConta,
+  hojeIso,
+  rotuloStatus,
+  statusDaConta
+} from '../../../core/status-conta';
+import {
+  PagarContaDialogComponent,
+  PagarContaDialogData,
+  PagarContaResultado
+} from '../../../shared/pagar-conta-dialog/pagar-conta-dialog.component';
 
 @Component({
   selector: 'app-gastos',
@@ -43,6 +57,7 @@ import { emojiDaCategoria } from '../../../core/categoria-emoji';
     MatTableModule,
     MatButtonModule,
     MatIconModule,
+    MatChipsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -60,8 +75,11 @@ export class GastosComponent implements OnInit {
 
   @ViewChild('inputArquivo') inputArquivo!: ElementRef<HTMLInputElement>;
 
-  readonly colunas = ['descricao', 'valor', 'categoria', 'data', 'acoes'];
+  readonly colunas = ['descricao', 'valor', 'categoria', 'data', 'status', 'acoes'];
   gastos: Gasto[] = [];
+  // Snapshot de "hoje" (ISO) usado pelo cálculo de status na renderização - fixado
+  // a cada carregar() em vez de um new Date() por linha/ciclo de detecção.
+  protected hoje = hojeIso();
   carregando = false;
   // Falha ao carregar: mostra o estado de erro no lugar da tabela/empty-state,
   // pra não parecer "sem gastos" quando na verdade a API caiu (ver carregar()).
@@ -326,11 +344,21 @@ export class GastosComponent implements OnInit {
   // filtro reseta pra "Todas" ANTES da página carregar, senão a tela ficaria vazia
   // sem explicação (o servidor pagina e filtra, então não dá pra "consertar"
   // client-side depois).
+  // Status de pagamento de um gasto, calculado na leitura (ver core/status-conta.ts).
+  statusGasto(gasto: Gasto): StatusConta {
+    return statusDaConta(gasto, this.hoje);
+  }
+
+  rotuloStatus = rotuloStatus;
+  classeStatus = classeStatus;
+  ehGastoDeConta = ehGastoDeConta;
+
   carregar(): void {
     this.carregando = true;
     this.erro = false;
     this.paginaAtual = 0;
     this.temMais = false;
+    this.hoje = hojeIso();
 
     this.categoriaService.listarComGastos(this.filtroMes, this.filtroAno).subscribe({
       next: (categorias) => {
@@ -558,6 +586,69 @@ export class GastosComponent implements OnInit {
       this.notificacao.sucesso('Recorrência e todos os lançamentos dela foram excluídos.');
       this.carregar();
     });
+  }
+
+  // "Marcar como paga" (gasto PENDENTE/ATRASADA) e "Editar pagamento" (gasto já
+  // PAGO) reaproveitam o mesmo diálogo de confirmação de pagamento. Só disponível
+  // para gasto de recorrência/parcela - avulso já nasce pago.
+  marcarComoPaga(gasto: Gasto): void {
+    this.abrirPagamento(gasto, 'Marcar como paga', new Date());
+  }
+
+  editarPagamento(gasto: Gasto): void {
+    const dataInicial = gasto.dataPagamento ? this.parseDataLocal(gasto.dataPagamento) : new Date();
+    this.abrirPagamento(gasto, 'Editar pagamento', dataInicial);
+  }
+
+  private abrirPagamento(gasto: Gasto, titulo: string, dataInicial: Date): void {
+    const ref = this.dialog.open<PagarContaDialogComponent, PagarContaDialogData, PagarContaResultado>(
+      PagarContaDialogComponent,
+      {
+        data: { titulo, descricao: gasto.descricao, valorPrevisto: gasto.valor, dataInicial },
+        width: '420px',
+        maxWidth: '95vw'
+      }
+    );
+    ref.afterClosed().subscribe((resultado) => {
+      if (!resultado) {
+        return;
+      }
+      this.gastoService.pagar(gasto.id!, resultado).subscribe({
+        next: (atualizado) => {
+          this.notificacao.sucesso('Pagamento confirmado.');
+          this.carregar();
+          this.verificarOrcamentoExcedido(atualizado);
+        },
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
+      });
+    });
+  }
+
+  desfazerPagamento(gasto: Gasto): void {
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'Desfazer pagamento',
+        mensagem: `O gasto "${gasto.descricao}" volta a ficar pendente e retorna para a data de vencimento `
+          + 'original (pode mudar de mês nos totais). O valor não é alterado.'
+      }
+    });
+    ref.afterClosed().subscribe((confirmado) => {
+      if (!confirmado) {
+        return;
+      }
+      this.gastoService.desfazerPagamento(gasto.id!).subscribe({
+        next: () => {
+          this.notificacao.sucesso('Pagamento desfeito.');
+          this.carregar();
+        },
+        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
+      });
+    });
+  }
+
+  private parseDataLocal(iso: string): Date {
+    const [ano, mes, dia] = iso.split('-').map(Number);
+    return new Date(ano, mes - 1, dia);
   }
 
   exportarTodos(): void {

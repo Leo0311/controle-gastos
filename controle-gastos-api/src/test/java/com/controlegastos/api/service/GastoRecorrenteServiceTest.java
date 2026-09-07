@@ -4,6 +4,7 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.model.GastoRecorrente;
+import com.controlegastos.api.model.StatusPagamento;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.GastoRecorrenteRepository;
 import com.controlegastos.api.repository.GastoRepository;
@@ -86,7 +87,7 @@ class GastoRecorrenteServiceTest {
 
         // Numa edição, gerarProximosMeses consulta as datas já lançadas - vazio por
         // padrão (nenhum mês do horizonte pré-gerado ainda).
-        when(gastoRepository.datasDosGastosDaRecorrente(any(), any())).thenReturn(List.of());
+        when(gastoRepository.vencimentosDosGastosDaRecorrente(any(), any())).thenReturn(List.of());
     }
 
     private GastoRecorrente recorrente(int diaDoMes, Integer mesesGerar) {
@@ -116,6 +117,65 @@ class GastoRecorrenteServiceTest {
         mesCorrente.getAllValues().forEach(g -> datas.add(g.getData()));
 
         return datas;
+    }
+
+    // Todos os gastos gerados na pré-geração (batch + eventual mês corrente por
+    // insert individual), como objetos completos - pra checar status/vencimento.
+    @SuppressWarnings("unchecked")
+    private List<Gasto> gastosGerados() {
+        List<Gasto> gastos = new ArrayList<>();
+        ArgumentCaptor<List<Gasto>> lote = ArgumentCaptor.forClass(List.class);
+        verify(gastoRepository, atLeast(0)).inserirEmLote(lote.capture());
+        lote.getAllValues().forEach(gastos::addAll);
+        ArgumentCaptor<Gasto> mesCorrente = ArgumentCaptor.forClass(Gasto.class);
+        verify(gastoService, atLeast(0)).cadastrarVinculadoARecorrente(mesCorrente.capture(), any());
+        gastos.addAll(mesCorrente.getAllValues());
+        return gastos;
+    }
+
+    @Test
+    void cadastrar_preGeraTudoComoPendenteEComVencimentoIgualAData() {
+        service.cadastrar(recorrente(15, 6), USUARIO);
+
+        List<Gasto> gastos = gastosGerados();
+        assertThat(gastos).isNotEmpty();
+        assertThat(gastos).allSatisfy(g -> {
+            assertThat(g.getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+            assertThat(g.getVencimentoOriginal()).isEqualTo(g.getData());
+            assertThat(g.getDataPagamento()).isNull();
+        });
+    }
+
+    @Test
+    void pagarVencidas_marcaSoAsVencidasComoPagasEDeixaAsFuturasIntactas() {
+        GastoRecorrente rec = recorrente(10, 3);
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(rec));
+
+        LocalDate hoje = LocalDate.now();
+        Gasto vencida = gastoPendente(hoje.minusMonths(1));
+        Gasto hojeGasto = gastoPendente(hoje);
+        Gasto futura = gastoPendente(hoje.plusMonths(1));
+        when(gastoRepository.findByGastoRecorrenteIdAndStatusPagamento(RECORRENTE, StatusPagamento.PENDENTE))
+                .thenReturn(List.of(vencida, hojeGasto, futura));
+
+        List<Gasto> quitados = service.pagarVencidas(RECORRENTE, USUARIO);
+
+        assertThat(quitados).containsExactlyInAnyOrder(vencida, hojeGasto);
+        assertThat(vencida.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(vencida.getDataPagamento()).isEqualTo(vencida.getVencimentoOriginal());
+        assertThat(hojeGasto.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(futura.getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+        verify(gastoRepository).saveAll(quitados);
+    }
+
+    private Gasto gastoPendente(LocalDate vencimento) {
+        Gasto g = new Gasto();
+        g.setValor(new BigDecimal("29.90"));
+        g.setData(vencimento);
+        g.setVencimentoOriginal(vencimento);
+        g.setStatusPagamento(StatusPagamento.PENDENTE);
+        g.setGastoRecorrenteId(RECORRENTE);
+        return g;
     }
 
     @Test
@@ -155,8 +215,8 @@ class GastoRecorrenteServiceTest {
         // Categoria resolvida 1x (antes: 1 + 1 por mês futuro).
         verify(categoriaRepository, times(1)).findByIdVisivel(CATEGORIA, USUARIO);
         // Recorrência nova não tem gasto vinculado - nenhum exists/consulta de meses.
-        verify(gastoRepository, never()).existsByGastoRecorrenteIdAndDataBetween(any(), any(), any());
-        verify(gastoRepository, never()).datasDosGastosDaRecorrente(any(), any());
+        verify(gastoRepository, never()).existsByGastoRecorrenteIdAndVencimentoOriginalBetween(any(), any(), any());
+        verify(gastoRepository, never()).vencimentosDosGastosDaRecorrente(any(), any());
         // Um batch só, nunca inserts individuais via cadastrarVinculadoARecorrente.
         verify(gastoRepository, times(1)).inserirEmLote(any());
         verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
@@ -191,7 +251,7 @@ class GastoRecorrenteServiceTest {
         GastoRecorrente ativo = recorrente(1, null);
         when(repository.findByUsuarioIdAndAtivoTrue(USUARIO)).thenReturn(List.of(ativo));
         // 1ª passada: ainda não lançado. 2ª passada: já lançado neste mês.
-        when(gastoRepository.existsByGastoRecorrenteIdAndDataBetween(any(), any(), any()))
+        when(gastoRepository.existsByGastoRecorrenteIdAndVencimentoOriginalBetween(any(), any(), any()))
                 .thenReturn(false, true);
 
         List<Gasto> primeira = service.lancarPendentes(USUARIO);
@@ -268,10 +328,10 @@ class GastoRecorrenteServiceTest {
         GastoRecorrente existente = recorrente(1, 3);
         when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(existente));
         // Mês corrente já lançado...
-        when(gastoRepository.existsByGastoRecorrenteIdAndDataBetween(any(), any(), any())).thenReturn(true);
+        when(gastoRepository.existsByGastoRecorrenteIdAndVencimentoOriginalBetween(any(), any(), any())).thenReturn(true);
         // ...e todos os meses futuros do horizonte também.
         LocalDate hoje = LocalDate.now();
-        when(gastoRepository.datasDosGastosDaRecorrente(any(), any()))
+        when(gastoRepository.vencimentosDosGastosDaRecorrente(any(), any()))
                 .thenReturn(List.of(hoje.plusMonths(1), hoje.plusMonths(2)));
 
         service.atualizar(RECORRENTE, recorrente(1, 3), USUARIO);

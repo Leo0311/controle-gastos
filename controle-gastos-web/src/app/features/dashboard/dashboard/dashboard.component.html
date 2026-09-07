@@ -33,6 +33,26 @@
 } @else if (erro) {
   <app-erro-carregamento oQue="o dashboard" (tentarNovamente)="carregar()"></app-erro-carregamento>
 } @else {
+  @if (atrasadas.length > 0) {
+    <mat-card
+      class="card-atrasadas clicavel"
+      role="button"
+      tabindex="0"
+      (click)="abrirAtrasadas()"
+      (keyup.enter)="abrirAtrasadas()"
+      (keydown.space)="$event.preventDefault()"
+      (keyup.space)="abrirAtrasadas()"
+    >
+      <mat-icon>warning</mat-icon>
+      <div class="card-atrasadas-texto">
+        <span class="card-atrasadas-titulo">
+          {{ atrasadas.length }} {{ atrasadas.length === 1 ? 'conta atrasada' : 'contas atrasadas' }}
+        </span>
+        <span class="card-atrasadas-valor">{{ totalAtrasadas | currency:'BRL' }} em aberto — toque para pagar</span>
+      </div>
+    </mat-card>
+  }
+
   <div class="cards">
     <mat-card
       class="card-stat clicavel"

@@ -15,8 +15,9 @@ public class GastoRepositoryCustomImpl implements GastoRepositoryCustom {
     private static final String INSERT_GASTO = """
             INSERT INTO gastos
                 (descricao, valor, categoria, subcategoria, categoria_id, subcategoria_id,
-                 data, usuario_id, orcamento_id, gasto_recorrente_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 data, usuario_id, orcamento_id, gasto_recorrente_id,
+                 status_pagamento, vencimento_original)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
     private final JdbcTemplate jdbcTemplate;
@@ -49,6 +50,10 @@ public class GastoRepositoryCustomImpl implements GastoRepositoryCustom {
                 ps.setObject(8, g.getUsuarioId());
                 ps.setObject(9, g.getOrcamentoId());
                 ps.setObject(10, g.getGastoRecorrenteId());
+                // A pré-geração de recorrência sempre entra como PENDENTE; o
+                // vencimento original é a própria data do lançamento pré-gerado.
+                ps.setString(11, g.getStatusPagamento().name());
+                ps.setObject(12, g.getVencimentoOriginal());
             }
         });
     }

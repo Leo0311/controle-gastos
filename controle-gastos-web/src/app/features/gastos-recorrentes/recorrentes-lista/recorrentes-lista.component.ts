@@ -20,6 +20,7 @@ import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/err
 import { NotificacaoService } from '../../../core/notificacao.service';
 import { rotuloCategoria, rotuloSubcategoria } from '../categoria-rotulo';
 import { mensagemPausaRecorrente } from '../mensagem-pausa';
+import { ResumoStatusConta } from '../../../core/status-conta';
 
 /**
  * Aba "Recorrentes" (achado M8: gastos-recorrentes.component.ts, 3 sub-telas num
@@ -51,6 +52,7 @@ export class RecorrentesListaComponent implements OnInit {
   @Input() categoriasPorId = new Map<number, Categoria>();
   @Input() subcategoriasPorId = new Map<number, Subcategoria>();
   @Input() lancamentosFuturosPorRecorrente = new Map<number, number>();
+  @Input() statusPorRecorrente = new Map<number, ResumoStatusConta>();
   @Output() recorrenciaAlternada = new EventEmitter<void>();
 
   private readonly service = inject(GastoRecorrenteService);
@@ -83,6 +85,41 @@ export class RecorrentesListaComponent implements OnInit {
 
   lancamentosFuturos(recorrenteId: number | undefined): number {
     return recorrenteId != null ? (this.lancamentosFuturosPorRecorrente.get(recorrenteId) ?? 0) : 0;
+  }
+
+  // Badge agregado da linha: quantas ocorrências desta recorrência estão atrasadas
+  // e/ou pendentes. { atrasadas: 0, pendentes: 0 } = tudo em dia.
+  statusBadge(recorrenteId: number | undefined): ResumoStatusConta {
+    return (recorrenteId != null ? this.statusPorRecorrente.get(recorrenteId) : null)
+      ?? { pendentes: 0, atrasadas: 0 };
+  }
+
+  temVencidas(recorrenteId: number | undefined): boolean {
+    return this.statusBadge(recorrenteId).atrasadas > 0;
+  }
+
+  // "Marcar contas vencidas como pagas": quita de uma vez todas as ocorrências
+  // vencidas e ainda pendentes, com valor/data previstos - sem confirmar item a item.
+  marcarVencidasComoPagas(recorrente: GastoRecorrente): void {
+    const atrasadas = this.statusBadge(recorrente.id).atrasadas;
+    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        titulo: 'Marcar contas vencidas como pagas',
+        mensagem: `Marcar as ${atrasadas} ocorrência(s) vencida(s) de "${recorrente.descricao}" como pagas, `
+          + 'cada uma no valor e na data previstos. As ocorrências futuras não são afetadas.',
+        textoConfirmar: 'Marcar como pagas',
+        textoProcessando: 'Marcando…',
+        acao: () => this.service.pagarVencidas(recorrente.id!)
+      }
+    });
+    ref.afterClosed().subscribe((feito) => {
+      if (!feito) {
+        return;
+      }
+      this.notificacao.sucesso('Contas vencidas marcadas como pagas.');
+      this.carregar();
+      this.recorrenciaAlternada.emit();
+    });
   }
 
   categoriaLabel(categoriaId: number): string {

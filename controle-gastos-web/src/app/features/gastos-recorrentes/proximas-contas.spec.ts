@@ -7,12 +7,21 @@ import {
   rotuloMes
 } from './proximas-contas';
 
+let proximoId = 1;
+
 function gasto(parcial: Partial<Gasto>): Gasto {
+  const data = parcial.data ?? '2026-09-10';
   return {
+    id: proximoId++,
     descricao: 'Gasto',
     valor: 10,
     categoriaId: 1,
-    data: '2026-09-10',
+    data,
+    // Uma "conta" da agenda é, por padrão, um lançamento de recorrência ainda
+    // não pago, com vencimento na própria data.
+    gastoRecorrenteId: 1,
+    statusPagamento: 'PENDENTE',
+    vencimentoOriginal: data,
     ...parcial
   };
 }
@@ -42,30 +51,40 @@ describe('proximas-contas (lógica pura da aba)', () => {
   describe('agruparProximasContas', () => {
     const hoje = '2026-09-01';
 
-    it('ignora gastos anteriores a hoje e gastos avulsos (sem recorrência/parcela)', () => {
+    it('ignora gastos avulsos e gastos já pagos; inclui pendentes (futuros e vencidos)', () => {
       const gastos = [
-        gasto({ data: '2026-08-31', gastoRecorrenteId: 1 }),          // passado
-        gasto({ data: '2026-09-10', gastoRecorrenteId: null, compraParceladaId: null }), // avulso
-        gasto({ data: '2026-09-15', gastoRecorrenteId: 7 })           // conta
+        gasto({ data: '2026-08-20', vencimentoOriginal: '2026-08-20' }),         // pendente vencido -> entra
+        gasto({ data: '2026-09-10', gastoRecorrenteId: null, compraParceladaId: null }), // avulso -> fora
+        gasto({ data: '2026-09-15', statusPagamento: 'PAGO' }),                  // pago -> fora
+        gasto({ data: '2026-09-20' })                                           // pendente futuro -> entra
       ];
 
       const grupos = agruparProximasContas(gastos, hoje);
 
-      expect(grupos.length).toBe(1);
-      expect(grupos[0].itens.length).toBe(1);
-      expect(grupos[0].itens[0].descricao).toBe('Gasto');
+      expect(grupos.map((g) => g.chave)).toEqual(['2026-08', '2026-09']);
+      expect(grupos[0].itens[0].status).toBe('ATRASADA');
+      expect(grupos[1].itens.map((i) => i.descricao)).toEqual(['Gasto']);
+      expect(grupos[1].itens[0].status).toBe('PENDENTE');
     });
 
-    it('inclui o gasto exatamente na data de hoje', () => {
-      const grupos = agruparProximasContas([gasto({ data: hoje, compraParceladaId: 3 })], hoje);
-      expect(grupos[0].itens.length).toBe(1);
+    it('conta pendentesVencidos por mês', () => {
+      const gastos = [
+        gasto({ data: '2026-08-10', vencimentoOriginal: '2026-08-10' }),
+        gasto({ data: '2026-08-25', vencimentoOriginal: '2026-08-25' }),
+        gasto({ data: '2026-09-20' })
+      ];
+
+      const grupos = agruparProximasContas(gastos, hoje);
+
+      expect(grupos[0].pendentesVencidos).toBe(2);
+      expect(grupos[1].pendentesVencidos).toBe(0);
     });
 
     it('agrupa por mês em ordem cronológica, com total e rótulo do mês', () => {
       const gastos = [
         gasto({ data: '2026-10-05', valor: 100, compraParceladaId: 2 }),
-        gasto({ data: '2026-09-20', valor: 30, gastoRecorrenteId: 1 }),
-        gasto({ data: '2026-09-05', valor: 20, gastoRecorrenteId: 1 })
+        gasto({ data: '2026-09-20', valor: 30 }),
+        gasto({ data: '2026-09-05', valor: 20 })
       ];
 
       const grupos = agruparProximasContas(gastos, hoje);
@@ -77,7 +96,7 @@ describe('proximas-contas (lógica pura da aba)', () => {
       expect(grupos[1].total).toBe(100);
     });
 
-    it('marca a origem: parcela quando há compraParceladaId, recorrente caso contrário', () => {
+    it('marca a origem e propaga os ids de origem', () => {
       const gastos = [
         gasto({ data: '2026-09-05', compraParceladaId: 9, gastoRecorrenteId: null }),
         gasto({ data: '2026-09-06', compraParceladaId: null, gastoRecorrenteId: 4 })
@@ -86,11 +105,14 @@ describe('proximas-contas (lógica pura da aba)', () => {
       const [grupo] = agruparProximasContas(gastos, hoje);
 
       expect(grupo.itens[0].origem).toBe('parcela');
+      expect(grupo.itens[0].compraParceladaId).toBe(9);
       expect(grupo.itens[1].origem).toBe('recorrente');
+      expect(grupo.itens[1].gastoRecorrenteId).toBe(4);
     });
 
-    it('devolve lista vazia quando não há nada futuro', () => {
+    it('devolve lista vazia quando não há conta pendente', () => {
       expect(agruparProximasContas([], hoje)).toEqual([]);
+      expect(agruparProximasContas([gasto({ statusPagamento: 'PAGO' })], hoje)).toEqual([]);
     });
   });
 

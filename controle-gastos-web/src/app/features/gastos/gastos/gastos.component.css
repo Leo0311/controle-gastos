@@ -256,9 +256,8 @@
   padding: 10px 14px;
 }
 
-/* min-width:0 em toda a cadeia flex (content -> title -> cabecalho) pra a
-   descrição realmente cortar com reticências em vez de empurrar o valor pra
-   fora e ser clipada pelo overflow:hidden do .mat-content. */
+/* min-width:0 na cadeia flex (content -> title -> cabecalho) pra a descrição
+   cortar com reticências em vez de empurrar o valor pra fora. */
 .cartao-gasto ::ng-deep .mat-content {
   min-width: 0;
 }
@@ -302,7 +301,8 @@
   overflow-wrap: anywhere;
 }
 
-.cartao-marca {
+.cartao-marca,
+.cartao-chip-status {
   font-size: 13px;
   line-height: 1;
   flex-shrink: 0;
@@ -356,6 +356,7 @@
 
 .cartao-acoes {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
 }

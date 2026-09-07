@@ -1,6 +1,7 @@
 package com.controlegastos.api.repository;
 
 import com.controlegastos.api.model.Gasto;
+import com.controlegastos.api.model.StatusPagamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -83,21 +84,41 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
 
     long countBySubcategoriaId(Integer subcategoriaId);
 
-    // Usado pra checar se uma recorrência já foi lançada no mês/ano atual antes de
-    // criar um novo gasto a partir dela - ver GastoRecorrenteService.lancarPendentes.
-    boolean existsByGastoRecorrenteIdAndDataBetween(Integer gastoRecorrenteId, LocalDate inicio, LocalDate fim);
+    // Checa se uma recorrência já tem ocorrência pro mês (por VENCIMENTO ORIGINAL,
+    // não pela data do gasto: um pagamento em regime de caixa move a data pra outro
+    // mês, mas o vencimento é preservado - a idempotência do lançamento automático e
+    // o índice único uq_gastos_recorrente_mes são ambos por mês de vencimento).
+    boolean existsByGastoRecorrenteIdAndVencimentoOriginalBetween(
+            Integer gastoRecorrenteId, LocalDate inicio, LocalDate fim);
 
-    // Datas dos gastos de uma recorrência a partir de uma data - a pré-geração
-    // (gerarProximosMeses) usa pra saber, numa edição, quais meses do horizonte já
-    // têm gasto, numa query só em vez de um exists por mês (achado 2.3).
-    @Query("SELECT g.data FROM Gasto g WHERE g.gastoRecorrenteId = :recorrenteId AND g.data >= :aPartirDe")
-    List<LocalDate> datasDosGastosDaRecorrente(
+    // Vencimentos originais dos gastos de uma recorrência a partir de um mês - a
+    // pré-geração (gerarProximosMeses) usa pra saber, numa edição, quais meses do
+    // horizonte já têm ocorrência, numa query só em vez de um exists por mês.
+    @Query("SELECT g.vencimentoOriginal FROM Gasto g "
+            + "WHERE g.gastoRecorrenteId = :recorrenteId AND g.vencimentoOriginal >= :aPartirDe")
+    List<LocalDate> vencimentosDosGastosDaRecorrente(
             @Param("recorrenteId") Integer recorrenteId, @Param("aPartirDe") LocalDate aPartirDe);
 
     // Parcelas ainda não vencidas (data futura) de uma compra parcelada - removidas ao
     // cancelar a compra, mantendo intactas as parcelas com data igual ou anterior a
     // hoje (histórico do que já foi pago) - ver CompraParceladaService.excluir.
     List<Gasto> findByCompraParceladaIdAndDataAfter(Integer compraParceladaId, LocalDate data);
+
+    // Ocorrências de uma recorrência / parcelas de uma compra num dado status -
+    // usado pela ação em lote "marcar contas vencidas como pagas" (filtra os
+    // PENDENTE com vencimento já chegado) - ver GastoRecorrenteService.pagarVencidas
+    // e CompraParceladaService.pagarVencidas.
+    List<Gasto> findByGastoRecorrenteIdAndStatusPagamento(Integer gastoRecorrenteId, StatusPagamento statusPagamento);
+
+    List<Gasto> findByCompraParceladaIdAndStatusPagamento(Integer compraParceladaId, StatusPagamento statusPagamento);
+
+    // Contas atrasadas do usuário: PENDENTE com vencimento no passado, em qualquer
+    // mês (uma conta vencida há 2 meses continua atrasada). Ordenadas do vencimento
+    // mais antigo pro mais recente. Usado no destaque de atrasadas do Dashboard.
+    @Query("SELECT g FROM Gasto g WHERE g.usuarioId = :usuarioId "
+            + "AND g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "AND g.vencimentoOriginal < :hoje ORDER BY g.vencimentoOriginal ASC, g.id ASC")
+    List<Gasto> atrasadas(@Param("usuarioId") Integer usuarioId, @Param("hoje") LocalDate hoje);
 
     // Apaga TODOS os gastos de uma recorrência (passados e futuros) numa tacada -
     // parte da exclusão em cascata da recorrência (ver

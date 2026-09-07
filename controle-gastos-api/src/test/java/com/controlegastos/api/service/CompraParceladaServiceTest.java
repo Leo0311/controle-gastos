@@ -3,6 +3,7 @@ package com.controlegastos.api.service;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.CompraParcelada;
 import com.controlegastos.api.model.Gasto;
+import com.controlegastos.api.model.StatusPagamento;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.CompraParceladaRepository;
 import com.controlegastos.api.repository.GastoRepository;
@@ -227,6 +228,54 @@ class CompraParceladaServiceTest {
         assertThat(datas.get(0)).isBefore(hoje);
         assertThat(YearMonth.from(datas.get(1))).isEqualTo(YearMonth.from(hoje));
         assertThat(datas.get(2)).isAfter(hoje);
+    }
+
+    @Test
+    void gerarParcelas_passadasNascemPagasFuturasNascemPendentesTodasComVencimento() {
+        // 1ª parcela há 1 mês: parcela 0 já venceu (PAGA), parcela 2 é do mês que
+        // vem (PENDENTE). A parcela 1 (mês corrente) varia com o dia de hoje - não
+        // se afirma nada sobre ela.
+        LocalDate inicio = LocalDate.now().minusMonths(1).withDayOfMonth(10);
+        service.cadastrar(compra("300.00", 3, inicio), USUARIO);
+
+        List<Gasto> parcelas = parcelasGeradas(3);
+        assertThat(parcelas).allSatisfy(p ->
+                assertThat(p.getVencimentoOriginal()).isEqualTo(p.getData()));
+
+        assertThat(parcelas.get(0).getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(parcelas.get(0).getDataPagamento()).isEqualTo(parcelas.get(0).getData());
+
+        assertThat(parcelas.get(2).getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+        assertThat(parcelas.get(2).getDataPagamento()).isNull();
+    }
+
+    @Test
+    void pagarVencidas_marcaSoAsParcelasVencidasComoPagas() {
+        when(repository.findByIdAndUsuarioId(99, USUARIO)).thenReturn(Optional.of(compraComId(99, 3)));
+
+        LocalDate hoje = LocalDate.now();
+        Gasto vencida = parcelaPendente(hoje.minusMonths(1));
+        Gasto futura = parcelaPendente(hoje.plusMonths(1));
+        when(gastoRepository.findByCompraParceladaIdAndStatusPagamento(99, StatusPagamento.PENDENTE))
+                .thenReturn(List.of(vencida, futura));
+
+        List<Gasto> quitadas = service.pagarVencidas(99, USUARIO);
+
+        assertThat(quitadas).containsExactly(vencida);
+        assertThat(vencida.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(vencida.getDataPagamento()).isEqualTo(vencida.getVencimentoOriginal());
+        assertThat(futura.getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+        verify(gastoRepository).saveAll(quitadas);
+    }
+
+    private Gasto parcelaPendente(LocalDate vencimento) {
+        Gasto g = new Gasto();
+        g.setValor(new BigDecimal("100.00"));
+        g.setData(vencimento);
+        g.setVencimentoOriginal(vencimento);
+        g.setStatusPagamento(StatusPagamento.PENDENTE);
+        g.setCompraParceladaId(99);
+        return g;
     }
 
     @Test

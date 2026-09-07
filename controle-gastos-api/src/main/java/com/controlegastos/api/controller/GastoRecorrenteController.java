@@ -66,4 +66,11 @@ public class GastoRecorrenteController {
     public List<Gasto> lancarPendentes(@AuthenticationPrincipal UsuarioPrincipal usuario) {
         return service.lancarPendentes(usuario.usuarioId());
     }
+
+    // Ação em lote: marca como pagas todas as ocorrências vencidas (<= hoje) e ainda
+    // PENDENTES desta recorrência, com valor/data previstos. Devolve as quitadas.
+    @PostMapping("/{id}/pagar-vencidas")
+    public List<Gasto> pagarVencidas(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.pagarVencidas(id, usuario.usuarioId());
+    }
 }

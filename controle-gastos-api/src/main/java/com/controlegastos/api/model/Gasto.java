@@ -2,6 +2,8 @@ package com.controlegastos.api.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -70,4 +72,24 @@ public class Gasto {
     // avulsos e para gastos gerados por recorrência.
     @Column(name = "compra_parcelada_id")
     private Integer compraParceladaId;
+
+    // PENDENTE (previsto) x PAGO (efetivamente pago). Gasto avulso nasce sempre
+    // PAGO; só gasto de recorrência/parcela pode ficar PENDENTE. Nunca vem do
+    // cliente - o service define (ver GastoService.salvar/pagar). O console grava
+    // sem esta coluna e o DEFAULT 'PAGO' do schema resolve.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_pagamento", nullable = false, length = 10)
+    private StatusPagamento statusPagamento;
+
+    // Dia do vencimento original, preservado mesmo depois de pago (data real do
+    // pagamento passa a viver em data). Permite "desfazer" um pagamento voltando
+    // data ao vencimento. Null para gasto avulso (não tem vencimento).
+    @Column(name = "vencimento_original")
+    private LocalDate vencimentoOriginal;
+
+    // Data real do pagamento. Para avulso é a própria data informada no cadastro;
+    // para gasto de recorrência/parcela é preenchida ao confirmar o pagamento e
+    // zerada ao desfazer.
+    @Column(name = "data_pagamento")
+    private LocalDate dataPagamento;
 }

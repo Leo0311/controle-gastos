@@ -6,6 +6,7 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.CompraParcelada;
 import com.controlegastos.api.model.Gasto;
+import com.controlegastos.api.model.StatusPagamento;
 import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.CompraParceladaRepository;
@@ -105,6 +106,34 @@ public class CompraParceladaService {
         repository.delete(existente);
     }
 
+    // Ação em lote: marca como pagas todas as parcelas PENDENTES desta compra cujo
+    // vencimento já chegou (<= hoje), com o valor e a data previstos de cada uma -
+    // sem confirmação item a item. Parcelas futuras ficam intactas. Devolve as
+    // parcelas quitadas.
+    @Transactional
+    public List<Gasto> pagarVencidas(Integer compraId, Integer usuarioId) {
+        buscarPorId(compraId, usuarioId); // valida escopo do usuário
+        LocalDate hoje = LocalDate.now();
+        List<Gasto> pendentes = gastoRepository
+                .findByCompraParceladaIdAndStatusPagamento(compraId, StatusPagamento.PENDENTE);
+
+        List<Gasto> quitadas = new ArrayList<>();
+        for (Gasto gasto : pendentes) {
+            LocalDate vencimento = gasto.getVencimentoOriginal() != null
+                    ? gasto.getVencimentoOriginal() : gasto.getData();
+            if (vencimento.isAfter(hoje)) {
+                continue;
+            }
+            gasto.setVencimentoOriginal(vencimento);
+            gasto.setData(vencimento);
+            gasto.setDataPagamento(vencimento);
+            gasto.setStatusPagamento(StatusPagamento.PAGO);
+            quitadas.add(gasto);
+        }
+        gastoRepository.saveAll(quitadas);
+        return quitadas;
+    }
+
     // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir da
     // data da 1ª parcela informada no cadastro - a compra parcelada é lançada de uma
     // vez, diferente da recorrência, que só lança o gasto do mês quando o dia
@@ -118,6 +147,7 @@ public class CompraParceladaService {
         int numeroParcelas = compra.getNumeroParcelas();
         long parcelaBaseCentavos = totalCentavos / numeroParcelas;
 
+        LocalDate hoje = LocalDate.now();
         LocalDate referencia = compra.getDataPrimeiraParcela();
         List<Gasto> parcelas = new ArrayList<>(numeroParcelas);
         for (int i = 0; i < numeroParcelas; i++) {
@@ -138,6 +168,16 @@ public class CompraParceladaService {
             gasto.setOrcamentoId(compra.getOrcamentoId());
             gasto.setData(data);
             gasto.setCompraParceladaId(compra.getId());
+            gasto.setVencimentoOriginal(data);
+            // Parcela já vencida (compra em curso só agora registrada) entra como
+            // paga, com a própria data de vencimento como data de pagamento; parcela
+            // futura entra PENDENTE.
+            if (data.isAfter(hoje)) {
+                gasto.setStatusPagamento(StatusPagamento.PENDENTE);
+            } else {
+                gasto.setStatusPagamento(StatusPagamento.PAGO);
+                gasto.setDataPagamento(data);
+            }
             parcelas.add(gasto);
         }
         gastoService.salvarParcelas(parcelas, usuarioId);

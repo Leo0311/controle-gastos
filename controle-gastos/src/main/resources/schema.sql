@@ -728,3 +728,58 @@ CROSS JOIN (VALUES
 ) AS v(nome, emoji)
 WHERE c.usuario_id IS NULL AND LOWER(c.nome) = LOWER('Outros')
 ON CONFLICT (COALESCE(usuario_id, 0), categoria_id, LOWER(nome)) DO NOTHING;
+
+-- ============================================================================
+-- Status de pagamento dos gastos: separa "está previsto" (PENDENTE) de "foi
+-- pago" (PAGO), mudando os gastos originados de recorrência/parcela do regime
+-- de competência para o de caixa. Um gasto avulso (sem gasto_recorrente_id nem
+-- compra_parcelada_id) nasce direto PAGO com a própria data informada - não tem
+-- conceito de vencimento. "Atrasada" NÃO é gravado: é calculado na leitura
+-- (PENDENTE + vencimento_original no passado).
+--
+-- status_pagamento: NOT NULL DEFAULT 'PAGO' faz o ALTER ... ADD COLUMN backfillar
+-- TODAS as linhas existentes de uma vez (nenhuma fica NULL - requisito da
+-- migração) e o app de console (INSERT INTO gastos sem essa coluna) herda 'PAGO'
+-- automaticamente. vencimento_original preserva o dia do vencimento mesmo depois
+-- de pago, pra permitir desfazer; data_pagamento é a data real do pagamento.
+-- ============================================================================
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS status_pagamento VARCHAR(10) NOT NULL DEFAULT 'PAGO';
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS vencimento_original DATE;
+ALTER TABLE gastos ADD COLUMN IF NOT EXISTS data_pagamento DATE;
+
+-- CHECK e índice único não são validados pelo Hibernate (ddl-auto=validate) - o
+-- CHECK é rede de segurança do banco (a API só grava PENDENTE/PAGO); o índice
+-- acelera a busca de atrasadas por usuário. DROP + ADD do CHECK mantém o script
+-- idempotente.
+ALTER TABLE gastos DROP CONSTRAINT IF EXISTS gastos_status_pagamento_check;
+ALTER TABLE gastos ADD CONSTRAINT gastos_status_pagamento_check
+    CHECK (status_pagamento IN ('PENDENTE', 'PAGO'));
+
+CREATE INDEX IF NOT EXISTS idx_gastos_status_pagamento ON gastos (usuario_id, status_pagamento);
+
+-- Migração dos dados existentes (idempotente via IS NULL - reexecutar não repete
+-- nada). Gastos já lançados sob o modelo antigo foram tratados como pagos, então
+-- a data de pagamento assume a própria data do gasto; e os vinculados a
+-- recorrência/parcela ganham vencimento_original (= data) pra poderem ser
+-- "desfeitos" de volta ao vencimento.
+UPDATE gastos SET data_pagamento = data
+    WHERE data_pagamento IS NULL AND status_pagamento = 'PAGO';
+UPDATE gastos SET vencimento_original = data
+    WHERE vencimento_original IS NULL
+      AND (gasto_recorrente_id IS NOT NULL OR compra_parcelada_id IS NOT NULL);
+
+-- O índice de idempotência da recorrência passa a ser por MÊS DO VENCIMENTO
+-- ORIGINAL, não mais por mês da data do gasto. Motivo: no regime de caixa, pagar
+-- uma ocorrência numa data de outro mês move a data do gasto - se o índice fosse
+-- por mês da data, a ocorrência paga colidiria com a ocorrência daquele outro mês
+-- (achado no teste de 2026-09). O vencimento_original é preservado no pagamento,
+-- então continua sendo "uma ocorrência por recorrência por mês de vencimento", que
+-- é exatamente o que a trava de concorrência (dois lançamentos automáticos
+-- simultâneos) precisa garantir - ambos nasceriam com o mesmo vencimento.
+-- DROP + CREATE IF NOT EXISTS: o DROP roda sempre (troca a definição antiga), o
+-- CREATE recria logo em seguida - idempotente. vencimento_original é NOT NULL para
+-- toda linha com gasto_recorrente_id (o UPDATE acima e o app garantem).
+DROP INDEX IF EXISTS uq_gastos_recorrente_mes;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_gastos_recorrente_mes
+    ON gastos (gasto_recorrente_id, date_trunc('month', vencimento_original::timestamp))
+    WHERE gasto_recorrente_id IS NOT NULL;

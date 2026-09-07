@@ -6,6 +6,7 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.model.GastoRecorrente;
+import com.controlegastos.api.model.StatusPagamento;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.GastoRecorrenteRepository;
 import com.controlegastos.api.repository.GastoRepository;
@@ -121,6 +122,152 @@ class GastoServiceTest {
         Gasto ultimaParcelaDoPiorCaso = gastoValido(LocalDate.now().plusMonths(121));
 
         assertThat(service.cadastrar(ultimaParcelaDoPiorCaso, USUARIO)).isNotNull();
+    }
+
+    // ---------- status de pagamento ----------
+
+    @Test
+    void cadastrar_avulsoNasceComStatusPagoEDataDePagamentoIgualAData() {
+        stubCategoriaValida();
+
+        Gasto salvo = service.cadastrar(gastoValido(LocalDate.of(2026, 5, 20)), USUARIO);
+
+        assertThat(salvo.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(salvo.getDataPagamento()).isEqualTo(LocalDate.of(2026, 5, 20));
+        assertThat(salvo.getVencimentoOriginal()).isNull();
+    }
+
+    @Test
+    void cadastrar_avulso_clienteNaoConsegueForcarPendente() {
+        stubCategoriaValida();
+        Gasto gasto = gastoValido(LocalDate.of(2026, 5, 20));
+        gasto.setStatusPagamento(StatusPagamento.PENDENTE);
+        gasto.setVencimentoOriginal(LocalDate.of(2026, 5, 1));
+
+        Gasto salvo = service.cadastrar(gasto, USUARIO);
+
+        assertThat(salvo.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(salvo.getVencimentoOriginal()).isNull();
+    }
+
+    private Gasto pendenteDeRecorrencia(int id, LocalDate vencimento) {
+        Gasto gasto = new Gasto();
+        gasto.setId(id);
+        gasto.setUsuarioId(USUARIO);
+        gasto.setGastoRecorrenteId(500);
+        gasto.setDescricao("Aluguel");
+        gasto.setValor(new BigDecimal("1500.00"));
+        gasto.setData(vencimento);
+        gasto.setVencimentoOriginal(vencimento);
+        gasto.setStatusPagamento(StatusPagamento.PENDENTE);
+        return gasto;
+    }
+
+    @Test
+    void pagar_rejeitaGastoAvulso() {
+        Gasto avulso = new Gasto();
+        avulso.setId(7);
+        avulso.setUsuarioId(USUARIO);
+        when(repository.findByIdAndUsuarioId(7, USUARIO)).thenReturn(Optional.of(avulso));
+
+        assertThatThrownBy(() -> service.pagar(7, new BigDecimal("10.00"), LocalDate.now(), USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("avulso");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void pagar_marcaPagoMoveDataParaODoPagamentoEPreservaOVencimento() {
+        Gasto pendente = pendenteDeRecorrencia(20, LocalDate.of(2026, 3, 10));
+        when(repository.findByIdAndUsuarioId(20, USUARIO)).thenReturn(Optional.of(pendente));
+        when(repository.save(any(Gasto.class))).thenAnswer(i -> i.getArgument(0));
+
+        Gasto pago = service.pagar(20, new BigDecimal("1490.00"), LocalDate.of(2026, 4, 2), USUARIO);
+
+        assertThat(pago.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(pago.getValor()).isEqualByComparingTo("1490.00");
+        // mudança de mês: a data do gasto vira a data real do pagamento (abril),
+        // não mais o vencimento (março) - os totais seguem a nova data.
+        assertThat(pago.getData()).isEqualTo(LocalDate.of(2026, 4, 2));
+        assertThat(pago.getDataPagamento()).isEqualTo(LocalDate.of(2026, 4, 2));
+        assertThat(pago.getVencimentoOriginal()).isEqualTo(LocalDate.of(2026, 3, 10));
+    }
+
+    @Test
+    void pagar_novamente_editaValorEDataSemMexerNoVencimentoOriginal() {
+        Gasto jaPago = pendenteDeRecorrencia(21, LocalDate.of(2026, 3, 10));
+        jaPago.setStatusPagamento(StatusPagamento.PAGO);
+        jaPago.setData(LocalDate.of(2026, 4, 2));
+        jaPago.setDataPagamento(LocalDate.of(2026, 4, 2));
+        when(repository.findByIdAndUsuarioId(21, USUARIO)).thenReturn(Optional.of(jaPago));
+        when(repository.save(any(Gasto.class))).thenAnswer(i -> i.getArgument(0));
+
+        Gasto reeditado = service.pagar(21, new BigDecimal("1500.00"), LocalDate.of(2026, 4, 5), USUARIO);
+
+        assertThat(reeditado.getData()).isEqualTo(LocalDate.of(2026, 4, 5));
+        assertThat(reeditado.getVencimentoOriginal()).isEqualTo(LocalDate.of(2026, 3, 10));
+    }
+
+    @Test
+    void pagar_semData_usaHoje() {
+        Gasto pendente = pendenteDeRecorrencia(22, LocalDate.now().minusDays(3));
+        when(repository.findByIdAndUsuarioId(22, USUARIO)).thenReturn(Optional.of(pendente));
+        when(repository.save(any(Gasto.class))).thenAnswer(i -> i.getArgument(0));
+
+        Gasto pago = service.pagar(22, new BigDecimal("1500.00"), null, USUARIO);
+
+        assertThat(pago.getData()).isEqualTo(LocalDate.now());
+        assertThat(pago.getDataPagamento()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void pagar_rejeitaValorZeroOuNegativo() {
+        Gasto pendente = pendenteDeRecorrencia(23, LocalDate.now());
+        when(repository.findByIdAndUsuarioId(23, USUARIO)).thenReturn(Optional.of(pendente));
+
+        assertThatThrownBy(() -> service.pagar(23, BigDecimal.ZERO, LocalDate.now(), USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maior que zero");
+    }
+
+    @Test
+    void desfazerPagamento_voltaAoVencimentoEAPendente_semMexerNoValor() {
+        Gasto pago = pendenteDeRecorrencia(30, LocalDate.of(2026, 3, 10));
+        pago.setStatusPagamento(StatusPagamento.PAGO);
+        pago.setValor(new BigDecimal("1490.00"));
+        pago.setData(LocalDate.of(2026, 4, 2));
+        pago.setDataPagamento(LocalDate.of(2026, 4, 2));
+        when(repository.findByIdAndUsuarioId(30, USUARIO)).thenReturn(Optional.of(pago));
+        when(repository.save(any(Gasto.class))).thenAnswer(i -> i.getArgument(0));
+
+        Gasto desfeito = service.desfazerPagamento(30, USUARIO);
+
+        assertThat(desfeito.getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+        assertThat(desfeito.getData()).isEqualTo(LocalDate.of(2026, 3, 10));
+        assertThat(desfeito.getDataPagamento()).isNull();
+        assertThat(desfeito.getValor()).isEqualByComparingTo("1490.00");
+    }
+
+    @Test
+    void desfazerPagamento_rejeitaAvulso() {
+        Gasto avulso = new Gasto();
+        avulso.setId(31);
+        avulso.setUsuarioId(USUARIO);
+        avulso.setStatusPagamento(StatusPagamento.PAGO);
+        when(repository.findByIdAndUsuarioId(31, USUARIO)).thenReturn(Optional.of(avulso));
+
+        assertThatThrownBy(() -> service.desfazerPagamento(31, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void atrasadas_delegaParaRepositorioComHoje() {
+        when(repository.atrasadas(USUARIO, LocalDate.now())).thenReturn(List.of(new Gasto()));
+
+        assertThat(service.atrasadas(USUARIO)).hasSize(1);
     }
 
     // ---------- deduplicação da importação (achado M6) ----------

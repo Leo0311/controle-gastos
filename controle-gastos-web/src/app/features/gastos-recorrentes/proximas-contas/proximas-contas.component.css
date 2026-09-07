@@ -44,6 +44,11 @@
   flex-direction: column;
 }
 
+/* Ação "Marcar mês como pago" - logo abaixo do cabeçalho do mês, antes da lista. */
+.acao-mes {
+  padding: 4px 4px 10px;
+}
+
 /* Botão "Ver mais 12 meses" (+ "Ver tudo" quando a lista é longa), no fim da
    agenda. */
 .ver-mais-meses {
@@ -96,4 +101,35 @@
 .item-calendario .valor-item {
   flex: none;
   font-variant-numeric: tabular-nums;
+}
+
+.item-calendario mat-chip {
+  flex: none;
+  font-size: 11px;
+  min-height: 20px;
+  padding: 0 6px;
+}
+
+.item-calendario .btn-pagar-item {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+}
+
+/* No mobile a linha quebra: data + ícone + descrição na 1ª linha (a descrição toma
+   o resto do espaço), chip + valor + botão de pagar caem na 2ª. */
+@media (max-width: 480px) {
+  .item-calendario {
+    gap: 6px 8px;
+    flex-wrap: wrap;
+  }
+
+  .item-calendario .descricao-item {
+    flex: 1 1 120px;
+  }
+
+  .item-calendario .valor-item {
+    margin-left: auto;
+  }
 }

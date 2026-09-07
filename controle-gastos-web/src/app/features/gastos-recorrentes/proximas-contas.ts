@@ -1,5 +1,8 @@
 import { Gasto } from '../../models/gasto.model';
 import { MESES_NOMES } from '../../core/meses';
+import { StatusConta, hojeIso, statusDaConta } from '../../core/status-conta';
+
+export { hojeIso };
 
 /**
  * Lógica pura da aba "Próximas contas" (achado M8): agrupamento dos lançamentos
@@ -8,12 +11,16 @@ import { MESES_NOMES } from '../../core/meses';
  * janela de meses visíveis; o carregamento dos gastos fica no componente pai.
  */
 
-/** Um lançamento futuro (recorrente ou parcela) na aba "Próximas contas". */
+/** Um lançamento (recorrente ou parcela) na aba "Próximas contas". */
 export interface ItemCalendario {
+  id: number;
   data: string;
   descricao: string;
   valor: number;
   origem: 'recorrente' | 'parcela';
+  status: StatusConta;
+  gastoRecorrenteId: number | null;
+  compraParceladaId: number | null;
 }
 
 /** Grupo de um mês na aba "Próximas contas", com o total do mês. */
@@ -22,14 +29,9 @@ export interface GrupoMesCalendario {
   rotulo: string;
   total: number;
   itens: ItemCalendario[];
-}
-
-/** Data de hoje em ISO (yyyy-MM-dd), no fuso local. */
-export function hojeIso(hoje: Date = new Date()): string {
-  const ano = hoje.getFullYear();
-  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-  const dia = String(hoje.getDate()).padStart(2, '0');
-  return `${ano}-${mes}-${dia}`;
+  // Quantos itens do mês estão vencidos e ainda pendentes - habilita a ação
+  // "marcar mês como pago".
+  pendentesVencidos: number;
 }
 
 /** "Setembro de 2026" a partir da chave "2026-09". */
@@ -45,28 +47,45 @@ export function formatarDiaMes(data: string): string {
 }
 
 /**
- * Gastos futuros (data >= hoje) que vieram de uma recorrência ou de uma compra
- * parcelada, agrupados por mês em ordem cronológica, com o total de cada mês.
+ * Contas de recorrência/parcela na agenda "Próximas contas": os lançamentos
+ * FUTUROS (data >= hoje) mais os PENDENTES já VENCIDOS (atrasados) - a agenda de
+ * contas a pagar engloba o atraso, não só o que ainda vai vencer. Gastos já pagos
+ * não entram (o dinheiro já saiu). Agrupados por mês em ordem cronológica, com o
+ * total e a contagem de vencidos-pendentes de cada mês.
  */
 export function agruparProximasContas(gastos: Gasto[], hoje: string): GrupoMesCalendario[] {
-  const futuros = gastos
-    .filter((g) => g.data >= hoje && (g.gastoRecorrenteId != null || g.compraParceladaId != null))
+  const contas = gastos
+    .filter((g) => g.gastoRecorrenteId != null || g.compraParceladaId != null)
+    .filter((g) => {
+      const status = statusDaConta(g, hoje);
+      // futuras previstas (pendentes com vencimento pra frente) + atrasadas;
+      // pagas ficam de fora.
+      return status === 'PENDENTE' || status === 'ATRASADA';
+    })
     .sort((a, b) => a.data.localeCompare(b.data));
 
   const grupos = new Map<string, GrupoMesCalendario>();
-  for (const gasto of futuros) {
+  for (const gasto of contas) {
     const chave = gasto.data.slice(0, 7);
     let grupo = grupos.get(chave);
     if (!grupo) {
-      grupo = { chave, rotulo: rotuloMes(chave), total: 0, itens: [] };
+      grupo = { chave, rotulo: rotuloMes(chave), total: 0, itens: [], pendentesVencidos: 0 };
       grupos.set(chave, grupo);
     }
+    const status = statusDaConta(gasto, hoje);
     grupo.total += gasto.valor;
+    if (status === 'ATRASADA') {
+      grupo.pendentesVencidos++;
+    }
     grupo.itens.push({
+      id: gasto.id!,
       data: gasto.data,
       descricao: gasto.descricao,
       valor: gasto.valor,
-      origem: gasto.compraParceladaId != null ? 'parcela' : 'recorrente'
+      origem: gasto.compraParceladaId != null ? 'parcela' : 'recorrente',
+      status,
+      gastoRecorrenteId: gasto.gastoRecorrenteId ?? null,
+      compraParceladaId: gasto.compraParceladaId ?? null
     });
   }
   return [...grupos.values()];

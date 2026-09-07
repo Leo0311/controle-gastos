@@ -49,4 +49,29 @@ describe('GastoService', () => {
     expect(req.request.params.get('deduplicar')).toBe('true');
     req.flush(gasto);
   });
+
+  it('pagar faz PATCH /gastos/{id}/pagar com valor e data', () => {
+    service.pagar(42, { valor: 99.9, data: '2026-10-02' }).subscribe();
+
+    const req = httpMock.expectOne(`${API_BASE_URL}/gastos/42/pagar`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ valor: 99.9, data: '2026-10-02' });
+    req.flush(gasto);
+  });
+
+  it('desfazerPagamento faz PATCH /gastos/{id}/desfazer-pagamento', () => {
+    service.desfazerPagamento(42).subscribe();
+
+    const req = httpMock.expectOne(`${API_BASE_URL}/gastos/42/desfazer-pagamento`);
+    expect(req.request.method).toBe('PATCH');
+    req.flush(gasto);
+  });
+
+  it('atrasadas faz GET /gastos/atrasadas', () => {
+    service.atrasadas().subscribe();
+
+    const req = httpMock.expectOne(`${API_BASE_URL}/gastos/atrasadas`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
 });

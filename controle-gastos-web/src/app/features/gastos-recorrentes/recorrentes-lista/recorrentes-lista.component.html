@@ -25,6 +25,13 @@
             } @else {
               <mat-chip class="chip-pausado">Pausado</mat-chip>
             }
+            @if (statusBadge(recorrente.id).atrasadas > 0) {
+              <mat-chip class="chip-status-atrasada">{{ statusBadge(recorrente.id).atrasadas }} atrasada{{ statusBadge(recorrente.id).atrasadas > 1 ? 's' : '' }}</mat-chip>
+            } @else if (statusBadge(recorrente.id).pendentes > 0) {
+              <mat-chip class="chip-status-pendente">{{ statusBadge(recorrente.id).pendentes }} pendente{{ statusBadge(recorrente.id).pendentes > 1 ? 's' : '' }}</mat-chip>
+            } @else {
+              <mat-chip class="chip-status-pago">em dia</mat-chip>
+            }
           </div>
           <div class="linha-detalhes">
             <span>{{ categoriaLabel(recorrente.categoriaId) }}</span>
@@ -54,6 +61,12 @@
             <mat-icon>edit</mat-icon>
             <span>Editar</span>
           </button>
+          @if (temVencidas(recorrente.id)) {
+            <button mat-menu-item (click)="marcarVencidasComoPagas(recorrente)">
+              <mat-icon>check_circle</mat-icon>
+              <span>Marcar contas vencidas como pagas</span>
+            </button>
+          }
           <button mat-menu-item (click)="alternarAtivo(recorrente)">
             <mat-icon>{{ recorrente.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
             <span>{{ recorrente.ativo ? 'Pausar' : 'Reativar' }}</span>

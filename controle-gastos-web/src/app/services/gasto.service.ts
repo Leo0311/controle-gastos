@@ -66,6 +66,23 @@ export class GastoService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
+  // Confirma o pagamento de um gasto de recorrência/parcela (também serve pra
+  // editar um pagamento já feito). Pagar fora do vencimento move o gasto de mês
+  // nos totais (regime de caixa).
+  pagar(id: number, pagamento: { valor: number; data: string }): Observable<Gasto> {
+    return this.http.patch<Gasto>(`${this.baseUrl}/${id}/pagar`, pagamento);
+  }
+
+  // Desfaz o pagamento: status volta a PENDENTE e a data volta ao vencimento original.
+  desfazerPagamento(id: number): Observable<Gasto> {
+    return this.http.patch<Gasto>(`${this.baseUrl}/${id}/desfazer-pagamento`, {});
+  }
+
+  // Contas atrasadas do usuário (PENDENTE com vencimento no passado, qualquer mês).
+  atrasadas(): Observable<Gasto[]> {
+    return this.http.get<Gasto[]>(`${this.baseUrl}/atrasadas`);
+  }
+
   listarPorCategoria(categoria: string): Observable<Gasto[]> {
     return this.http.get<Gasto[]>(`${this.baseUrl}/categoria/${categoria}`);
   }
