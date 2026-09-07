@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatSelectChange } from '@angular/material/select';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { of } from 'rxjs';
 
@@ -18,13 +19,13 @@ import { SugestaoCategoria } from './sugestao-categoria';
 
 const LIMITES = { parcelasMin: 2, parcelasMax: 120, primeiraParcelaMesesAtrasMax: 12, primeiraParcelaMesesFrenteMax: 2 };
 
-function criarComponente(): GastoFormDialogComponent {
+function criarComponente(dialogData: unknown = { gasto: null }): GastoFormDialogComponent {
   TestBed.configureTestingModule({
     imports: [GastoFormDialogComponent],
     providers: [
       provideNoopAnimations(),
       { provide: MatDialogRef, useValue: { close: () => {} } },
-      { provide: MAT_DIALOG_DATA, useValue: { gasto: null } },
+      { provide: MAT_DIALOG_DATA, useValue: dialogData },
       { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(undefined) }) } },
       { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false }) } },
       { provide: ConfigService, useValue: { garantirCarregado: () => {}, limitesCompraParcelada: () => LIMITES } },
@@ -153,6 +154,74 @@ describe('GastoFormDialogComponent', () => {
       ]);
 
       expect(sugestaoApos(c, 'xpto mensal')).toEqual({ categoriaId: 10, subcategoriaId: null });
+    });
+  });
+
+  describe('descrição apagada por completo desfaz a sugestão auto-aplicada', () => {
+    const subs: Subcategoria[] = [
+      { id: 20, nome: 'Supermercado', emoji: '🛒', categoriaId: 5 },
+      { id: 21, nome: 'Padaria', emoji: '🥖', categoriaId: 5 }
+    ];
+
+    function prepararComSugestaoAplicada(dialogData: unknown = { gasto: null }) {
+      const c = criarComponente(dialogData);
+      (c as unknown as { todasSubcategorias: Subcategoria[] }).todasSubcategorias = subs;
+      (c as unknown as { sugestaoBruta: unknown }).sugestaoBruta = { categoriaId: 5, subcategoriaId: 20, rotulo: 'x' };
+      c.form.controls.subcategoriaId.enable();
+      c.form.controls.descricao.setValue('mercado do zé');
+      c.aplicarSugestao();
+      return c;
+    }
+
+    function apagarDescricao(c: GastoFormDialogComponent): void {
+      c.form.controls.descricao.setValue('');
+      (c as unknown as { recalcularSugestao(t: string): void }).recalcularSugestao('');
+    }
+
+    it('cenário 1 - sugestão aplicada, sem edição manual depois: apagar a descrição limpa categoria e subcategoria', () => {
+      const c = prepararComSugestaoAplicada();
+      expect(c.form.controls.categoriaId.value).toBe(5);
+      expect(c.form.controls.subcategoriaId.value).toBe(20);
+
+      apagarDescricao(c);
+
+      expect(c.form.controls.categoriaId.value).toBeNull();
+      expect(c.form.controls.subcategoriaId.value).toBeNull();
+    });
+
+    it('cenário 2 - usuário trocou a categoria à mão depois da sugestão: apagar a descrição mantém a escolha', () => {
+      const c = prepararComSugestaoAplicada();
+      // troca manual de categoria (o mat-select atualiza o control e dispara selectionChange)
+      c.form.controls.categoriaId.setValue(9);
+      c.onCategoriaChange({ value: 9 } as MatSelectChange);
+
+      apagarDescricao(c);
+
+      expect(c.form.controls.categoriaId.value).toBe(9);
+    });
+
+    it('cenário 2b - usuário trocou só a subcategoria à mão: apagar a descrição mantém tudo', () => {
+      const c = prepararComSugestaoAplicada();
+      c.form.controls.subcategoriaId.setValue(21);
+      c.onSubcategoriaChange({ value: 21 } as MatSelectChange);
+
+      apagarDescricao(c);
+
+      expect(c.form.controls.categoriaId.value).toBe(5);
+      expect(c.form.controls.subcategoriaId.value).toBe(21);
+    });
+
+    it('cenário 3 - modo edição: apagar a descrição nunca limpa categoria/subcategoria', () => {
+      const gasto = { id: 1, descricao: 'Aluguel', valor: 1500, categoriaId: 5, subcategoriaId: 20, data: '2026-07-01' };
+      const c = criarComponente({ gasto });
+      // força o estado que dispararia a limpeza se não fosse edição
+      (c as unknown as { categoriaAutoPreenchida: SugestaoCategoria | null }).categoriaAutoPreenchida = {
+        categoriaId: 5, subcategoriaId: 20
+      };
+      (c as unknown as { recalcularSugestao(t: string): void }).recalcularSugestao('');
+
+      expect(c.form.controls.categoriaId.value).toBe(5);
+      expect(c.form.controls.subcategoriaId.value).toBe(20);
     });
   });
 });

@@ -53,8 +53,12 @@ mostra um chip discreto abaixo do campo (ex.: "Sugestão: 🚗 Transporte > 🚕
 Uber/Táxi"). Clicar no chip preenche os campos Categoria/Subcategoria do formulário;
 o "x" ignora a sugestão. Nunca aplica nada sozinho, nunca trava a escolha manual, e o
 chip some quando a combinação já selecionada é a sugerida (reaparecendo se o usuário
-mudar para outra). Tudo é resolvido no navegador, a partir da lista de gastos que a
-API já devolve — sem endpoint novo. Não aparece ao **editar** um gasto existente.
+mudar para outra). Se o usuário apagar a Descrição por completo depois de ter
+aplicado uma sugestão — e sem ter mexido nos dropdowns desde então — a
+Categoria/Subcategoria também são limpas, voltando ao "nada escolhido ainda";
+mas se ele já tinha ajustado a categoria à mão, essa escolha é preservada. Tudo
+é resolvido no navegador, a partir da lista de gastos que a API já devolve —
+sem endpoint novo. Não aparece ao **editar** um gasto existente.
 
 Quando o histórico pessoal não tem nada parecido (termos que o usuário nunca
 cadastrou, como "café da manhã", "pizza", "cerveja com amigos" ou "dentista"),

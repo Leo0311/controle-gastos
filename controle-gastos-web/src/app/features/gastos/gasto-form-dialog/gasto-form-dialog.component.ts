@@ -145,6 +145,12 @@ export class GastoFormDialogComponent implements OnInit {
   private escolhaManualOrcamento: boolean;
   private categoriaAnterior: number | null;
   private subcategoriaAnterior: number | null;
+  // Categoria+subcategoria que a última sugestão aplicada (clique no chip)
+  // escreveu no form. Enquanto o form seguir exatamente nesse estado - o usuário
+  // não mexeu nos dropdowns depois - apagar toda a descrição também limpa esses
+  // campos, voltando ao "nada escolhido ainda". Zera assim que o usuário troca
+  // categoria/subcategoria à mão (aí virou escolha deliberada) ou ao ser consumida.
+  private categoriaAutoPreenchida: SugestaoCategoria | null = null;
 
   private todasCategorias: Categoria[] = [];
   private todasSubcategorias: Subcategoria[] = [];
@@ -343,6 +349,8 @@ export class GastoFormDialogComponent implements OnInit {
       return;
     }
     this.categoriaAnterior = evento.value;
+    // Troca manual de categoria: a sugestão aplicada deixou de descrever o form.
+    this.categoriaAutoPreenchida = null;
     this.atualizarOpcoesSubcategoria();
     this.atualizarOpcoesOrcamento();
   }
@@ -354,6 +362,7 @@ export class GastoFormDialogComponent implements OnInit {
       return;
     }
     this.subcategoriaAnterior = evento.value;
+    this.categoriaAutoPreenchida = null;
     this.atualizarOpcoesOrcamento();
   }
 
@@ -387,6 +396,7 @@ export class GastoFormDialogComponent implements OnInit {
   }
 
   private recalcularSugestao(texto: string): void {
+    this.desfazerCategoriaAutoSeDescricaoVazia(texto);
     const historico = calcularSugestaoCategoria(texto, this.gastosAnteriores);
     // Consulta o dicionário quando o histórico não achou nada OU achou categoria
     // sem subcategoria (aí ele pode completar a subcategoria). Quando o histórico
@@ -401,6 +411,33 @@ export class GastoFormDialogComponent implements OnInit {
       this.sugestaoDispensada = false;
     }
     this.sugestaoBruta = combo ? { ...combo, rotulo: this.montarRotuloSugestao(combo) } : null;
+  }
+
+  // Descrição apagada por completo: se a categoria/subcategoria do form ainda são
+  // exatamente as que a última sugestão preencheu (o usuário não mexeu nos
+  // dropdowns - senão `categoriaAutoPreenchida` já seria null), limpa os dois.
+  // Sem descrição não há o que sugerir, e aquilo era um palpite, não uma escolha.
+  // Só no modo "novo gasto".
+  private desfazerCategoriaAutoSeDescricaoVazia(texto: string): void {
+    if (this.editando || texto.trim() !== '') {
+      return;
+    }
+    const auto = this.categoriaAutoPreenchida;
+    if (!auto) {
+      return;
+    }
+    const categoriaAtual = this.form.controls.categoriaId.value;
+    const subcategoriaAtual = this.form.controls.subcategoriaId.value ?? null;
+    if (categoriaAtual !== auto.categoriaId || subcategoriaAtual !== auto.subcategoriaId) {
+      return;
+    }
+    this.form.controls.subcategoriaId.setValue(null);
+    this.form.controls.categoriaId.setValue(null);
+    this.categoriaAnterior = null;
+    this.subcategoriaAnterior = null;
+    this.categoriaAutoPreenchida = null;
+    this.atualizarOpcoesSubcategoria();
+    this.atualizarOpcoesOrcamento();
   }
 
   private montarRotuloSugestao(combo: SugestaoCategoria): string {
@@ -430,6 +467,12 @@ export class GastoFormDialogComponent implements OnInit {
       this.subcategoriaAnterior = sugestao.subcategoriaId;
     }
     this.atualizarOpcoesOrcamento();
+    // Registra o que a sugestão preencheu, pra poder desfazer se a descrição for
+    // apagada por completo antes de o usuário mexer nos dropdowns.
+    this.categoriaAutoPreenchida = {
+      categoriaId: sugestao.categoriaId,
+      subcategoriaId: sugestao.subcategoriaId ?? null
+    };
     // Não zera `sugestaoBruta`: o getter `sugestao` já esconde o chip assim que
     // há uma subcategoria escolhida ou a categoria sugerida está aplicada.
   }
@@ -534,6 +577,7 @@ export class GastoFormDialogComponent implements OnInit {
           this.todasCategorias = [...this.todasCategorias, categoria].sort((a, b) => a.nome.localeCompare(b.nome));
           this.opcoesCategoria = this.todasCategorias;
           this.categoriaAnterior = categoria.id!;
+          this.categoriaAutoPreenchida = null;
           this.form.controls.categoriaId.setValue(categoria.id!);
           this.atualizarOpcoesSubcategoria();
           this.atualizarOpcoesOrcamento();
@@ -561,6 +605,7 @@ export class GastoFormDialogComponent implements OnInit {
         next: (subcategoria) => {
           this.todasSubcategorias = [...this.todasSubcategorias, subcategoria];
           this.subcategoriaAnterior = subcategoria.id!;
+          this.categoriaAutoPreenchida = null;
           this.atualizarOpcoesSubcategoria();
           this.form.controls.subcategoriaId.setValue(subcategoria.id!);
           this.atualizarOpcoesOrcamento();
