@@ -60,7 +60,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     concurrency:
-      group: migration-guard-${{ github.ref }}
+      # matrix.scenario no group pra as duas pernas da matriz NAO disputarem o
+      # mesmo group entre si (uma cancelava a outra - run #7). Cada cenario so
+      # cancela a versao anterior de si mesmo num push novo.
+      group: migration-guard-${{ matrix.scenario }}-${{ github.ref }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
