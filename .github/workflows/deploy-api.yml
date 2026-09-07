@@ -1,19 +1,19 @@
-name: Deploy API (Oracle VM)
+name: API — guard de migration + deploy (Oracle VM)
 
-# Deploy automático da API (controle-gastos-api) na VM da Oracle Cloud.
-#
-# Dispara em push na master QUANDO o push mexe em algo dentro de
-# controle-gastos-api/ (ou neste próprio workflow) - mudança só de frontend ou
-# de README não roda nada aqui. Também pode ser disparado à mão pela aba Actions
-# (workflow_dispatch), útil pra reimplantar sem um commit novo.
-#
-# O que ele faz na VM, por SSH: git pull --ff-only, ./mvnw clean package
-# -DskipTests, sudo systemctl restart controle-gastos. Depois checa
-# GET /api/health pela URL pública; se não vier {"status":"UP"} em ~2min, o
-# workflow FALHA - e a falha dispara o e-mail padrão de "workflow failed" do
-# GitHub, sem precisar configurar notificação nenhuma.
+# Push na master tocando controle-gastos-api/** (ou schema.sql, ou este workflow):
+#   1) job "migration-guard" — sobe um Postgres 18 efêmero e roda as migrations do
+#      Flyway em dois cenários (banco vazio; e banco pré-carregado com o schema.sql
+#      atual = o cenário do cutover), cada um seguido da suíte @SpringBootTest.
+#   2) job "deploy" — SÓ roda se o guard passar: SSH na VM, git pull --ff-only +
+#      ./mvnw clean package -DskipTests + sudo systemctl restart controle-gastos,
+#      depois checa GET /api/health pela URL pública; se não vier {"status":"UP"}
+#      em ~2min, o workflow FALHA e o GitHub manda o e-mail padrão.
+#   Em pull_request roda só o guard. workflow_dispatch reimplanta (guard + deploy).
 #
 # Secrets necessários (Settings > Secrets and variables > Actions):
+#   CI_DB_PASSWORD      senha do Postgres efêmero do job migration-guard - qualquer
+#                       string aleatória; nunca toca produção, é só pra não deixar
+#                       senha literal num repo público.
 #   VM_SSH_HOST         host ou IP da VM                 (ex: controle-gastos-leo.duckdns.org)
 #   VM_SSH_USER         usuário SSH na VM                (ex: ubuntu / opc)
 #   VM_SSH_KEY          chave PRIVADA de deploy (PEM)    - par dedicado, não a sua pessoal
@@ -35,14 +35,14 @@ on:
     branches: [master]
     paths:
       - 'controle-gastos-api/**'
+      - 'controle-gastos/src/main/resources/schema.sql'
+      - '.github/workflows/deploy-api.yml'
+  pull_request:
+    paths:
+      - 'controle-gastos-api/**'
+      - 'controle-gastos/src/main/resources/schema.sql'
       - '.github/workflows/deploy-api.yml'
   workflow_dispatch: {}
-
-# Nunca deixa dois deploys correrem em paralelo; não cancela um em andamento
-# (não dá pra interromper um build/restart no meio com segurança).
-concurrency:
-  group: deploy-api
-  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -52,9 +52,84 @@ env:
   API_HEALTH_URL: https://controle-gastos-leo.duckdns.org/api/health
 
 jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Guard: nenhuma migration chega na VM sem antes rodar contra um Postgres
+  # descartável, nos dois estados que o Flyway pode encontrar em produção.
+  # ──────────────────────────────────────────────────────────────────────────
+  migration-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    concurrency:
+      group: migration-guard-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # fresh            -> banco vazio: Flyway roda V1..Vn do zero (CI / dev novo).
+        # from-prod-schema -> banco pré-carregado com o schema.sql atual: Flyway
+        #                     baseline no V1 e roda V2..Vn (o cenário real do cutover
+        #                     e de todo deploy de schema daí em diante).
+        scenario: [fresh, from-prod-schema]
+    services:
+      postgres:
+        image: postgres:18            # casa com o major do Neon (18.6); o local é 14
+        env:
+          POSTGRES_USER: postgres
+          # Postgres descartável (só existe durante o job). A senha vem de um
+          # secret pra nao ficar valor literal no repo publico - qualquer string
+          # serve, ver CI_DB_PASSWORD nas instrucoes do topo do arquivo.
+          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+          POSTGRES_DB: controle_gastos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: (cenário from-prod-schema) semear o Postgres com o schema.sql atual
+        if: matrix.scenario == 'from-prod-schema'
+        env:
+          PGPASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+          # Nunca aplicar o schema.sql sem isto: foi um psql -f com client_encoding
+          # errado que gerou as 4 subcategorias mojibake no banco local.
+          PGCLIENTENCODING: UTF8
+        run: |
+          psql -h localhost -U postgres -d controle_gastos -v ON_ERROR_STOP=1 \
+            -f controle-gastos/src/main/resources/schema.sql
+
+      - name: Migrations + suíte (o @SpringBootTest dispara o Flyway no boot)
+        working-directory: controle-gastos-api
+        # Casa com a POSTGRES_PASSWORD do service container acima; o
+        # src/test/resources/application.properties usa isto e cai em "admin" (dev
+        # local) quando a variavel nao esta setada.
+        env:
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+        run: ./mvnw -B -ntp test
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Deploy: idêntico ao de antes. Só roda em push/dispatch (nunca em PR) e só se
+  # as duas pernas do guard passarem.
+  # ──────────────────────────────────────────────────────────────────────────
   deploy:
+    needs: migration-guard
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Nunca deixa dois deploys correrem em paralelo; não cancela um em andamento
+    # (não dá pra interromper um build/restart no meio com segurança).
+    concurrency:
+      group: deploy-api
+      cancel-in-progress: false
     steps:
       - name: Configurar chave SSH
         env:
