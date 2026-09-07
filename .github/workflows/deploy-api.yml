@@ -65,9 +65,22 @@ jobs:
         run: |
           install -m 700 -d "$HOME/.ssh"
           install -m 600 /dev/null "$HOME/.ssh/id_deploy"
-          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/id_deploy"
+          # Normaliza a chave ao gravar: remove CR (\r) - copiar/colar no Windows
+          # (Bloco de Notas etc.) costuma injetar \r\n, o que quebra o parsing
+          # OpenSSH ("error in libcrypto") sem mudar a aparência do texto. O
+          # printf garante um \n final mesmo se o secret tiver colado sem ele.
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$HOME/.ssh/id_deploy"
+          chmod 600 "$HOME/.ssh/id_deploy"
+          # Valida cedo, com mensagem clara, se a chave ainda não fizer parse.
+          # -P '' -> nunca fica preso esperando passphrase num runner sem tty.
+          if ! ssh-keygen -y -P '' -f "$HOME/.ssh/id_deploy" > "$HOME/.ssh/id_deploy.pub" 2>/dev/null; then
+            echo "::error::VM_SSH_KEY não é uma chave privada OpenSSH válida (mesmo após remover CR). Confira: PEM completo de '-----BEGIN' a '-----END' inclusive, sem passphrase, sem linha faltando."
+            exit 1
+          fi
+          echo "Chave OK. Fingerprint (compare com 'ssh-keygen -lf ~/.ssh/controle_gastos_deploy' na sua máquina):"
+          ssh-keygen -lf "$HOME/.ssh/id_deploy.pub"
           if [ -n "$SSH_KNOWN_HOSTS" ]; then
-            printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+            printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
           else
             ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" > "$HOME/.ssh/known_hosts" 2>/dev/null
           fi
@@ -110,4 +123,4 @@ jobs:
 
       - name: Remover chave SSH
         if: always()
-        run: rm -f "$HOME/.ssh/id_deploy"
+        run: rm -f "$HOME/.ssh/id_deploy" "$HOME/.ssh/id_deploy.pub"
