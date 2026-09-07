@@ -757,20 +757,45 @@ ALTER TABLE gastos ADD CONSTRAINT gastos_status_pagamento_check
 
 CREATE INDEX IF NOT EXISTS idx_gastos_status_pagamento ON gastos (usuario_id, status_pagamento);
 
+-- Controle de correções pontuais de DADOS (não de schema) que precisam rodar UMA
+-- vez só e não têm um sinal confiável no próprio dado pra saber se já rodaram.
+-- Sem @Entity - o ddl-auto=validate ignora tabelas extras; o console também.
+CREATE TABLE IF NOT EXISTS _migracoes_pontuais (
+    nome         TEXT PRIMARY KEY,
+    aplicada_em  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Migração dos dados existentes (idempotente - reexecutar não repete nada).
 --
--- Passo 1: ocorrências de recorrência/parcela com vencimento AINDA NO FUTURO nunca
--- foram efetivamente pagas - só foram pré-geradas sob o modelo antigo de
--- competência. O DEFAULT 'PAGO' do ALTER acima marcou todas como pagas; aqui as
--- futuras voltam para PENDENTE, senão sumiriam da aba "Próximas contas" e não
--- apareceriam como conta a pagar. As ocorrências passadas/correntes ficam PAGO
--- (contavam no total do mês no modelo antigo - tratá-las como quitadas é o menos
--- disruptivo). data_pagamento IS NULL garante que um pagamento antecipado real
--- (raro, mas possível pós-migração) não seja revertido.
-UPDATE gastos SET status_pagamento = 'PENDENTE'
-    WHERE status_pagamento = 'PAGO' AND data_pagamento IS NULL
+-- Passo 1 (CORREÇÃO PONTUAL - roda uma vez só, ver _migracoes_pontuais):
+-- ocorrências de recorrência/parcela com vencimento AINDA NO FUTURO nunca foram
+-- efetivamente pagas - só foram pré-geradas sob o modelo antigo de competência.
+-- O DEFAULT 'PAGO' do ALTER marcou todas como pagas; sem esta correção elas
+-- sumiriam da aba "Próximas contas" e não apareceriam como conta a pagar. As
+-- ocorrências passadas/correntes ficam PAGO (contavam no total do mês no modelo
+-- antigo - tratá-las como quitadas é o menos disruptivo).
+--
+-- Por que uma tabela de controle e não um critério no próprio dado: a 1ª versão
+-- desta migração usava "data_pagamento IS NULL" como guarda, mas o backfill de
+-- data_pagamento (Passo 2) já tinha rodado antes dela existir e preenchido esse
+-- campo pra TODAS as linhas PAGO - inclusive as futuras por DEFAULT. Depois disso
+-- não há mais como distinguir, só pelo dado, uma ocorrência futura "PAGO por
+-- DEFAULT" de uma "paga de propósito na data exata do vencimento" (byte a byte
+-- iguais - mesma data/data_pagamento/vencimento_original). Como esta correção
+-- reverte em bloco, ela PRECISA ser one-shot, senão todo deploy futuro
+-- reverteria pagamentos legítimos feitos na data agendada (ex.: quitar uma
+-- compra parcelada adiantada). Produção ainda não tinha uso real da feature
+-- quando esta correção foi escrita, então reverter tudo agora é seguro.
+UPDATE gastos SET status_pagamento = 'PENDENTE', data_pagamento = NULL
+    WHERE status_pagamento = 'PAGO'
       AND data > CURRENT_DATE
-      AND (gasto_recorrente_id IS NOT NULL OR compra_parcelada_id IS NOT NULL);
+      AND (gasto_recorrente_id IS NOT NULL OR compra_parcelada_id IS NOT NULL)
+      AND NOT EXISTS (
+          SELECT 1 FROM _migracoes_pontuais WHERE nome = 'reverter_futuros_pago_por_default'
+      );
+
+INSERT INTO _migracoes_pontuais (nome) VALUES ('reverter_futuros_pago_por_default')
+    ON CONFLICT (nome) DO NOTHING;
 
 -- Passo 2: o resto dos PAGO (avulsos + ocorrências passadas de recorrência/parcela)
 -- ganha data de pagamento = a própria data do gasto.
