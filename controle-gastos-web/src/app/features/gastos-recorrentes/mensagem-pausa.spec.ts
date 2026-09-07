@@ -13,6 +13,16 @@ describe('mensagemPausaRecorrente', () => {
     expect(msg).not.toContain('continua');
   });
 
+  it('descreve Excluir como remoção total (passados e futuros), não parcial', () => {
+    // Desde a exclusão em cascata (7b5ba9e), Excluir apaga TODOS os lançamentos e a
+    // recorrência. O texto não pode mais prometer que "mantém o histórico dos meses passados".
+    for (const n of [0, 1, 3]) {
+      const msg = mensagemPausaRecorrente('Netflix', n);
+      expect(msg).toContain('passados e futuros');
+      expect(msg).not.toContain('histórico dos meses passados');
+    }
+  });
+
   it('um lançamento futuro: texto no singular ("1 lançamento", "esse lançamento")', () => {
     const msg = mensagemPausaRecorrente('Netflix', 1);
     expect(msg).toContain('Há 1 lançamento futuro já gerado (de hoje em diante) que continua');
