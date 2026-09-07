@@ -250,21 +250,24 @@ class CompraParceladaServiceTest {
     }
 
     @Test
-    void pagarVencidas_marcaSoAsParcelasVencidasComoPagas() {
+    void pagarPendentes_quitaTodasAsParcelasEmAbertoDaCompra_venCidasOuNao() {
         when(repository.findByIdAndUsuarioId(99, USUARIO)).thenReturn(Optional.of(compraComId(99, 3)));
 
         LocalDate hoje = LocalDate.now();
         Gasto vencida = parcelaPendente(hoje.minusMonths(1));
         Gasto futura = parcelaPendente(hoje.plusMonths(1));
         when(gastoRepository.findByCompraParceladaIdAndStatusPagamento(99, StatusPagamento.PENDENTE))
-                .thenReturn(List.of(vencida, futura));
+                .thenReturn(new java.util.ArrayList<>(List.of(vencida, futura)));
 
-        List<Gasto> quitadas = service.pagarVencidas(99, USUARIO);
+        List<Gasto> quitadas = service.pagarPendentes(99, USUARIO);
 
-        assertThat(quitadas).containsExactly(vencida);
+        // compra parcelada é compromisso fechado: quita tudo que está em aberto,
+        // cada parcela na sua própria data prevista.
+        assertThat(quitadas).containsExactlyInAnyOrder(vencida, futura);
         assertThat(vencida.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
         assertThat(vencida.getDataPagamento()).isEqualTo(vencida.getVencimentoOriginal());
-        assertThat(futura.getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+        assertThat(futura.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(futura.getDataPagamento()).isEqualTo(futura.getVencimentoOriginal());
         verify(gastoRepository).saveAll(quitadas);
     }
 

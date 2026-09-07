@@ -338,12 +338,15 @@
   padding: 0 2px 4px;
 }
 
+/* align-items: flex-start (não center): com "center" e um texto de 3 linhas o
+   ícone/emoji flutuava no meio do parágrafo e as linhas ficavam indentadas. */
 .linha-detalhe {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin: 0;
   font-size: 13px;
+  line-height: 1.4;
   color: var(--texto-secundario);
 }
 
@@ -355,14 +358,7 @@
 }
 
 .cartao-acoes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   margin-top: 4px;
-}
-
-.cartao-acoes button {
-  flex: 1 1 0;
 }
 
 .carregando {

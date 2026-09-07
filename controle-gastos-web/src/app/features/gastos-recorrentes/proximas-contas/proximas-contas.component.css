@@ -1,6 +1,14 @@
 /* Específico da aba "Próximas contas". Estados de aba comuns (cabecalho-aba,
    dica-aba, carregando) vêm de ../aba-comum.css (ver styleUrls). */
 
+/* Folga no fim da agenda: a lista (ou o botão "Ver mais meses") costuma ser a
+   última coisa da tela, e a padding-bottom global do .conteudo é curta demais
+   pra o último item não encostar na barra de navegação fixa do mobile. */
+:host {
+  display: block;
+  padding-bottom: 24px;
+}
+
 .lista-calendario {
   display: flex;
   flex-direction: column;
@@ -110,7 +118,7 @@
   padding: 0 6px;
 }
 
-.item-calendario .btn-pagar-item {
+.item-calendario .btn-acoes-item {
   flex: none;
   width: 32px;
   height: 32px;
@@ -118,7 +126,7 @@
 }
 
 /* No mobile a linha quebra: data + ícone + descrição na 1ª linha (a descrição toma
-   o resto do espaço), chip + valor + botão de pagar caem na 2ª. */
+   o resto do espaço), chip + valor + botão de ações caem na 2ª. */
 @media (max-width: 480px) {
   .item-calendario {
     gap: 6px 8px;

@@ -106,32 +106,28 @@ public class CompraParceladaService {
         repository.delete(existente);
     }
 
-    // Ação em lote: marca como pagas todas as parcelas PENDENTES desta compra cujo
-    // vencimento já chegou (<= hoje), com o valor e a data previstos de cada uma -
-    // sem confirmação item a item. Parcelas futuras ficam intactas. Devolve as
-    // parcelas quitadas.
+    // Ação em lote: marca como pagas TODAS as parcelas PENDENTES desta compra
+    // (não só as vencidas), cada uma no valor e na data previstos - sem
+    // confirmação item a item. Diferente da recorrência (aberta, onde só faz
+    // sentido quitar o que já venceu), uma compra parcelada é um compromisso
+    // fechado: "quitei tudo" (paguei a fatura / a loja) é um fluxo comum.
+    // Devolve as parcelas quitadas.
     @Transactional
-    public List<Gasto> pagarVencidas(Integer compraId, Integer usuarioId) {
+    public List<Gasto> pagarPendentes(Integer compraId, Integer usuarioId) {
         buscarPorId(compraId, usuarioId); // valida escopo do usuário
-        LocalDate hoje = LocalDate.now();
         List<Gasto> pendentes = gastoRepository
                 .findByCompraParceladaIdAndStatusPagamento(compraId, StatusPagamento.PENDENTE);
 
-        List<Gasto> quitadas = new ArrayList<>();
         for (Gasto gasto : pendentes) {
             LocalDate vencimento = gasto.getVencimentoOriginal() != null
                     ? gasto.getVencimentoOriginal() : gasto.getData();
-            if (vencimento.isAfter(hoje)) {
-                continue;
-            }
             gasto.setVencimentoOriginal(vencimento);
             gasto.setData(vencimento);
             gasto.setDataPagamento(vencimento);
             gasto.setStatusPagamento(StatusPagamento.PAGO);
-            quitadas.add(gasto);
         }
-        gastoRepository.saveAll(quitadas);
-        return quitadas;
+        gastoRepository.saveAll(pendentes);
+        return pendentes;
     }
 
     // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir da

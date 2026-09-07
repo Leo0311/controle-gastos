@@ -82,7 +82,8 @@ public class RateLimitAutenticadoFilter extends OncePerRequestFilter {
                 || "PATCH".equalsIgnoreCase(metodo);
         if ("POST".equalsIgnoreCase(metodo)
                 && (uri.equals("/api/gastos-recorrentes/lancar-pendentes")
-                    || uri.endsWith("/pagar-vencidas"))) {
+                    || uri.endsWith("/pagar-vencidas")
+                    || uri.endsWith("/pagar-pendentes"))) {
             return LANCAR_PENDENTES;
         }
         if (escrita && (uri.equals("/api/gastos") || uri.startsWith("/api/gastos/"))) {

@@ -113,29 +113,33 @@ export class ParceladasListaComponent implements OnInit {
       ?? { pendentes: 0, atrasadas: 0 };
   }
 
-  temVencidas(parceladaId: number | undefined): boolean {
-    return this.statusBadge(parceladaId).atrasadas > 0;
+  temPendentes(parceladaId: number | undefined): boolean {
+    const b = this.statusBadge(parceladaId);
+    return b.atrasadas + b.pendentes > 0;
   }
 
-  // "Marcar parcelas vencidas como pagas": quita de uma vez as parcelas vencidas e
-  // ainda pendentes, com valor/data previstos - sem confirmar parcela a parcela.
-  marcarVencidasComoPagas(parcelada: CompraParcelada): void {
-    const atrasadas = this.statusBadge(parcelada.id).atrasadas;
+  // "Marcar parcelas restantes como pagas": quita de uma vez TODAS as parcelas em
+  // aberto (vencidas e futuras), cada uma no valor e na data previstos - sem
+  // confirmar parcela a parcela. Uma compra parcelada é um compromisso fechado,
+  // então "paguei tudo" (a fatura, a loja) é um fluxo comum.
+  marcarPendentesComoPagas(parcelada: CompraParcelada): void {
+    const b = this.statusBadge(parcelada.id);
+    const total = b.atrasadas + b.pendentes;
     const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
-        titulo: 'Marcar parcelas vencidas como pagas',
-        mensagem: `Marcar as ${atrasadas} parcela(s) vencida(s) de "${parcelada.descricao}" como pagas, cada `
-          + 'uma no valor e na data previstos. As parcelas futuras não são afetadas.',
+        titulo: 'Marcar parcelas restantes como pagas',
+        mensagem: `Marcar as ${total} parcela(s) em aberto de "${parcelada.descricao}" como pagas, cada uma no `
+          + 'valor e na data previstos.',
         textoConfirmar: 'Marcar como pagas',
         textoProcessando: 'Marcando…',
-        acao: () => this.parceladaService.pagarVencidas(parcelada.id!)
+        acao: () => this.parceladaService.pagarPendentes(parcelada.id!)
       }
     });
     ref.afterClosed().subscribe((feito) => {
       if (!feito) {
         return;
       }
-      this.notificacao.sucesso('Parcelas vencidas marcadas como pagas.');
+      this.notificacao.sucesso('Parcelas marcadas como pagas.');
       this.carregar();
       this.parceladaAlternada.emit();
     });

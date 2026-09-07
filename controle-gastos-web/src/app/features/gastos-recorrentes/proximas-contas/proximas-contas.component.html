@@ -52,10 +52,16 @@
               <span class="descricao-item">{{ item.descricao }}</span>
               <mat-chip [class]="'chip-status-' + classeStatus(item.status)">{{ rotuloStatus(item.status) }}</mat-chip>
               <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
-              <button mat-icon-button type="button" class="btn-pagar-item"
-                (click)="marcarComoPaga(item)" aria-label="Marcar como paga" title="Marcar como paga">
-                <mat-icon>check_circle</mat-icon>
+              <button mat-icon-button type="button" class="btn-acoes-item"
+                [matMenuTriggerFor]="menuItem" aria-label="Ações da conta">
+                <mat-icon>more_vert</mat-icon>
               </button>
+              <mat-menu #menuItem="matMenu">
+                <button mat-menu-item (click)="marcarComoPaga(item)">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Marcar como paga</span>
+                </button>
+              </mat-menu>
             </div>
           }
         </div>

@@ -46,10 +46,11 @@ public class CompraParceladaController {
         return ResponseEntity.noContent().build();
     }
 
-    // Ação em lote: marca como pagas todas as parcelas vencidas (<= hoje) e ainda
-    // PENDENTES desta compra, com valor/data previstos. Devolve as quitadas.
-    @PostMapping("/{id}/pagar-vencidas")
-    public List<Gasto> pagarVencidas(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
-        return service.pagarVencidas(id, usuario.usuarioId());
+    // Ação em lote: marca como pagas todas as parcelas ainda PENDENTES desta
+    // compra (o parcelamento é um compromisso fechado), com valor/data previstos.
+    // Devolve as quitadas.
+    @PostMapping("/{id}/pagar-pendentes")
+    public List<Gasto> pagarPendentes(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.pagarPendentes(id, usuario.usuarioId());
     }
 }

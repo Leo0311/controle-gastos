@@ -3,6 +3,7 @@ import { CurrencyPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -36,6 +37,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confi
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
+    MatMenuModule,
     MatExpansionModule,
     MatProgressSpinnerModule,
     MatDialogModule,

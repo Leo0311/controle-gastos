@@ -29,9 +29,10 @@ export class CompraParceladaService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
-  // Ação em lote: marca como pagas todas as parcelas vencidas (<= hoje) e ainda
-  // pendentes desta compra, com valor/data previstos. Devolve as quitadas.
-  pagarVencidas(id: number): Observable<Gasto[]> {
-    return this.http.post<Gasto[]>(`${this.baseUrl}/${id}/pagar-vencidas`, {});
+  // Ação em lote: marca como pagas todas as parcelas ainda em aberto desta compra
+  // (o parcelamento é um compromisso fechado), com valor/data previstos. Devolve
+  // as quitadas.
+  pagarPendentes(id: number): Observable<Gasto[]> {
+    return this.http.post<Gasto[]>(`${this.baseUrl}/${id}/pagar-pendentes`, {});
   }
 }

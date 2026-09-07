@@ -1,7 +1,10 @@
-import { AsyncPipe } from '@angular/common';
+import { AsyncPipe, Location } from '@angular/common';
 import { AfterViewInit, Component, DestroyRef, ElementRef, inject, OnDestroy, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  NavigationCancel, NavigationEnd, NavigationError, NavigationStart,
+  Router, RouterLink, RouterLinkActive, RouterOutlet
+} from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -67,8 +70,20 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private readonly atualizacaoService = inject(AtualizacaoService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly location = inject(Location);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+
+  // Integração diálogo <-> histórico: no mobile o gesto/botão "voltar" do sistema
+  // é a forma natural de fechar um modal, mas o MatDialog não registra entrada de
+  // histórico - sem isso o "voltar" navega a rota (ex.: joga o usuário pra /gastos)
+  // em vez de só fechar o modal. Aqui, ao abrir o 1º diálogo empurra-se uma entrada
+  // de histórico (mesma URL); o "voltar" consome essa entrada e o popstate fecha os
+  // diálogos, sem trocar de rota. Fechar por backdrop/X/Esc consome a entrada com
+  // um location.back() manual.
+  private historicoDialogoEmpurrado = false;
+  private fechandoDialogoPorHistorico = false;
+  private navegandoDeVerdade = false;
 
   readonly usuario$ = this.authService.usuario$;
   readonly temaEscuro$ = this.temaService.escuro$;
@@ -102,6 +117,51 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.atualizacaoService.novaVersaoDisponivel$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.avisarNovaVersao());
+
+    this.configurarHistoricoDeDialogos();
+  }
+
+  // Ver comentário nas propriedades historicoDialogo*.
+  private configurarHistoricoDeDialogos(): void {
+    this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((evento) => {
+      if (evento instanceof NavigationStart) {
+        this.navegandoDeVerdade = true;
+      } else if (evento instanceof NavigationEnd
+                 || evento instanceof NavigationCancel
+                 || evento instanceof NavigationError) {
+        this.navegandoDeVerdade = false;
+      }
+    });
+
+    this.dialog.afterOpened.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (!this.historicoDialogoEmpurrado) {
+        this.historicoDialogoEmpurrado = true;
+        this.location.go(this.location.path(), '', { dialogoAberto: true });
+      }
+    });
+
+    this.dialog.afterAllClosed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (!this.historicoDialogoEmpurrado) {
+        return;
+      }
+      this.historicoDialogoEmpurrado = false;
+      // Fechado pelo "voltar": o popstate já consumiu a entrada empurrada.
+      // Fechado por uma navegação de rota real: a entrada some junto. Nos dois
+      // casos não se chama location.back(). Só o fechamento "normal"
+      // (backdrop/X/Esc) precisa consumir a entrada manualmente.
+      const consumirEntrada = !this.fechandoDialogoPorHistorico && !this.navegandoDeVerdade;
+      this.fechandoDialogoPorHistorico = false;
+      if (consumirEntrada) {
+        this.location.back();
+      }
+    });
+
+    this.location.subscribe(() => {
+      if (this.dialog.openDialogs.length > 0) {
+        this.fechandoDialogoPorHistorico = true;
+        this.dialog.closeAll();
+      }
+    });
   }
 
   ngAfterViewInit(): void {

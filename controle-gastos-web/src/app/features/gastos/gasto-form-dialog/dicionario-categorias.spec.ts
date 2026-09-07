@@ -113,6 +113,24 @@ describe('sugerirPorDicionario', () => {
     }
   });
 
+  describe('vestuário -> Compras > Roupas', () => {
+    const COMPRAS: Categoria[] = [...CATEGORIAS, { id: 30, nome: 'Compras', emoji: '🛍️', usuarioId: null }];
+    const ROUPAS_SUB: Subcategoria[] = [
+      ...SUBCATEGORIAS, { id: 31, categoriaId: 30, nome: 'Roupas', emoji: '👕', usuarioId: null }
+    ];
+    const casos = ['moletom', 'meias', 'meia', 'cueca', 'cuecas', 'camisas', 'calca jeans', 'pijama', 'sutia'];
+    for (const texto of casos) {
+      it(`"${texto}" -> Compras > Roupas`, () => {
+        expect(sugerirPorDicionario(texto, COMPRAS, ROUPAS_SUB))
+          .toEqual({ categoriaId: 30, subcategoriaId: 31 });
+      });
+    }
+
+    it('"gasto de maio" NÃO casa Roupas (colisão com o mês)', () => {
+      expect(sugerirPorDicionario('gasto de maio', COMPRAS, ROUPAS_SUB)).toBeNull();
+    });
+  });
+
   it('degrada pra só a categoria quando a subcategoria do dicionário não existe ("pedágio" -> Transporte)', () => {
     // A entrada de "pedágio" aponta pra Transporte > "Outros", que não é
     // subcategoria de sistema - então volta só a categoria, sem quebrar.

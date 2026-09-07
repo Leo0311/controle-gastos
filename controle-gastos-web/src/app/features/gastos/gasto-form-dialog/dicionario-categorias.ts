@@ -367,14 +367,30 @@ export const DICIONARIO_CATEGORIAS: EntradaDicionario[] = [
   // ─── Compras ────────────────────────────────────────────────────────────────
   {
     termos: [
-      'roupa', 'roupas', 'camisa', 'camiseta', 'calca', 'jaqueta', 'casaco',
-      'blusa', 'vestido', 'saia', 'bermuda', 'moletom', 'loja de roupa', 'loja', 'renner', 'riachuelo', 'zara'
+      'roupa', 'roupas', 'camisa', 'camisas', 'camiseta', 'camisetas', 'regata', 'regatas',
+      'calca', 'calcas', 'calca jeans', 'jeans', 'jaqueta', 'jaquetas', 'casaco', 'casacos',
+      'blusa', 'blusas', 'blusao', 'suéter', 'sueter', 'cardiga', 'colete',
+      'vestido', 'vestidos', 'saia', 'saias', 'bermuda', 'bermudas', 'short', 'shorts',
+      'moletom', 'moletons', 'agasalho', 'agasalhos', 'uniforme',
+      // Roupa íntima e meias
+      'meia', 'meias', 'meia calca', 'meia-calca', 'cueca', 'cuecas', 'calcinha', 'calcinhas',
+      'sutia', 'sutias', 'lingerie', 'roupa intima', 'roupa de baixo',
+      'pijama', 'pijamas', 'sunga', 'sungas', 'biquini', 'biquinis', 'traje de banho',
+      // Acessórios de vestuário
+      'gravata', 'gravatas', 'cinto', 'cintos', 'bone', 'bones', 'gorro', 'cachecol',
+      'luva', 'luvas',
+      // "maio"/"maiô" (colide com o mês "maio", já sem acento na normalização) fica
+      // de fora de propósito - biquini/sunga já cobrem moda praia.
+      'loja de roupa', 'loja de roupas', 'loja', 'renner', 'riachuelo', 'zara', 'hering', 'marisa', 'pernambucanas'
     ],
     categoria: 'Compras',
     subcategoria: 'Roupas'
   },
   {
-    termos: ['calcado', 'tenis', 'sapato', 'sandalia', 'chinelo', 'bota', 'sapatilha', 'havaianas'],
+    termos: [
+      'calcado', 'calcados', 'tenis', 'sapato', 'sapatos', 'sandalia', 'sandalias',
+      'chinelo', 'chinelos', 'bota', 'botas', 'sapatilha', 'sapatilhas', 'havaianas', 'rasteira'
+    ],
     categoria: 'Compras',
     subcategoria: 'Calçados'
   },

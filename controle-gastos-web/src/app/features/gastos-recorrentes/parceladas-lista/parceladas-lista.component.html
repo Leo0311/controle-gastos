@@ -53,10 +53,10 @@
           <mat-icon>more_vert</mat-icon>
         </button>
         <mat-menu #menuParcelada="matMenu">
-          @if (temVencidas(parcelada.id)) {
-            <button mat-menu-item (click)="marcarVencidasComoPagas(parcelada)">
+          @if (temPendentes(parcelada.id)) {
+            <button mat-menu-item (click)="marcarPendentesComoPagas(parcelada)">
               <mat-icon>check_circle</mat-icon>
-              <span>Marcar parcelas vencidas como pagas</span>
+              <span>Marcar parcelas restantes como pagas</span>
             </button>
           }
           <button mat-menu-item (click)="excluirParcelada(parcelada)">

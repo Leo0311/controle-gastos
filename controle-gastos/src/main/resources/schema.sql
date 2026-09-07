@@ -757,13 +757,28 @@ ALTER TABLE gastos ADD CONSTRAINT gastos_status_pagamento_check
 
 CREATE INDEX IF NOT EXISTS idx_gastos_status_pagamento ON gastos (usuario_id, status_pagamento);
 
--- Migração dos dados existentes (idempotente via IS NULL - reexecutar não repete
--- nada). Gastos já lançados sob o modelo antigo foram tratados como pagos, então
--- a data de pagamento assume a própria data do gasto; e os vinculados a
--- recorrência/parcela ganham vencimento_original (= data) pra poderem ser
--- "desfeitos" de volta ao vencimento.
+-- Migração dos dados existentes (idempotente - reexecutar não repete nada).
+--
+-- Passo 1: ocorrências de recorrência/parcela com vencimento AINDA NO FUTURO nunca
+-- foram efetivamente pagas - só foram pré-geradas sob o modelo antigo de
+-- competência. O DEFAULT 'PAGO' do ALTER acima marcou todas como pagas; aqui as
+-- futuras voltam para PENDENTE, senão sumiriam da aba "Próximas contas" e não
+-- apareceriam como conta a pagar. As ocorrências passadas/correntes ficam PAGO
+-- (contavam no total do mês no modelo antigo - tratá-las como quitadas é o menos
+-- disruptivo). data_pagamento IS NULL garante que um pagamento antecipado real
+-- (raro, mas possível pós-migração) não seja revertido.
+UPDATE gastos SET status_pagamento = 'PENDENTE'
+    WHERE status_pagamento = 'PAGO' AND data_pagamento IS NULL
+      AND data > CURRENT_DATE
+      AND (gasto_recorrente_id IS NOT NULL OR compra_parcelada_id IS NOT NULL);
+
+-- Passo 2: o resto dos PAGO (avulsos + ocorrências passadas de recorrência/parcela)
+-- ganha data de pagamento = a própria data do gasto.
 UPDATE gastos SET data_pagamento = data
     WHERE data_pagamento IS NULL AND status_pagamento = 'PAGO';
+
+-- Passo 3: todo gasto vinculado a recorrência/parcela ganha vencimento_original
+-- (= data) pra poder ser "desfeito" de volta ao vencimento.
 UPDATE gastos SET vencimento_original = data
     WHERE vencimento_original IS NULL
       AND (gasto_recorrente_id IS NOT NULL OR compra_parcelada_id IS NOT NULL);
