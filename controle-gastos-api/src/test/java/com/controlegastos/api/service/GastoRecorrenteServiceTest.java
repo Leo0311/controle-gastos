@@ -44,7 +44,8 @@ import static org.mockito.Mockito.when;
  * A pré-geração de meses (gerarProximosMeses) foi otimizada no achado 2.3:
  * categoria resolvida 1x, sem exists por mês numa recorrência nova, e 1 batch
  * (gastoRepository.inserirEmLote) no lugar de N inserts - por isso os testes
- * capturam os gastos gerados do argumento do inserirEmLote (meses futuros) e do
+ * capturam os gastos gerados do argumento do inserirEmLote (mês corrente + meses
+ * futuros numa recorrência nova; só os futuros numa edição) e do
  * cadastrarVinculadoARecorrente (mês corrente, só no fluxo de edição).
  */
 class GastoRecorrenteServiceTest {
@@ -157,6 +158,28 @@ class GastoRecorrenteServiceTest {
         verify(gastoRepository, never()).existsByGastoRecorrenteIdAndDataBetween(any(), any(), any());
         verify(gastoRepository, never()).datasDosGastosDaRecorrente(any(), any());
         // Um batch só, nunca inserts individuais via cadastrarVinculadoARecorrente.
+        verify(gastoRepository, times(1)).inserirEmLote(any());
+        verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
+    }
+
+    @Test
+    void cadastrar_geraOMesCorrenteMesmoAntesDoDiaDoVencimentoChegar() {
+        // Gap de visibilidade: uma recorrência criada ANTES do dia de vencimento
+        // dela no mês corrente (ex: "todo dia 10" criada no dia 6) não deve sumir
+        // de Gastos/Dashboard/"Próximas contas" até o dia chegar - o mês corrente
+        // é pré-gerado na criação, igual aos meses futuros.
+        LocalDate hoje = LocalDate.now();
+        assumeTrue(hoje.getDayOfMonth() < hoje.lengthOfMonth(),
+                "cenário exige que ainda exista um dia futuro no mês corrente");
+        int diaFuturo = hoje.getDayOfMonth() + 1;
+
+        service.cadastrar(recorrente(diaFuturo, 3), USUARIO);
+
+        assertThat(datasGeradas())
+                .as("mês corrente (dia ainda não vencido) + 2 meses futuros")
+                .contains(hoje.withDayOfMonth(diaFuturo))
+                .hasSize(3);
+        // Recorrência nova: o mês corrente entra no batch, não pelo insert individual.
         verify(gastoRepository, times(1)).inserirEmLote(any());
         verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
     }

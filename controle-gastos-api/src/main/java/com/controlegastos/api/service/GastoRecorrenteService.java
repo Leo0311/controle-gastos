@@ -129,10 +129,14 @@ public class GastoRecorrenteService {
     //   traz todas as datas do horizonte;
     // - os meses a inserir vão num único batch JDBC (inserirEmLote).
     //
-    // Mês corrente (i=0): numa recorrência NOVA entra no mesmo batch quando o dia
-    // já chegou (não há corrida - a recorrência só fica visível pro lançamento
-    // sob demanda depois do commit). Numa EDIÇÃO, continua pelo tentarLancar, que
-    // trata a corrida com um lancarPendentes concorrente do mês corrente.
+    // Mês corrente: numa recorrência NOVA entra SEMPRE no mesmo batch, mesmo que o
+    // dia do vencimento ainda não tenha chegado - senão a recorrência sumiria de
+    // Gastos/Dashboard/"Próximas contas" até o dia chegar. Não há corrida com o
+    // lançamento sob demanda (a recorrência só fica visível pro lancarPendentes
+    // depois do commit desta transação) e o lancarPendentes posterior é idempotente
+    // (exists por mês em tentarLancar + índice uq_gastos_recorrente_mes). Numa
+    // EDIÇÃO, continua pelo tentarLancar, que só cria o mês corrente quando o dia
+    // já chegou e trata a corrida com um lancarPendentes concorrente.
     private void gerarProximosMeses(GastoRecorrente recorrente, Integer usuarioId, int mesesGerar,
                                     CategoriaResolvida categoria, boolean recorrenciaNova) {
         LocalDate hoje = LocalDate.now();
@@ -145,17 +149,14 @@ public class GastoRecorrenteService {
 
         List<Gasto> aInserir = new ArrayList<>();
 
-        int primeiroMesFuturo = 1;
         if (recorrenciaNova) {
             LocalDate dataMesCorrente = dataDoLancamento(recorrente.getDiaDoMes(), hoje);
-            if (!dataMesCorrente.isAfter(hoje)) {
-                aInserir.add(montarGasto(recorrente, categoria, dataMesCorrente, usuarioId));
-            }
+            aInserir.add(montarGasto(recorrente, categoria, dataMesCorrente, usuarioId));
         } else {
             tentarLancar(recorrente, usuarioId, hoje);
         }
 
-        for (int i = primeiroMesFuturo; i < mesesGerar; i++) {
+        for (int i = 1; i < mesesGerar; i++) {
             LocalDate data = dataDoLancamento(recorrente.getDiaDoMes(), hoje.plusMonths(i));
             if (!jaLancados.contains(YearMonth.from(data))) {
                 aInserir.add(montarGasto(recorrente, categoria, data, usuarioId));
