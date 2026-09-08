@@ -16,14 +16,18 @@ O deploy da API é feito pelo workflow **`.github/workflows/deploy-api.yml`** (G
 - **automaticamente** em todo push na `master` cujo diff toque em `controle-gastos-api/**` (ou no próprio arquivo do workflow) — um push que mexa só no frontend, no `README.md` ou no módulo de console **não** roda o deploy;
 - **à mão**, pelo botão *Run workflow* na aba **Actions** do GitHub (`workflow_dispatch`) — útil pra reimplantar sem um commit novo.
 
-O que ele faz, conectando na VM por SSH (chave privada guardada como secret do GitHub, nunca no repo):
+O workflow tem **dois jobs em sequência**:
+
+**1. `migration-guard`** — antes de qualquer coisa tocar a VM, sobe um PostgreSQL 18 descartável e roda `./mvnw test` (com o Flyway ativo) em dois cenários de matriz: **banco vazio** (o Flyway aplica todas as migrations do zero) e **banco pré-carregado com o `schema.sql` atual** (o Flyway grava o baseline e aplica só as migrations novas por cima). Uma migration quebrada falha aqui e o `deploy` **nem roda**.
+
+**2. `deploy`** — só executa se o `migration-guard` passar. Conecta na VM por SSH (chave privada guardada como secret do GitHub, nunca no repo) e:
 
 1. `git pull --ff-only` na raiz do repo na VM (falha de propósito se a working tree da VM tiver mudança local pendente);
 2. `cd controle-gastos-api && ./mvnw clean package -DskipTests`;
-3. `sudo systemctl restart controle-gastos`;
+3. `sudo systemctl restart controle-gastos` — **no restart, o Flyway aplica automaticamente no Neon as migrations pendentes**, antes do `ddl-auto=validate`;
 4. consulta `GET /api/health` pela URL pública, repetindo por até ~2 min. Se não vier `{"status":"UP"}`, **o workflow falha** — e a falha dispara o e-mail padrão de "workflow failed" do GitHub (sem configuração extra).
 
-Como **não há migração automática de schema**, um push que mexa em `schema.sql` ou numa entidade JPA continua exigindo aplicar o SQL no Neon **à mão, antes** do deploy rodar (ver `controle-gastos-api` / skill `banco-schema`) — o `./mvnw package` com `ddl-auto=validate` quebra o restart se o banco não bater.
+**Mudança de schema não tem mais passo manual no Neon.** Crie um `controle-gastos-api/src/main/resources/db/migration/V{próximo número}__descricao.sql` (o `V1__baseline.sql` já reflete o schema atual), commite junto com o `@Column` da entidade e dê push — o `migration-guard` valida e o `deploy` aplica. Ver `controle-gastos-api` / skill `banco-schema`.
 
 #### Secrets necessários (Settings ▸ Secrets and variables ▸ Actions ▸ *New repository secret*)
 
@@ -35,6 +39,7 @@ Como **não há migração automática de schema**, um push que mexa em `schema.
 | `VM_REPO_PATH` | caminho absoluto da raiz do repo clonado na VM (ex.: `/home/ubuntu/controle-gastos`) | sim |
 | `VM_SSH_PORT` | porta SSH, se não for a 22 | não (default `22`) |
 | `VM_SSH_KNOWN_HOSTS` | saída de `ssh-keyscan <host>` rodado numa máquina confiável — fixa a identidade da VM. Sem esse secret, a host key é buscada por `ssh-keyscan` a cada execução (TOFU, mais frágil a MITM) | não (recomendado) |
+| `CI_DB_PASSWORD` | senha do PostgreSQL efêmero do job `migration-guard` — qualquer string aleatória, não toca produção. Se vazio, o container não sobe e o guard falha | sim |
 
 #### Preparo na VM (uma vez)
 
@@ -193,7 +198,7 @@ No Dashboard, o usuário define uma renda mensal (global, vale para todos os mes
 Quando há **contas atrasadas** (Pendente com vencimento no passado, de qualquer mês), um destaque em tom de alerta no topo mostra o **contador e o valor total em aberto** e abre uma lista de quitação (marcar cada uma como paga sem sair do Dashboard). Dois cards de totais do mês/ano selecionado (o card do mês também mostra quantos gastos estão cadastrados no período), gráfico de pizza (distribuição por categoria, sempre do mês/ano selecionado, independente do toggle abaixo) e um gráfico de barras que muda de acordo com o toggle "Destacar mês"/"Destacar ano": com "Destacar mês" (padrão), mostra o total gasto em cada dia do mês selecionado (dia 1 até o último dia); com "Destacar ano", mostra os 12 meses (Jan-Dez) do ano selecionado — com rolagem horizontal quando as barras não cabem na tela, especialmente no mobile. Os cards de total e ambos os gráficos são clicáveis (os cards também respondem a Enter e Espaço quando focados pelo teclado), abrindo o detalhamento dos gastos do dia/mês/categoria selecionado.
 
 ### Estado de erro de carregamento
-Quando uma chamada à API falha (backend fora do ar, erro de rede), Dashboard, Gastos, Orçamentos, Análises, Recorrentes e Categorias mostram um **estado de erro claro** no lugar do conteúdo — ícone, "Não foi possível carregar [X]. Verifique se a API está no ar." e um botão **"Tentar novamente"** que refaz o carregamento — em vez de cair no _empty state_ ("Nenhum gasto cadastrado ainda."), que parecia "sem dados" quando na verdade houve uma falha. É um componente compartilhado (`app-erro-carregamento`, contrapartida do `app-empty-state`). Ao refiltrar (mês/ano/categoria) e a chamada falhar, os dados antigos são limpos antes de mostrar o erro, pra não exibir informação desatualizada com o filtro errado. Na tela de Recorrentes/Parceladas/Próximas contas, cada aba carrega e trata o erro separadamente, com seu próprio botão de repetir. Importante porque qualquer indisponibilidade da API — restart durante o deploy manual, queda da VM, erro de rede — precisa aparecer como falha explícita, não como "você não tem nada cadastrado".
+Quando uma chamada à API falha (backend fora do ar, erro de rede), Dashboard, Gastos, Orçamentos, Análises, Recorrentes e Categorias mostram um **estado de erro claro** no lugar do conteúdo — ícone, "Não foi possível carregar [X]. Verifique se a API está no ar." e um botão **"Tentar novamente"** que refaz o carregamento — em vez de cair no _empty state_ ("Nenhum gasto cadastrado ainda."), que parecia "sem dados" quando na verdade houve uma falha. É um componente compartilhado (`app-erro-carregamento`, contrapartida do `app-empty-state`). Ao refiltrar (mês/ano/categoria) e a chamada falhar, os dados antigos são limpos antes de mostrar o erro, pra não exibir informação desatualizada com o filtro errado. Na tela de Recorrentes/Parceladas/Próximas contas, cada aba carrega e trata o erro separadamente, com seu próprio botão de repetir. Importante porque qualquer indisponibilidade da API — restart durante o deploy, queda da VM, erro de rede — precisa aparecer como falha explícita, não como "você não tem nada cadastrado".
 
 ### Análises
 Tela dedicada com três recursos de análise do mês/ano selecionado (mesmo seletor do Dashboard): um **ranking de categorias** (maior para o menor gasto, com emoji, valor e percentual do total do mês), expansível para ver o ranking de subcategorias dentro de cada categoria; uma **comparação com o mês anterior**, categoria a categoria, mostrando a variação em valor e percentual com uma seta ↑/↓ indicando alta ou queda — sem cor: gastar mais numa categoria não é intrinsecamente "ruim", e o vermelho/verde fica reservado aos status de orçamento — e uma marcação "Nova" para categorias sem gasto no mês anterior — cada linha é um painel expansível (mesmo padrão do ranking) que abre um detalhamento com os totais dos dois meses lado a lado e a variação em valor absoluto; e um **alerta visual** (badge laranja) quando uma categoria sozinha consome mais de 30% da renda mensal já cadastrada (feature de Metas de Economia) — sem renda cadastrada, o alerta simplesmente não aparece, sem afetar o resto da tela.
@@ -243,9 +248,9 @@ As três partes usam o mesmo banco `controle_gastos`. Crie o banco:
 CREATE DATABASE controle_gastos;
 ```
 
-Depois, conectado a esse banco, rode o script `controle-gastos/src/main/resources/schema.sql`, que cria as tabelas usadas pela aplicação (`usuarios`, `gastos`, `orcamentos`, `metas`, `categorias`, `subcategorias`, etc.) e, se já houver dados de uma versão anterior à existência de categorias geridas, migra automaticamente a categoria/subcategoria em texto livre de cada gasto/orçamento para uma categoria/subcategoria gerida correspondente.
+**API (`controle-gastos-api`):** o schema é versionado com [Flyway](https://flywaydb.org/). A API aplica as migrations (`src/main/resources/db/migration/V*.sql`) sozinha no boot — num banco vazio o Flyway cria tudo do zero; num banco que já tem as tabelas ele grava o baseline (`V1`) e aplica só o que falta. Não é preciso rodar nada à mão, nem localmente nem em produção.
 
-O script é idempotente: pode (e deve) ser reexecutado num banco já existente ao atualizar a aplicação, para aplicar migrações incrementais. A mais recente adiciona a coluna `usuarios.token_version` (usada na revogação de JWT ao trocar a senha) — usuários já existentes assumem versão `0` (`DEFAULT 0`), então reexecutar o script não desloga ninguém.
+**Console Java (`controle-gastos`):** não usa Spring nem Flyway. Rode o script `controle-gastos/src/main/resources/schema.sql` à mão nesse banco — ele cria as mesmas tabelas (`usuarios`, `gastos`, `orcamentos`, `metas`, `categorias`, `subcategorias`, etc.), é idempotente e espelha o conteúdo do `V1__baseline.sql` da API.
 
 ## Como rodar cada parte localmente
 
@@ -285,7 +290,7 @@ Acesse em `http://localhost:4200`.
 
 ### Ordem recomendada para rodar tudo
 
-1. PostgreSQL no ar, com o banco e as tabelas criadas (`schema.sql`)
+1. PostgreSQL no ar, com o banco `controle_gastos` criado (a API cria as tabelas via Flyway no boot; o console precisa do `schema.sql` rodado à mão)
 2. API (`controle-gastos-api`) — porta 8080
 3. Frontend (`controle-gastos-web`) — porta 4200
 

@@ -11,17 +11,25 @@ banco no Neon.
 
 - **`git push` na `master` publica o frontend na hora** — Render Static Site, sem
   staging nem PR.
-- **A API sobe por GitHub Actions** (`.github/workflows/deploy-api.yml`), disparado no
-  push na `master` **quando o diff toca `controle-gastos-api/**`** (push só de frontend/
-  README/console não roda nada). O workflow conecta na VM por SSH e faz `git pull
-  --ff-only` + `./mvnw clean package -DskipTests` + `sudo systemctl restart
-  controle-gastos`, depois checa `GET /api/health` pela URL pública — se não voltar
-  `{"status":"UP"}` em ~2min, o workflow **falha** e o GitHub manda e-mail. Fallback
-  manual na VM (se o workflow falhar): os mesmos três comandos, na raiz do repo.
-- **O workflow NÃO migra schema nem dados.** Mexeu em `schema.sql` ou numa entidade
-  JPA: aplique o SQL no Neon **à mão, ANTES do push** (o `ddl-auto=validate` derruba o
-  restart se o banco não bater — ver skill `banco-schema`). Antes de um push que
-  envolva schema, migração de dados ou mexida em auth, diga o que vai ao ar e confirme.
+- **A API sobe por GitHub Actions** (`.github/workflows/deploy-api.yml`), no push na
+  `master` que toque `controle-gastos-api/**` (ou `schema.sql`, ou o próprio workflow —
+  push só de frontend/README não roda nada). Dois jobs: **`migration-guard`** roda a
+  suíte com o Flyway ativo contra um Postgres descartável em dois cenários (banco vazio
+  e banco com o `schema.sql` atual); **só se ele passar**, **`deploy`** faz SSH na VM →
+  `git pull --ff-only` + `./mvnw clean package -DskipTests` + `sudo systemctl restart
+  controle-gastos` → checa `GET /api/health` pela URL pública (se não voltar
+  `{"status":"UP"}` em ~2min o workflow **falha** e o GitHub manda e-mail). Migration
+  ruim para no `migration-guard` e nem chega na VM. Fallback manual na VM (se o
+  workflow falhar): os mesmos três comandos, na raiz do repo.
+- **Mudança de schema = migration do Flyway, aplicada sozinha no deploy.** Crie um novo
+  `controle-gastos-api/src/main/resources/db/migration/V{próximo número}__descricao.sql`
+  + o `@Column` correspondente na entidade, no mesmo commit; commite e dê push. O
+  `migration-guard` valida a migration; no `systemctl restart` o Flyway aplica as
+  pendentes no Neon **antes** do `ddl-auto=validate`. **Não existe mais passo manual no
+  SQL Editor do Neon.** Nunca edite um `V-n` já aplicado — sempre um arquivo novo
+  (`V1__baseline.sql` já reflete o schema atual). Migration nova não precisa ser
+  idempotente. Antes de um push que envolva schema, migração de dados ou mexida em
+  auth, diga o que vai ao ar e confirme. Ver skill `banco-schema`.
 - **Nunca use `Stop-Process` por nome ou regex** (`java`, `node`, …) — já matou a shell
   da própria sessão e os JVMs dos testes. Mate pelo dono da porta (skill `ambiente-local`).
 - **Não atualize dependências reativamente.** Nada de `npm audit fix --force`,
@@ -41,7 +49,8 @@ banco no Neon.
 - **`backend-api`** — editar qualquer `.java` em `controle-gastos-api/`.
 - **`frontend-angular`** — editar código em `controle-gastos-web/src/app/`. Decisão
   visual é `anti-ui-slop`, não essa.
-- **`banco-schema`** — qualquer mudança em `schema.sql` ou numa entidade JPA (`model/`).
+- **`banco-schema`** — migration nova (`controle-gastos-api/src/main/resources/db/migration/V*.sql`),
+  mudança em `schema.sql` ou numa entidade JPA (`model/`).
 - **`ambiente-local`** — subir/derrubar servidores, rodar testes, semear/limpar dados
   de teste, testar no navegador.
 - **`anti-ui-slop`** — desenho de tela nova, redesign, layout/paleta, auditoria visual.
