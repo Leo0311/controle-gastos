@@ -184,8 +184,9 @@ export class GastosComponent implements OnInit {
     });
 
     // Verifica e lança gastos recorrentes pendentes do mês, de forma transparente
-    // (sem aviso algum) - só recarrega a lista se algo novo foi lançado.
-    this.gastoRecorrenteService.lancarPendentes().subscribe({
+    // (sem aviso algum) - só recarrega a lista se algo novo foi lançado. Throttle de
+    // 5 min no service (era 1 POST a cada mount de Dashboard/Gastos).
+    this.gastoRecorrenteService.lancarPendentesSeNecessario().subscribe({
       next: (lancados) => {
         if (lancados.length > 0) {
           this.carregar();

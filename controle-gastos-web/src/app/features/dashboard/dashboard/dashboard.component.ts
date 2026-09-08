@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
@@ -194,6 +195,7 @@ export class DashboardComponent implements OnInit {
     private readonly categoriaService: CategoriaService,
     private readonly gastoRecorrenteService: GastoRecorrenteService,
     private readonly temaService: TemaService,
+    private readonly destroyRef: DestroyRef,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
     // Mesmo CurrencyPipe usado no template (ver imports) - reaproveitado aqui via
@@ -212,7 +214,7 @@ export class DashboardComponent implements OnInit {
     // remontada: sua 1ª fatia é o azul-petróleo da identidade, que troca de tom
     // entre os temas (ver coresCategorias) - sem isso ela ficaria com a cor do
     // tema anterior até o próximo carregar().
-    this.temaService.escuro$.subscribe((escuro) => {
+    this.temaService.escuro$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((escuro) => {
       this.escuro = escuro;
       this.pizzaOptions = this.construirPizzaOptions(escuro);
       this.barrasOptions = this.construirBarrasOptions(escuro);
@@ -222,8 +224,9 @@ export class DashboardComponent implements OnInit {
     this.carregar();
 
     // Verifica e lança gastos recorrentes pendentes do mês, de forma transparente
-    // (sem aviso algum) - só recarrega os totais se algo novo foi lançado.
-    this.gastoRecorrenteService.lancarPendentes().subscribe({
+    // (sem aviso algum) - só recarrega os totais se algo novo foi lançado. O
+    // throttle de 5 min vive no service (era 1 POST a cada mount de Dashboard/Gastos).
+    this.gastoRecorrenteService.lancarPendentesSeNecessario().subscribe({
       next: (lancados) => {
         if (lancados.length > 0) {
           this.carregar();
