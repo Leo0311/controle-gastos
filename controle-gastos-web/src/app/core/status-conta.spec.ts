@@ -37,6 +37,20 @@ describe('status-conta', () => {
       }), hoje)).toBe('PENDENTE');
     });
 
+    // Fronteira da regra: no PRÓPRIO dia do vencimento a conta ainda é Pendente;
+    // só vira Atrasada a partir do dia seguinte (bug do fuso, 2026-09-08).
+    it('PENDENTE quando o vencimento é exatamente hoje', () => {
+      expect(statusDaConta(gasto({
+        statusPagamento: 'PENDENTE', vencimentoOriginal: hoje
+      }), hoje)).toBe('PENDENTE');
+    });
+
+    it('ATRASADA só a partir do dia seguinte ao vencimento', () => {
+      expect(statusDaConta(gasto({
+        statusPagamento: 'PENDENTE', vencimentoOriginal: '2026-09-14'
+      }), hoje)).toBe('ATRASADA');
+    });
+
     it('usa a própria data como vencimento quando vencimentoOriginal falta (legado)', () => {
       expect(statusDaConta(gasto({
         statusPagamento: 'PENDENTE', data: '2026-09-10', vencimentoOriginal: null
