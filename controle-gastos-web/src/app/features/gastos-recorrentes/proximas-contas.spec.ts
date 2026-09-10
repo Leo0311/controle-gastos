@@ -1,7 +1,6 @@
 import { Gasto } from '../../models/gasto.model';
 import {
   agruparProximasContas,
-  contarLancamentosFuturosPorRecorrente,
   formatarDiaMes,
   hojeIso,
   rotuloMes
@@ -113,30 +112,6 @@ describe('proximas-contas (lógica pura da aba)', () => {
     it('devolve lista vazia quando não há conta pendente', () => {
       expect(agruparProximasContas([], hoje)).toEqual([]);
       expect(agruparProximasContas([gasto({ statusPagamento: 'PAGO' })], hoje)).toEqual([]);
-    });
-  });
-
-  describe('contarLancamentosFuturosPorRecorrente', () => {
-    const hoje = '2026-09-01';
-
-    it('conta só gastos com data >= hoje vinculados a uma recorrência, por id', () => {
-      const gastos = [
-        gasto({ data: '2026-09-10', gastoRecorrenteId: 1 }),
-        gasto({ data: '2026-10-10', gastoRecorrenteId: 1 }),
-        gasto({ data: '2026-08-10', gastoRecorrenteId: 1 }),   // passado - fora
-        gasto({ data: '2026-09-10', gastoRecorrenteId: 2 }),
-        gasto({ data: '2026-09-10', compraParceladaId: 5, gastoRecorrenteId: null }) // parcela - fora
-      ];
-
-      const mapa = contarLancamentosFuturosPorRecorrente(gastos, hoje);
-
-      expect(mapa.get(1)).toBe(2);
-      expect(mapa.get(2)).toBe(1);
-      expect(mapa.has(5)).toBe(false);
-    });
-
-    it('devolve mapa vazio quando não há lançamentos futuros de recorrência', () => {
-      expect(contarLancamentosFuturosPorRecorrente([], hoje).size).toBe(0);
     });
   });
 });

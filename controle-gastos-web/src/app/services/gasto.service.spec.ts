@@ -82,4 +82,21 @@ describe('GastoService', () => {
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });
+
+  it('proximasContas faz GET /gastos/proximas-contas?meses=N', () => {
+    service.proximasContas(3).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === `${API_BASE_URL}/gastos/proximas-contas`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('meses')).toBe('3');
+    req.flush([]);
+  });
+
+  it('statusPorFonte faz GET /gastos/status-por-fonte', () => {
+    service.statusPorFonte().subscribe();
+
+    const req = httpMock.expectOne(`${API_BASE_URL}/gastos/status-por-fonte`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
 });

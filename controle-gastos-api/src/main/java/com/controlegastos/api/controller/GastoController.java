@@ -5,6 +5,7 @@ import com.controlegastos.api.dto.GastoPaginaDTO;
 import com.controlegastos.api.dto.PagamentoDTO;
 import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.ResumoDTO;
+import com.controlegastos.api.dto.StatusPorFonteDTO;
 import com.controlegastos.api.dto.TotalDiarioDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
 import com.controlegastos.api.model.Gasto;
@@ -115,6 +116,23 @@ public class GastoController {
     @GetMapping("/vence-hoje")
     public List<Gasto> venceHoje(@AuthenticationPrincipal UsuarioPrincipal usuario) {
         return service.venceHoje(usuario.usuarioId());
+    }
+
+    // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas até o
+    // fim do mês a `meses` de distância + todas as atrasadas. meses: 1..12 (default
+    // 1); fora do range o service lança IllegalArgumentException -> 400.
+    @GetMapping("/proximas-contas")
+    public List<Gasto> proximasContas(
+            @RequestParam(defaultValue = "1") int meses,
+            @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.proximasContas(usuario.usuarioId(), meses);
+    }
+
+    // Contadores agregados (pendentes/atrasadas/futuros) por recorrência e por
+    // compra parcelada - badges das abas Recorrentes e Parceladas.
+    @GetMapping("/status-por-fonte")
+    public List<StatusPorFonteDTO> statusPorFonte(@AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.statusPorFonte(usuario.usuarioId());
     }
 
     @GetMapping("/categoria/{categoria}")

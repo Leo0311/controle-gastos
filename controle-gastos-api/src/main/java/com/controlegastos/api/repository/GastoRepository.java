@@ -127,6 +127,51 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
             + "AND g.vencimentoOriginal = :hoje ORDER BY g.id ASC")
     List<Gasto> venceHoje(@Param("usuarioId") Integer usuarioId, @Param("hoje") LocalDate hoje);
 
+    // Agenda da aba "Próximas contas": ocorrências de recorrência/parcela ainda
+    // PENDENTES com vencimento até :fimHorizonte. Como o horizonte é sempre >= hoje,
+    // um único teto pega tanto as ATRASADAS (vencimento < hoje) quanto as futuras
+    // dentro da janela de meses escolhida na tela - mesma noção de "atrasada" das
+    // queries atrasadas()/venceHoje() (PENDENTE + vencimento_original), sem repetir
+    // regra. Ordenadas por vencimento; o agrupamento por mês é no cliente.
+    @Query("SELECT g FROM Gasto g WHERE g.usuarioId = :usuarioId "
+            + "AND (g.gastoRecorrenteId IS NOT NULL OR g.compraParceladaId IS NOT NULL) "
+            + "AND g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "AND g.vencimentoOriginal <= :fimHorizonte "
+            + "ORDER BY g.vencimentoOriginal ASC, g.id ASC")
+    List<Gasto> agendaProximasContas(
+            @Param("usuarioId") Integer usuarioId, @Param("fimHorizonte") LocalDate fimHorizonte);
+
+    // Contadores agregados por recorrência: numa query só (GROUP BY), quantas
+    // ocorrências dela estão atrasadas, quantas pendentes ainda não vencidas, e
+    // quantos lançamentos futuros já foram gerados (data >= hoje, qualquer status -
+    // um pré-gerado pago cedo continua sendo um lançamento futuro que a pausa não
+    // remove). "atrasada"/"pendente" usam PENDENTE + vencimento_original, igual às
+    // queries atrasadas()/venceHoje(). Alimenta os badges e o "N lançamentos
+    // futuros" da aba Recorrentes sem baixar a lista inteira de gastos no cliente.
+    @Query("SELECT g.gastoRecorrenteId AS fonteId, "
+            + "SUM(CASE WHEN g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "         AND g.vencimentoOriginal < :hoje THEN 1 ELSE 0 END) AS atrasadas, "
+            + "SUM(CASE WHEN g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "         AND g.vencimentoOriginal >= :hoje THEN 1 ELSE 0 END) AS pendentes, "
+            + "SUM(CASE WHEN g.data >= :hoje THEN 1 ELSE 0 END) AS futuros "
+            + "FROM Gasto g WHERE g.usuarioId = :usuarioId AND g.gastoRecorrenteId IS NOT NULL "
+            + "GROUP BY g.gastoRecorrenteId")
+    List<ContagemStatusFonte> contarStatusPorRecorrente(
+            @Param("usuarioId") Integer usuarioId, @Param("hoje") LocalDate hoje);
+
+    // Igual a contarStatusPorRecorrente, mas por compra parcelada. `futuros` vem
+    // junto pela simetria da projeção; a tela Parceladas usa só atrasadas/pendentes.
+    @Query("SELECT g.compraParceladaId AS fonteId, "
+            + "SUM(CASE WHEN g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "         AND g.vencimentoOriginal < :hoje THEN 1 ELSE 0 END) AS atrasadas, "
+            + "SUM(CASE WHEN g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "         AND g.vencimentoOriginal >= :hoje THEN 1 ELSE 0 END) AS pendentes, "
+            + "SUM(CASE WHEN g.data >= :hoje THEN 1 ELSE 0 END) AS futuros "
+            + "FROM Gasto g WHERE g.usuarioId = :usuarioId AND g.compraParceladaId IS NOT NULL "
+            + "GROUP BY g.compraParceladaId")
+    List<ContagemStatusFonte> contarStatusPorParcelada(
+            @Param("usuarioId") Integer usuarioId, @Param("hoje") LocalDate hoje);
+
     // Apaga TODOS os gastos de uma recorrência (passados e futuros) numa tacada -
     // parte da exclusão em cascata da recorrência (ver
     // GastoService.excluirRecorrenciaEmCascata). Roda antes do delete da própria
@@ -191,6 +236,19 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
         Integer getCompraId();
 
         long getTotal();
+    }
+
+    // Projeção de contarStatusPorRecorrente/contarStatusPorParcelada: id da fonte
+    // (recorrência ou compra) + contagens. fonteId nunca é null (as queries filtram
+    // IS NOT NULL antes do GROUP BY).
+    interface ContagemStatusFonte {
+        Integer getFonteId();
+
+        long getAtrasadas();
+
+        long getPendentes();
+
+        long getFuturos();
     }
 
     interface CategoriaTotal {

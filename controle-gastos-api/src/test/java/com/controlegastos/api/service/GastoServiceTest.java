@@ -1,6 +1,7 @@
 package com.controlegastos.api.service;
 
 import com.controlegastos.api.dto.GastoPaginaDTO;
+import com.controlegastos.api.dto.StatusPorFonteDTO;
 import com.controlegastos.api.exception.GastoDuplicadoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
@@ -23,11 +24,13 @@ import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -275,6 +278,64 @@ class GastoServiceTest {
         when(repository.venceHoje(USUARIO, LocalDate.now())).thenReturn(List.of(new Gasto(), new Gasto()));
 
         assertThat(service.venceHoje(USUARIO)).hasSize(2);
+    }
+
+    // ---------- aba "Próximas contas": agenda + contadores (abordagem B+D) ----------
+
+    @Test
+    void proximasContas_meses1_usaOFimDoMesQueVem() {
+        when(repository.agendaProximasContas(eq(USUARIO), any(LocalDate.class))).thenReturn(List.of(new Gasto()));
+
+        service.proximasContas(USUARIO, 1);
+
+        LocalDate fimEsperado = YearMonth.now().plusMonths(1).atEndOfMonth();
+        verify(repository).agendaProximasContas(USUARIO, fimEsperado);
+    }
+
+    @Test
+    void proximasContas_meses12_usaOFimDoDecimoSegundoMes() {
+        when(repository.agendaProximasContas(eq(USUARIO), any(LocalDate.class))).thenReturn(List.of());
+
+        service.proximasContas(USUARIO, 12);
+
+        verify(repository).agendaProximasContas(USUARIO, YearMonth.now().plusMonths(12).atEndOfMonth());
+    }
+
+    @Test
+    void proximasContas_foraDoRange_rejeitaSemConsultarBanco() {
+        assertThatThrownBy(() -> service.proximasContas(USUARIO, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.proximasContas(USUARIO, 13))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(repository, never()).agendaProximasContas(any(), any());
+    }
+
+    @Test
+    void statusPorFonte_marcaOTipoDeCadaContagem() {
+        when(repository.contarStatusPorRecorrente(USUARIO, LocalDate.now()))
+                .thenReturn(List.of(contagem(7, 1L, 2L, 3L)));
+        when(repository.contarStatusPorParcelada(USUARIO, LocalDate.now()))
+                .thenReturn(List.of(contagem(9, 0L, 4L, 4L)));
+
+        var resultado = service.statusPorFonte(USUARIO);
+
+        assertThat(resultado).extracting(
+                StatusPorFonteDTO::tipo, StatusPorFonteDTO::id,
+                StatusPorFonteDTO::pendentes, StatusPorFonteDTO::atrasadas, StatusPorFonteDTO::futuros)
+                .containsExactly(
+                        tuple("RECORRENTE", 7, 2L, 1L, 3L),
+                        tuple("PARCELADA", 9, 4L, 0L, 4L));
+    }
+
+    private static GastoRepository.ContagemStatusFonte contagem(
+            int fonteId, long atrasadas, long pendentes, long futuros) {
+        return new GastoRepository.ContagemStatusFonte() {
+            public Integer getFonteId() { return fonteId; }
+            public long getAtrasadas() { return atrasadas; }
+            public long getPendentes() { return pendentes; }
+            public long getFuturos() { return futuros; }
+        };
     }
 
     // ---------- deduplicação da importação (achado M6) ----------

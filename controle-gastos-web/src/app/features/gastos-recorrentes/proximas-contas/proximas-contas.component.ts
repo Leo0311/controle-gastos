@@ -1,6 +1,7 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
@@ -22,12 +23,15 @@ import {
 } from '../../../shared/pagar-conta-dialog/pagar-conta-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 
+/** Opções do seletor de janela de meses da agenda. */
+const OPCOES_MESES = [1, 3, 6, 12] as const;
+
 /**
- * Aba "Próximas contas" (achado M8). O componente pai carrega os gastos e monta o
- * `calendario` (ver proximas-contas.ts); aqui fica só a janela de meses visíveis
- * (uma parcelada de 120x são 120 mat-expansion-panel - renderizar todos de uma
- * vez trava a rolagem), a view e as ações de pagamento (item a item e "marcar mês
- * como pago" para os itens vencidos de um mês).
+ * Aba "Próximas contas" (achado M8). O componente pai carrega a agenda
+ * (GET /api/gastos/proximas-contas?meses=N) e monta o `calendario`; aqui fica o
+ * seletor de janela de meses (1 / 3 / 6 / 12), a view por mês e as ações de
+ * pagamento (item a item e "marcar mês como pago"). Trocar o seletor emite
+ * `mesesAlterados` e o pai rebusca só a agenda, com spinner na lista.
  */
 @Component({
   selector: 'app-proximas-contas',
@@ -35,6 +39,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confi
   imports: [
     CurrencyPipe,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatChipsModule,
     MatMenuModule,
@@ -47,59 +52,31 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confi
   templateUrl: './proximas-contas.component.html',
   styleUrls: ['./proximas-contas.component.css', '../aba-comum.css']
 })
-export class ProximasContasComponent implements OnChanges {
+export class ProximasContasComponent {
 
-  // calendario = todos os meses (o pai já monta tudo; o agrupamento é no cliente).
+  // calendario = os meses da janela atual, já agrupados pelo pai.
   @Input() calendario: GrupoMesCalendario[] = [];
   @Input() carregando = false;
   @Input() erro = false;
+  // Janela de meses selecionada (controlada pelo pai, que faz a busca).
+  @Input() meses = 1;
+  @Output() mesesAlterados = new EventEmitter<number>();
   @Output() tentarNovamente = new EventEmitter<void>();
   // Emitido depois que uma conta (ou um mês) é marcada como paga - o pai recarrega
-  // os gastos e remonta o calendário/badges.
+  // agenda + contadores.
   @Output() contaPaga = new EventEmitter<void>();
 
   private readonly dialog = inject(MatDialog);
   private readonly gastoService = inject(GastoService);
   private readonly notificacao = inject(NotificacaoService);
 
-  // calendarioVisivel = só a janela renderizada - não muda tráfego nem tempo de
-  // resposta, só o que vai pro DOM.
-  calendarioVisivel: GrupoMesCalendario[] = [];
-  mesesRestantes = 0;
-  proximoBloco = 0;
-  private readonly INCREMENTO_MESES = 12;
-  private mesesVisiveis = this.INCREMENTO_MESES;
-
+  protected readonly opcoesMeses = OPCOES_MESES;
   protected readonly formatarDiaMes = formatarDiaMes;
   protected readonly rotuloStatus = rotuloStatus;
   protected readonly classeStatus = classeStatus;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['calendario']) {
-      // Lista nova (primeira carga ou recarga) reinicia a janela nos 12 primeiros
-      // meses, igual ao carregarCalendario original.
-      this.mesesVisiveis = this.INCREMENTO_MESES;
-      this.atualizarJanela();
-    }
-  }
-
-  // Recorta calendario na janela atual e recalcula quanto ainda falta. Os meses
-  // revelados entram DEPOIS do botão (que fica no fim da lista), então a rolagem
-  // não pula: o conteúdo acima do ponto de scroll não muda, o botão só desce.
-  private atualizarJanela(): void {
-    this.calendarioVisivel = this.calendario.slice(0, this.mesesVisiveis);
-    this.mesesRestantes = Math.max(0, this.calendario.length - this.mesesVisiveis);
-    this.proximoBloco = Math.min(this.INCREMENTO_MESES, this.mesesRestantes);
-  }
-
-  verMaisMeses(): void {
-    this.mesesVisiveis += this.INCREMENTO_MESES;
-    this.atualizarJanela();
-  }
-
-  verTodosOsMeses(): void {
-    this.mesesVisiveis = this.calendario.length;
-    this.atualizarJanela();
+  onMesesChange(evento: MatButtonToggleChange): void {
+    this.mesesAlterados.emit(evento.value);
   }
 
   // "Marcar como paga" de um item da agenda: abre o diálogo de confirmação (valor

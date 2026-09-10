@@ -45,25 +45,10 @@ export function classeStatus(status: StatusConta): string {
   return status.toLowerCase();
 }
 
+// Contagem agregada de ocorrências de uma fonte (recorrência/parcela) por status.
+// Os totais vêm do backend (GET /api/gastos/status-por-fonte); este tipo é só o
+// formato que os badges das abas Recorrentes/Parceladas consomem.
 export interface ResumoStatusConta {
   pendentes: number;
   atrasadas: number;
-}
-
-/**
- * Conta, entre uma lista de gastos, quantos estão PENDENTES e quantos ATRASADOS -
- * usado nos badges agregados das abas Recorrentes/Parceladas, onde a linha é a
- * fonte inteira (várias ocorrências), não um gasto só.
- */
-export function agregarStatus(gastos: Gasto[], hoje: string = hojeIso()): ResumoStatusConta {
-  const resumo: ResumoStatusConta = { pendentes: 0, atrasadas: 0 };
-  for (const gasto of gastos) {
-    const status = statusDaConta(gasto, hoje);
-    if (status === 'ATRASADA') {
-      resumo.atrasadas++;
-    } else if (status === 'PENDENTE') {
-      resumo.pendentes++;
-    }
-  }
-  return resumo;
 }

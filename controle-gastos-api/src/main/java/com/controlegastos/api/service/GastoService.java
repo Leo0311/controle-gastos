@@ -8,6 +8,7 @@ import com.controlegastos.api.dto.RankingCategoriaDTO;
 import com.controlegastos.api.dto.RankingCategoriasDTO;
 import com.controlegastos.api.dto.RankingSubcategoriaDTO;
 import com.controlegastos.api.dto.ResumoDTO;
+import com.controlegastos.api.dto.StatusPorFonteDTO;
 import com.controlegastos.api.dto.TotalDiarioDTO;
 import com.controlegastos.api.dto.TotalMensalDTO;
 import com.controlegastos.api.exception.GastoDuplicadoException;
@@ -316,6 +317,43 @@ public class GastoService {
     // âmbar do Dashboard, irmão de atrasadas().
     public List<Gasto> venceHoje(Integer usuarioId) {
         return repository.venceHoje(usuarioId, LocalDate.now());
+    }
+
+    // Menor e maior janela aceitas pela aba "Próximas contas" (seletor 1/3/6/12).
+    private static final int PROXIMAS_CONTAS_MESES_MIN = 1;
+    private static final int PROXIMAS_CONTAS_MESES_MAX = 12;
+
+    // Agenda da aba "Próximas contas": ocorrências de recorrência/parcela ainda não
+    // pagas até o fim do mês que está a `meses` meses de distância - mais TODAS as
+    // atrasadas, independente de `meses` (o teto único da query já cobre, porque
+    // atrasada é vencimento < hoje <= fimHorizonte). Substitui o antigo
+    // GET /api/gastos (histórico inteiro) que a tela baixava só pra filtrar no cliente.
+    public List<Gasto> proximasContas(Integer usuarioId, int meses) {
+        if (meses < PROXIMAS_CONTAS_MESES_MIN || meses > PROXIMAS_CONTAS_MESES_MAX) {
+            throw new IllegalArgumentException(
+                    "O parâmetro 'meses' deve estar entre " + PROXIMAS_CONTAS_MESES_MIN
+                    + " e " + PROXIMAS_CONTAS_MESES_MAX + ".");
+        }
+        LocalDate fimHorizonte = YearMonth.now().plusMonths(meses).atEndOfMonth();
+        return repository.agendaProximasContas(usuarioId, fimHorizonte);
+    }
+
+    // Contadores por recorrência e por compra parcelada (pendentes / atrasadas /
+    // lançamentos futuros), cada conjunto numa query agregada. Alimenta os badges
+    // das abas Recorrentes e Parceladas e o "N lançamentos futuros" - antes o
+    // cliente derivava isso da lista completa de gastos.
+    public List<StatusPorFonteDTO> statusPorFonte(Integer usuarioId) {
+        LocalDate hoje = LocalDate.now();
+        List<StatusPorFonteDTO> resultado = new ArrayList<>();
+        for (var c : repository.contarStatusPorRecorrente(usuarioId, hoje)) {
+            resultado.add(new StatusPorFonteDTO(
+                    "RECORRENTE", c.getFonteId(), c.getPendentes(), c.getAtrasadas(), c.getFuturos()));
+        }
+        for (var c : repository.contarStatusPorParcelada(usuarioId, hoje)) {
+            resultado.add(new StatusPorFonteDTO(
+                    "PARCELADA", c.getFonteId(), c.getPendentes(), c.getAtrasadas(), c.getFuturos()));
+        }
+        return resultado;
     }
 
     // Confirma que a categoria (e a subcategoria, se houver) escolhidas existem e são

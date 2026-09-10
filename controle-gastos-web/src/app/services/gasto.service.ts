@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../core/api.constants';
-import { Gasto, PaginaGastos, Resumo, TotalDiario, TotalMensal } from '../models/gasto.model';
+import { Gasto, PaginaGastos, Resumo, StatusPorFonte, TotalDiario, TotalMensal } from '../models/gasto.model';
 import { ComparacaoMensal, RankingCategorias } from '../models/analise.model';
 
 @Injectable({
@@ -86,6 +86,21 @@ export class GastoService {
   // Contas que vencem hoje (PENDENTE, vencimento hoje) - disjunto de atrasadas().
   venceHoje(): Observable<Gasto[]> {
     return this.http.get<Gasto[]>(`${this.baseUrl}/vence-hoje`);
+  }
+
+  // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas até o fim
+  // do mês a `meses` de distância, mais TODAS as atrasadas. meses: 1..12 (o backend
+  // rejeita fora do range). Substitui o antigo listarTodos() nessa tela.
+  proximasContas(meses: number): Observable<Gasto[]> {
+    return this.http.get<Gasto[]>(`${this.baseUrl}/proximas-contas`, {
+      params: new HttpParams().set('meses', meses)
+    });
+  }
+
+  // Contadores por recorrência e por compra parcelada (pendentes/atrasadas/futuros)
+  // para os badges das abas Recorrentes e Parceladas.
+  statusPorFonte(): Observable<StatusPorFonte[]> {
+    return this.http.get<StatusPorFonte[]>(`${this.baseUrl}/status-por-fonte`);
   }
 
   listarPorCategoria(categoria: string): Observable<Gasto[]> {

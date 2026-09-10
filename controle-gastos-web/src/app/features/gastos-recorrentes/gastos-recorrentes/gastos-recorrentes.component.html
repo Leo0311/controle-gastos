@@ -25,6 +25,8 @@
       [calendario]="calendario"
       [carregando]="carregandoCalendario"
       [erro]="erroCalendario"
+      [meses]="mesesAgenda"
+      (mesesAlterados)="onMesesAlterados($event)"
       (tentarNovamente)="carregarCalendario()"
       (contaPaga)="carregarCalendario()">
     </app-proximas-contas>

@@ -165,21 +165,19 @@ padrão do ranking de Análises): o cabeçalho com o nome do mês e o total fica
 visível, e clicar nele abre/fecha a lista de lançamentos daquele mês (dia, ícone da
 origem, descrição e valor). O **mês mais próximo já abre expandido**; os demais
 começam colapsados, para a agenda inteira caber numa olhada. É uma lista/agenda (não
-uma grade de calendário), pensada para funcionar bem no mobile. O agrupamento por mês e
-o cálculo de status são feitos no cliente, a partir dos campos que a API já devolve; só
-o registro do pagamento em si (`PATCH /api/gastos/{id}/pagar` e as ações em lote) usa
-endpoint próprio.
+uma grade de calendário), pensada para funcionar bem no mobile.
 
-Só os **primeiros 12 meses** são renderizados de início; no fim da lista, um botão
-**"Ver mais 12 meses"** revela o próximo bloco, acumulando, e ao lado um
-**"Ver tudo (mais N meses)"** (que aparece só quando ainda faltaria mais de um clique)
-mostra tudo de uma vez e serve de indicador de quanto falta. Quando não há mais meses
-ocultos, os botões somem; se a agenda inteira cabe em 12 meses, nenhum botão aparece.
-A API já manda todos os lançamentos (o agrupamento por mês é no cliente), então isso
-não muda tráfego nem tempo de resposta — só evita despejar, por exemplo, os 120
-`mat-expansion-panel` de uma parcelada de 120x no DOM de uma vez, o que tornava a
-rolagem inutilizável. Revelar um bloco não mexe na rolagem: os meses novos entram
-abaixo do botão, o conteúdo acima do ponto de scroll não muda.
+Ao abrir, a aba mostra só o **próximo mês** (mais as atrasadas). Um seletor no topo
+— **"1 mês"** (padrão) / **"3 meses"** / **"6 meses"** / **"12 meses"** — amplia a
+janela; trocar a opção busca de novo, com o spinner só na área da lista. O
+**backend** já devolve só o recorte pedido (`GET /api/gastos/proximas-contas?meses=N`,
+1 a 12) em vez do histórico inteiro, então uma parcelada de 120x não traz nem renderiza
+os 120 meses de uma vez. As **atrasadas aparecem em qualquer opção** do seletor — a
+janela de meses limita só o que ainda vai vencer. O agrupamento por mês é no cliente,
+a partir dos campos que a API devolve; o registro do pagamento (`PATCH /api/gastos/{id}/pagar`
+e as ações em lote) usa endpoint próprio. Os badges "N atrasada(s)/N pendente(s)" das
+abas Recorrentes e Parceladas e o "N lançamentos futuros já gerados" vêm de um segundo
+endpoint agregado (`GET /api/gastos/status-por-fonte`), contado no banco.
 
 No mobile, as três abas dessa tela não cabem lado a lado. Além das setinhas `<` `>`
 de paginação do Angular Material, o cabeçalho de abas também rola arrastando o dedo

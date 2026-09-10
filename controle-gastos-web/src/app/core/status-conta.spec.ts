@@ -1,5 +1,5 @@
 import { Gasto } from '../models/gasto.model';
-import { agregarStatus, ehGastoDeConta, statusDaConta } from './status-conta';
+import { ehGastoDeConta, statusDaConta } from './status-conta';
 
 function gasto(parcial: Partial<Gasto>): Gasto {
   return {
@@ -63,19 +63,6 @@ describe('status-conta', () => {
       expect(ehGastoDeConta(gasto({ gastoRecorrenteId: 3 }))).toBe(true);
       expect(ehGastoDeConta(gasto({ compraParceladaId: 3 }))).toBe(true);
       expect(ehGastoDeConta(gasto({}))).toBe(false);
-    });
-  });
-
-  describe('agregarStatus', () => {
-    it('conta pendentes e atrasadas, ignorando pagos', () => {
-      const resumo = agregarStatus([
-        gasto({ statusPagamento: 'PENDENTE', vencimentoOriginal: '2026-09-20' }),
-        gasto({ statusPagamento: 'PENDENTE', vencimentoOriginal: '2026-09-01' }),
-        gasto({ statusPagamento: 'PENDENTE', vencimentoOriginal: '2026-09-02' }),
-        gasto({ statusPagamento: 'PAGO', vencimentoOriginal: '2026-09-01' })
-      ], hoje);
-
-      expect(resumo).toEqual({ pendentes: 1, atrasadas: 2 });
     });
   });
 });

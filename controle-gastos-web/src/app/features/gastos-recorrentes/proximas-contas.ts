@@ -90,18 +90,3 @@ export function agruparProximasContas(gastos: Gasto[], hoje: string): GrupoMesCa
   }
   return [...grupos.values()];
 }
-
-/**
- * Conta, por recorrência, os gastos com data >= hoje já vinculados a ela (os
- * pré-gerados pelo horizonte "gerar próximos meses"). Reusa a lista de gastos que
- * a aba "Próximas contas" já baixa - sem request novo.
- */
-export function contarLancamentosFuturosPorRecorrente(gastos: Gasto[], hoje: string): Map<number, number> {
-  const mapa = new Map<number, number>();
-  for (const gasto of gastos) {
-    if (gasto.gastoRecorrenteId != null && gasto.data >= hoje) {
-      mapa.set(gasto.gastoRecorrenteId, (mapa.get(gasto.gastoRecorrenteId) ?? 0) + 1);
-    }
-  }
-  return mapa;
-}

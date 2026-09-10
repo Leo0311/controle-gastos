@@ -39,6 +39,19 @@ export interface PaginaGastos {
   ultima: boolean;
 }
 
+// Contadores agregados de uma fonte de contas (recorrência ou compra parcelada) -
+// resposta de GET /api/gastos/status-por-fonte. Alimenta os badges das abas
+// Recorrentes/Parceladas e o "N lançamentos futuros" da aba Recorrentes, sem o
+// cliente precisar baixar a lista inteira de gastos. `futuros` só é usado para
+// RECORRENTE (lançamentos já gerados com data de hoje em diante).
+export interface StatusPorFonte {
+  tipo: 'RECORRENTE' | 'PARCELADA';
+  id: number;
+  pendentes: number;
+  atrasadas: number;
+  futuros: number;
+}
+
 export interface CategoriaTotal {
   categoriaId: number | null;
   categoria: string;

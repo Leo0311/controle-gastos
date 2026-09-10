@@ -1,18 +1,14 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
+import { forkJoin } from 'rxjs';
 
 import { CategoriaService } from '../../../services/categoria.service';
 import { GastoService } from '../../../services/gasto.service';
 import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { AbasArrastaveisDirective } from '../../../shared/abas-arrastaveis.directive';
-import {
-  GrupoMesCalendario,
-  agruparProximasContas,
-  contarLancamentosFuturosPorRecorrente,
-  hojeIso
-} from '../proximas-contas';
-import { Gasto } from '../../../models/gasto.model';
-import { ResumoStatusConta, agregarStatus } from '../../../core/status-conta';
+import { GrupoMesCalendario, agruparProximasContas, hojeIso } from '../proximas-contas';
+import { StatusPorFonte } from '../../../models/gasto.model';
+import { ResumoStatusConta } from '../../../core/status-conta';
 import { RecorrentesListaComponent } from '../recorrentes-lista/recorrentes-lista.component';
 import { ParceladasListaComponent } from '../parceladas-lista/parceladas-lista.component';
 import { ProximasContasComponent } from '../proximas-contas/proximas-contas.component';
@@ -24,12 +20,14 @@ import { ProximasContasComponent } from '../proximas-contas/proximas-contas.comp
  *
  * - os mapas de categoria/subcategoria (usados pelos rótulos das abas Recorrentes
  *   e Parceladas), carregados uma vez;
- * - a leitura de gastos, que alimenta tanto o calendário da aba "Próximas contas"
- *   quanto a contagem de "lançamentos futuros já gerados" mostrada na aba
- *   "Recorrentes" - um request só, igual antes.
+ * - a AGENDA da aba "Próximas contas" (GET /api/gastos/proximas-contas?meses=N,
+ *   janela escolhida no seletor da própria aba) e os CONTADORES agregados
+ *   (GET /api/gastos/status-por-fonte) que alimentam os badges das abas
+ *   Recorrentes/Parceladas e o "N lançamentos futuros". Antes tudo isso era
+ *   derivado no cliente de um GET /api/gastos com o histórico inteiro.
  *
  * Quando a aba "Recorrentes" pausa/reativa uma recorrência, ela emite
- * `recorrenciaAlternada` e o calendário é recarregado.
+ * `recorrenciaAlternada` e agenda + contadores são recarregados.
  */
 @Component({
   selector: 'app-gastos-recorrentes',
@@ -54,13 +52,14 @@ export class GastosRecorrentesComponent implements OnInit {
 
   calendario: GrupoMesCalendario[] = [];
   lancamentosFuturosPorRecorrente = new Map<number, number>();
-  // Contagem de pendentes/atrasadas por recorrência e por compra parcelada, da
-  // mesma leitura de gastos - alimenta o badge agregado das abas Recorrentes e
-  // Parceladas.
   statusPorRecorrente = new Map<number, ResumoStatusConta>();
   statusPorParcelada = new Map<number, ResumoStatusConta>();
   carregandoCalendario = false;
   erroCalendario = false;
+
+  // Janela de meses da agenda (seletor da aba "Próximas contas"). 1 = só o próximo
+  // mês (+ atrasadas), o padrão ao abrir.
+  mesesAgenda = 1;
 
   ngOnInit(): void {
     this.categoriaService.listarVisiveis().subscribe({
@@ -74,16 +73,19 @@ export class GastosRecorrentesComponent implements OnInit {
     this.carregarCalendario();
   }
 
+  // Carga completa: agenda (na janela atual) + contadores. Usada na 1ª carga, no
+  // "tentar novamente", e depois de pagar/pausar/excluir - qualquer coisa que
+  // possa mexer nos dois de uma vez.
   carregarCalendario(): void {
     this.carregandoCalendario = true;
     this.erroCalendario = false;
-    this.gastoService.listarTodos().subscribe({
-      next: (gastos) => {
-        const hoje = hojeIso();
-        this.calendario = agruparProximasContas(gastos, hoje);
-        this.lancamentosFuturosPorRecorrente = contarLancamentosFuturosPorRecorrente(gastos, hoje);
-        this.statusPorRecorrente = this.agregarPorFonte(gastos, hoje, (g) => g.gastoRecorrenteId);
-        this.statusPorParcelada = this.agregarPorFonte(gastos, hoje, (g) => g.compraParceladaId);
+    forkJoin({
+      agenda: this.gastoService.proximasContas(this.mesesAgenda),
+      contadores: this.gastoService.statusPorFonte()
+    }).subscribe({
+      next: ({ agenda, contadores }) => {
+        this.calendario = agruparProximasContas(agenda, hojeIso());
+        this.aplicarContadores(contadores);
         this.carregandoCalendario = false;
       },
       error: () => {
@@ -94,23 +96,41 @@ export class GastosRecorrentesComponent implements OnInit {
     });
   }
 
-  private agregarPorFonte(
-    gastos: Gasto[], hoje: string, chave: (g: Gasto) => number | null | undefined
-  ): Map<number, ResumoStatusConta> {
-    const porFonte = new Map<number, Gasto[]>();
-    for (const gasto of gastos) {
-      const id = chave(gasto);
-      if (id == null) {
-        continue;
+  // Troca da janela de meses no seletor: só a agenda é rebuscada (os contadores
+  // são do horizonte inteiro, não mudam com o seletor). O spinner fica na lista da
+  // aba, não na tela toda (carregandoCalendario é passado como [carregando]).
+  onMesesAlterados(meses: number): void {
+    this.mesesAgenda = meses;
+    this.carregandoCalendario = true;
+    this.erroCalendario = false;
+    this.gastoService.proximasContas(meses).subscribe({
+      next: (agenda) => {
+        this.calendario = agruparProximasContas(agenda, hojeIso());
+        this.carregandoCalendario = false;
+      },
+      error: () => {
+        this.calendario = [];
+        this.carregandoCalendario = false;
+        this.erroCalendario = true;
       }
-      const lista = porFonte.get(id) ?? [];
-      lista.push(gasto);
-      porFonte.set(id, lista);
+    });
+  }
+
+  private aplicarContadores(contadores: StatusPorFonte[]): void {
+    const recorrentes = new Map<number, ResumoStatusConta>();
+    const parceladas = new Map<number, ResumoStatusConta>();
+    const futuros = new Map<number, number>();
+    for (const c of contadores) {
+      const resumo: ResumoStatusConta = { pendentes: c.pendentes, atrasadas: c.atrasadas };
+      if (c.tipo === 'RECORRENTE') {
+        recorrentes.set(c.id, resumo);
+        futuros.set(c.id, c.futuros);
+      } else {
+        parceladas.set(c.id, resumo);
+      }
     }
-    const resultado = new Map<number, ResumoStatusConta>();
-    for (const [id, lista] of porFonte) {
-      resultado.set(id, agregarStatus(lista, hoje));
-    }
-    return resultado;
+    this.statusPorRecorrente = recorrentes;
+    this.statusPorParcelada = parceladas;
+    this.lancamentosFuturosPorRecorrente = futuros;
   }
 }
