@@ -165,14 +165,16 @@ public class CompraParceladaService {
             gasto.setData(data);
             gasto.setCompraParceladaId(compra.getId());
             gasto.setVencimentoOriginal(data);
-            // Parcela já vencida (compra em curso só agora registrada) entra como
-            // paga, com a própria data de vencimento como data de pagamento; parcela
-            // futura entra PENDENTE.
-            if (data.isAfter(hoje)) {
-                gasto.setStatusPagamento(StatusPagamento.PENDENTE);
-            } else {
+            // Parcela cujo vencimento já passou (compra em curso só agora
+            // registrada) entra como paga, com a própria data de vencimento como
+            // data de pagamento. Parcela que vence HOJE ou no futuro entra
+            // PENDENTE - mesma borda das queries atrasadas()/venceHoje(): uma
+            // conta continua Pendente durante todo o dia do vencimento.
+            if (data.isBefore(hoje)) {
                 gasto.setStatusPagamento(StatusPagamento.PAGO);
                 gasto.setDataPagamento(data);
+            } else {
+                gasto.setStatusPagamento(StatusPagamento.PENDENTE);
             }
             parcelas.add(gasto);
         }

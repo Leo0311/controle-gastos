@@ -233,8 +233,9 @@ class CompraParceladaServiceTest {
     @Test
     void gerarParcelas_passadasNascemPagasFuturasNascemPendentesTodasComVencimento() {
         // 1ª parcela há 1 mês: parcela 0 já venceu (PAGA), parcela 2 é do mês que
-        // vem (PENDENTE). A parcela 1 (mês corrente) varia com o dia de hoje - não
-        // se afirma nada sobre ela.
+        // vem (PENDENTE). A parcela 1 (mês corrente) cai ora antes ora depois de
+        // hoje conforme o dia da execução - a borda "vence exatamente hoje" é
+        // coberta em gerarParcelas_parcelaQueVenceHoje_nascePendente.
         LocalDate inicio = LocalDate.now().minusMonths(1).withDayOfMonth(10);
         service.cadastrar(compra("300.00", 3, inicio), USUARIO);
 
@@ -247,6 +248,47 @@ class CompraParceladaServiceTest {
 
         assertThat(parcelas.get(2).getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
         assertThat(parcelas.get(2).getDataPagamento()).isNull();
+    }
+
+    // Borda Pendente -> PAGO na geração das parcelas, espelhando
+    // GastoContasVencidasBoundaryTest: uma parcela só nasce PAGO se o vencimento
+    // for ESTRITAMENTE anterior a hoje (histórico de compra retroativa). Vencendo
+    // hoje ou no futuro, nasce PENDENTE - a conta fica Pendente durante todo o dia
+    // do vencimento e só o card "vence hoje" a destaca.
+    //
+    // gerarParcelas lê LocalDate.now() internamente (não há Clock injetável), então
+    // a borda é fixada pela RELAÇÃO da 1ª parcela com hoje (ontem / hoje / amanhã),
+    // não por uma data absoluta - a asserção é determinística em qualquer data de
+    // execução, igual ao VENCIMENTO.minusDays(1) do teste de repositório.
+
+    @Test
+    void gerarParcelas_parcelaJaVencida_nascePaga() {
+        service.cadastrar(compra("100.00", 2, LocalDate.now().minusDays(1)), USUARIO);
+
+        Gasto primeira = parcelasGeradas(2).get(0);
+        assertThat(primeira.getData()).isEqualTo(LocalDate.now().minusDays(1));
+        assertThat(primeira.getStatusPagamento()).isEqualTo(StatusPagamento.PAGO);
+        assertThat(primeira.getDataPagamento()).isEqualTo(primeira.getData());
+    }
+
+    @Test
+    void gerarParcelas_parcelaQueVenceHoje_nascePendente() {
+        service.cadastrar(compra("100.00", 2, LocalDate.now()), USUARIO);
+
+        Gasto primeira = parcelasGeradas(2).get(0);
+        assertThat(primeira.getData()).isEqualTo(LocalDate.now());
+        assertThat(primeira.getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+        assertThat(primeira.getDataPagamento()).isNull();
+    }
+
+    @Test
+    void gerarParcelas_parcelaFutura_nascePendente() {
+        service.cadastrar(compra("100.00", 2, LocalDate.now().plusDays(1)), USUARIO);
+
+        Gasto primeira = parcelasGeradas(2).get(0);
+        assertThat(primeira.getData()).isEqualTo(LocalDate.now().plusDays(1));
+        assertThat(primeira.getStatusPagamento()).isEqualTo(StatusPagamento.PENDENTE);
+        assertThat(primeira.getDataPagamento()).isNull();
     }
 
     @Test
