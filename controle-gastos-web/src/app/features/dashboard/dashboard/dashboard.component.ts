@@ -158,13 +158,17 @@ export class DashboardComponent implements OnInit {
   totalAnoSelecionado = 0;
   numeroGastosMes = 0;
 
-  // Destaques fixos no topo do Dashboard (independentes do mês/ano selecionado):
-  // contas atrasadas (PENDENTE, vencimento no passado - vermelho) e contas que
-  // vencem hoje (PENDENTE, vencimento = hoje - âmbar). Conjuntos disjuntos.
+  // Destaques fixos no topo do Dashboard (independentes do mês/ano selecionado),
+  // do mais urgente ao menos: atrasadas (PENDENTE, vencimento no passado -
+  // vermelho), vence hoje (PENDENTE, vencimento = hoje - âmbar) e a vencer
+  // (PENDENTE, vencimento em hoje+1..hoje+3 - azul). Conjuntos disjuntos; podem
+  // coexistir na tela.
   atrasadas: Gasto[] = [];
   totalAtrasadas = 0;
   venceHoje: Gasto[] = [];
   totalVenceHoje = 0;
+  aVencer: Gasto[] = [];
+  totalAVencer = 0;
 
   pizzaData: ChartData<'doughnut', number[], string> = { labels: [], datasets: [{ data: [] }] };
   // Não é mais `readonly`: as opções são reconstruídas (nova referência, pra
@@ -276,9 +280,10 @@ export class DashboardComponent implements OnInit {
       // Destaques de contas a pagar - independentes do mês/ano; falha aqui não
       // derruba o Dashboard, só esconde o destaque.
       atrasadas: this.gastoService.atrasadas().pipe(catchError(() => of<Gasto[]>([]))),
-      venceHoje: this.gastoService.venceHoje().pipe(catchError(() => of<Gasto[]>([])))
+      venceHoje: this.gastoService.venceHoje().pipe(catchError(() => of<Gasto[]>([]))),
+      aVencer: this.gastoService.aVencer().pipe(catchError(() => of<Gasto[]>([])))
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias, atrasadas, venceHoje }) => {
+      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias, atrasadas, venceHoje, aVencer }) => {
         this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
         this.numeroGastosMes = gastosMes.length;
         this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
@@ -287,6 +292,8 @@ export class DashboardComponent implements OnInit {
         this.totalAtrasadas = atrasadas.reduce((soma, g) => soma + g.valor, 0);
         this.venceHoje = venceHoje;
         this.totalVenceHoje = venceHoje.reduce((soma, g) => soma + g.valor, 0);
+        this.aVencer = aVencer;
+        this.totalAVencer = aVencer.reduce((soma, g) => soma + g.valor, 0);
 
         this.categoriasPorId = new Map(categorias.map(c => [c.id!, c]));
         this.nomesCategoriaPizza = resumo.porCategoria.map(c => c.categoria);
@@ -420,6 +427,10 @@ export class DashboardComponent implements OnInit {
     return this.tituloAlerta(this.venceHoje, 'conta vence hoje', 'contas vencem hoje');
   }
 
+  get tituloAVencer(): string {
+    return this.tituloAlerta(this.aVencer, 'conta a vencer', 'contas a vencer');
+  }
+
   private tituloAlerta(gastos: Gasto[], singular: string, plural: string): string {
     return gastos.length === 1
       ? `1 ${singular}: ${gastos[0].descricao}`
@@ -444,9 +455,18 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  // Abre a lista de contas a pagar (atrasadas ou de hoje), com "marcar como paga"
-  // por item. Ao fechar, recarrega o Dashboard (o pagamento pode ter movido
-  // gastos entre meses).
+  abrirAVencer(): void {
+    this.abrirContasAPagar({
+      titulo: 'Contas a vencer',
+      instrucao: 'Contas de recorrência ou parcela com vencimento nos próximos 3 dias e ainda não pagas. '
+        + 'Marcar como paga registra o valor e a data reais.',
+      gastos: this.aVencer
+    });
+  }
+
+  // Abre a lista de contas a pagar (atrasadas, de hoje ou a vencer), com "marcar
+  // como paga" por item. Ao fechar, recarrega o Dashboard (o pagamento pode ter
+  // movido gastos entre meses).
   private abrirContasAPagar(data: ContasAPagarDialogData): void {
     const ref = this.dialog.open<ContasAPagarDialogComponent, ContasAPagarDialogData, boolean>(
       ContasAPagarDialogComponent,

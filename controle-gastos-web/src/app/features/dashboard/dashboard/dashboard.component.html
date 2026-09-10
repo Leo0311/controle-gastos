@@ -69,6 +69,24 @@
     </mat-card>
   }
 
+  @if (aVencer.length > 0) {
+    <mat-card
+      class="card-alerta-conta a-vencer clicavel"
+      role="button"
+      tabindex="0"
+      (click)="abrirAVencer()"
+      (keyup.enter)="abrirAVencer()"
+      (keydown.space)="$event.preventDefault()"
+      (keyup.space)="abrirAVencer()"
+    >
+      <mat-icon>upcoming</mat-icon>
+      <div class="card-alerta-conta-texto">
+        <span class="card-alerta-conta-titulo">{{ tituloAVencer }}</span>
+        <span class="card-alerta-conta-valor">{{ totalAVencer | currency:'BRL' }} nos próximos 3 dias — toque para pagar</span>
+      </div>
+    </mat-card>
+  }
+
   <div class="cards">
     <mat-card
       class="card-stat clicavel"

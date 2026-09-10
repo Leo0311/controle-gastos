@@ -20,9 +20,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Regra de borda de Pendente -> Atrasada (bug do fuso, 2026-09-08): uma conta
  * PENDENTE que vence numa data X continua Pendente durante TODO o dia X e só passa
  * a Atrasada a partir do dia X+1. As queries que o Dashboard usa - atrasadas()
- * (vencimento_original < hoje) e venceHoje() (vencimento_original = hoje) - recebem
- * o "hoje" como parâmetro, então este teste simula "hoje" em datas fixas em vez de
- * depender do relógio, provando a fronteira nos dois lados.
+ * (vencimento_original < hoje), venceHoje() (vencimento_original = hoje) e aVencer()
+ * (vencimento_original em hoje+1..hoje+3) - recebem o "hoje" (ou a janela dele) como
+ * parâmetro, então este teste simula "hoje" em datas fixas em vez de depender do
+ * relógio, provando as fronteiras dos três alertas.
  *
  * @SpringBootTest com o Postgres local de verdade (mesmo padrão do
  * GastoRecorrenteConcorrenciaTest) - precisa do banco no ar (skill ambiente-local).
@@ -103,6 +104,43 @@ class GastoContasVencidasBoundaryTest {
         LocalDate vespera = VENCIMENTO.minusDays(1);
         assertThat(idsDe(gastoRepository.atrasadas(usuarioId, vespera))).doesNotContain(gastoId);
         assertThat(idsDe(gastoRepository.venceHoje(usuarioId, vespera))).doesNotContain(gastoId);
+    }
+
+    // ---------- alerta "a vencer" (janela hoje+1 .. hoje+3) ----------
+    // Simula o "hoje" em datas fixas e monta a janela como GastoService.aVencer:
+    // repository.aVencer(usuarioId, hoje.plusDays(1), hoje.plusDays(3)).
+
+    @Test
+    void faltando1a3DiasParaOVencimento_contaApareceEmAVencer() {
+        assertThat(idsDe(aVencerSimulando(VENCIMENTO.minusDays(1))))
+                .as("D+1: vence amanhã").contains(gastoId);
+        assertThat(idsDe(aVencerSimulando(VENCIMENTO.minusDays(2))))
+                .as("D+2: vence em 2 dias").contains(gastoId);
+        assertThat(idsDe(aVencerSimulando(VENCIMENTO.minusDays(3))))
+                .as("D+3: vence em 3 dias").contains(gastoId);
+    }
+
+    @Test
+    void faltando4DiasParaOVencimento_contaNaoApareceEmAVencer() {
+        assertThat(idsDe(aVencerSimulando(VENCIMENTO.minusDays(4))))
+                .as("D+4 está fora da janela de 3 dias").doesNotContain(gastoId);
+    }
+
+    @Test
+    void noProprioDiaDoVencimento_contaNaoApareceEmAVencer() {
+        assertThat(idsDe(aVencerSimulando(VENCIMENTO)))
+                .as("no dia do vencimento a conta é de 'vence hoje', não de 'a vencer'")
+                .doesNotContain(gastoId);
+    }
+
+    @Test
+    void depoisDoVencimento_contaAtrasadaNaoApareceEmAVencer() {
+        assertThat(idsDe(aVencerSimulando(VENCIMENTO.plusDays(1))))
+                .as("conta atrasada não aparece em 'a vencer'").doesNotContain(gastoId);
+    }
+
+    private java.util.List<Gasto> aVencerSimulando(LocalDate hoje) {
+        return gastoRepository.aVencer(usuarioId, hoje.plusDays(1), hoje.plusDays(3));
     }
 
     private static java.util.List<Integer> idsDe(java.util.List<Gasto> gastos) {

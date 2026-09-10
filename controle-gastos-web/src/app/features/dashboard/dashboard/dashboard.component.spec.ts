@@ -37,6 +37,9 @@ describe('DashboardComponent', () => {
 
       component.venceHoje = [gasto('Netflix')];
       expect(component.tituloVenceHoje).toBe('1 conta vence hoje: Netflix');
+
+      component.aVencer = [gasto('Internet')];
+      expect(component.tituloAVencer).toBe('1 conta a vencer: Internet');
     });
 
     it('com mais de 1 conta, texto genérico (sem nomes)', () => {
@@ -45,6 +48,9 @@ describe('DashboardComponent', () => {
 
       component.venceHoje = [gasto('a'), gasto('b'), gasto('c')];
       expect(component.tituloVenceHoje).toBe('3 contas vencem hoje');
+
+      component.aVencer = [gasto('a'), gasto('b')];
+      expect(component.tituloAVencer).toBe('2 contas a vencer');
     });
   });
 });

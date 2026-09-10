@@ -319,6 +319,17 @@ public class GastoService {
         return repository.venceHoje(usuarioId, LocalDate.now());
     }
 
+    // Janela do alerta "a vencer" no Dashboard: os 3 dias seguintes a hoje
+    // (hoje+1 a hoje+3, inclusive). Não sobrepõe venceHoje() (= hoje) nem
+    // atrasadas() (< hoje). LocalDate.now() respeita o fuso America/Sao_Paulo
+    // fixado em ControleGastosApiApplication, igual aos irmãos.
+    private static final int A_VENCER_DIAS = 3;
+
+    public List<Gasto> aVencer(Integer usuarioId) {
+        LocalDate hoje = LocalDate.now();
+        return repository.aVencer(usuarioId, hoje.plusDays(1), hoje.plusDays(A_VENCER_DIAS));
+    }
+
     // Menor e maior janela aceitas pela aba "Próximas contas" (seletor 1/3/6/12).
     private static final int PROXIMAS_CONTAS_MESES_MIN = 1;
     private static final int PROXIMAS_CONTAS_MESES_MAX = 12;

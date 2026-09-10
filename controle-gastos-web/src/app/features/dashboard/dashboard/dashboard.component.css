@@ -30,8 +30,9 @@
 }
 
 /* Destaque de contas a pagar - faixa no topo do Dashboard, clicável -> lista de
-   quitação. A cor vem dos tokens de status (os mesmos dos chips): .atrasada usa o
-   crítico/vermelho (atraso real), .vence-hoje usa o atenção/âmbar. */
+   quitação. A cor vem dos tokens de status (os mesmos dos chips), da mais urgente
+   para a menos: .atrasada usa o crítico/vermelho (atraso real), .vence-hoje usa o
+   atenção/âmbar, .a-vencer usa o info/azul (só um aviso, ainda dá tempo). */
 .card-alerta-conta {
   --cor-alerta: var(--status-critico-texto);
   --cor-alerta-fundo: var(--status-critico-fundo);
@@ -49,6 +50,11 @@
 .card-alerta-conta.vence-hoje {
   --cor-alerta: var(--status-atencao-texto);
   --cor-alerta-fundo: var(--status-atencao-fundo);
+}
+
+.card-alerta-conta.a-vencer {
+  --cor-alerta: var(--texto-aviso);
+  --cor-alerta-fundo: var(--fundo-aviso);
 }
 
 .card-alerta-conta mat-icon {

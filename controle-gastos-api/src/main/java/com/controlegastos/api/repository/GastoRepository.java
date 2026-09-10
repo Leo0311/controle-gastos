@@ -127,6 +127,19 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
             + "AND g.vencimentoOriginal = :hoje ORDER BY g.id ASC")
     List<Gasto> venceHoje(@Param("usuarioId") Integer usuarioId, @Param("hoje") LocalDate hoje);
 
+    // Contas a vencer nos próximos dias: PENDENTE com vencimento_original entre
+    // :inicio e :fim (o service passa hoje+1 e hoje+3). Disjunto de venceHoje()
+    // (= hoje) e de atrasadas() (< hoje). Os limites vêm calculados do service
+    // porque aritmética de data em JPQL não é portável. Destaque azul no Dashboard.
+    @Query("SELECT g FROM Gasto g WHERE g.usuarioId = :usuarioId "
+            + "AND g.statusPagamento = com.controlegastos.api.model.StatusPagamento.PENDENTE "
+            + "AND g.vencimentoOriginal BETWEEN :inicio AND :fim "
+            + "ORDER BY g.vencimentoOriginal ASC, g.id ASC")
+    List<Gasto> aVencer(
+            @Param("usuarioId") Integer usuarioId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim);
+
     // Agenda da aba "Próximas contas": ocorrências de recorrência/parcela ainda
     // PENDENTES com vencimento até :fimHorizonte. Como o horizonte é sempre >= hoje,
     // um único teto pega tanto as ATRASADAS (vencimento < hoje) quanto as futuras

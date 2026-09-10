@@ -280,6 +280,15 @@ class GastoServiceTest {
         assertThat(service.venceHoje(USUARIO)).hasSize(2);
     }
 
+    @Test
+    void aVencer_delegaParaRepositorioComJanelaDeTresDias() {
+        LocalDate hoje = LocalDate.now();
+        when(repository.aVencer(USUARIO, hoje.plusDays(1), hoje.plusDays(3)))
+                .thenReturn(List.of(new Gasto(), new Gasto(), new Gasto()));
+
+        assertThat(service.aVencer(USUARIO)).hasSize(3);
+    }
+
     // ---------- aba "Próximas contas": agenda + contadores (abordagem B+D) ----------
 
     @Test

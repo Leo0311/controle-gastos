@@ -21,10 +21,10 @@ export interface ContasAPagarDialogData {
 }
 
 /**
- * Lista contas a pagar (atrasadas ou que vencem hoje - a diferença é só o
- * título/instrução, passados pelo chamador) com uma ação "Marcar como paga" por
- * item, reaproveitando o diálogo de pagamento. Fecha devolvendo `true` se ao
- * menos uma conta foi paga - o Dashboard recarrega nesse caso.
+ * Lista contas a pagar (atrasadas, que vencem hoje ou a vencer - a diferença é
+ * só o título/instrução e a lista, passados pelo chamador) com uma ação "Marcar
+ * como paga" por item, reaproveitando o diálogo de pagamento. Fecha devolvendo
+ * `true` se ao menos uma conta foi paga - o Dashboard recarrega nesse caso.
  */
 @Component({
   selector: 'app-contas-a-pagar-dialog',

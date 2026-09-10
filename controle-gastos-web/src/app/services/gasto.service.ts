@@ -88,6 +88,12 @@ export class GastoService {
     return this.http.get<Gasto[]>(`${this.baseUrl}/vence-hoje`);
   }
 
+  // Contas a vencer nos próximos 3 dias (PENDENTE, vencimento entre hoje+1 e
+  // hoje+3) - disjunto de venceHoje() e de atrasadas().
+  aVencer(): Observable<Gasto[]> {
+    return this.http.get<Gasto[]>(`${this.baseUrl}/a-vencer`);
+  }
+
   // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas dentro da
   // janela de `meses` meses contando o mês corrente como o primeiro (meses=1 -> só o
   // mês corrente), mais TODAS as atrasadas. meses: 1..12 (o backend rejeita fora do

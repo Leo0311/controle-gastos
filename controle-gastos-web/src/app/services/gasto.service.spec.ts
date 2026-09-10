@@ -83,6 +83,14 @@ describe('GastoService', () => {
     req.flush([]);
   });
 
+  it('aVencer faz GET /gastos/a-vencer', () => {
+    service.aVencer().subscribe();
+
+    const req = httpMock.expectOne(`${API_BASE_URL}/gastos/a-vencer`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
   it('proximasContas faz GET /gastos/proximas-contas?meses=N', () => {
     service.proximasContas(3).subscribe();
 

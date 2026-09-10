@@ -118,6 +118,13 @@ public class GastoController {
         return service.venceHoje(usuario.usuarioId());
     }
 
+    // Contas a vencer nos próximos 3 dias (PENDENTE, vencimento_original entre
+    // hoje+1 e hoje+3) - destaque azul do Dashboard.
+    @GetMapping("/a-vencer")
+    public List<Gasto> aVencer(@AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.aVencer(usuario.usuarioId());
+    }
+
     // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas dentro da
     // janela de `meses` meses (mês corrente conta como o primeiro) + todas as
     // atrasadas. meses: 1..12 (default 1); fora do range o service lança
