@@ -88,9 +88,10 @@ export class GastoService {
     return this.http.get<Gasto[]>(`${this.baseUrl}/vence-hoje`);
   }
 
-  // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas até o fim
-  // do mês a `meses` de distância, mais TODAS as atrasadas. meses: 1..12 (o backend
-  // rejeita fora do range). Substitui o antigo listarTodos() nessa tela.
+  // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas dentro da
+  // janela de `meses` meses contando o mês corrente como o primeiro (meses=1 -> só o
+  // mês corrente), mais TODAS as atrasadas. meses: 1..12 (o backend rejeita fora do
+  // range). Substitui o antigo listarTodos() nessa tela.
   proximasContas(meses: number): Observable<Gasto[]> {
     return this.http.get<Gasto[]>(`${this.baseUrl}/proximas-contas`, {
       params: new HttpParams().set('meses', meses)

@@ -324,17 +324,19 @@ public class GastoService {
     private static final int PROXIMAS_CONTAS_MESES_MAX = 12;
 
     // Agenda da aba "Próximas contas": ocorrências de recorrência/parcela ainda não
-    // pagas até o fim do mês que está a `meses` meses de distância - mais TODAS as
-    // atrasadas, independente de `meses` (o teto único da query já cobre, porque
-    // atrasada é vencimento < hoje <= fimHorizonte). Substitui o antigo
-    // GET /api/gastos (histórico inteiro) que a tela baixava só pra filtrar no cliente.
+    // pagas dentro da janela de `meses` meses CONTANDO O MÊS CORRENTE como o primeiro
+    // (meses=1 -> só o mês corrente; meses=3 -> corrente + os 2 seguintes) - mais
+    // TODAS as atrasadas, independente de `meses` (o teto único da query já cobre,
+    // porque atrasada é vencimento < hoje <= fimHorizonte, e fimHorizonte é sempre o
+    // fim de um mês >= o corrente). Substitui o antigo GET /api/gastos (histórico
+    // inteiro) que a tela baixava só pra filtrar no cliente.
     public List<Gasto> proximasContas(Integer usuarioId, int meses) {
         if (meses < PROXIMAS_CONTAS_MESES_MIN || meses > PROXIMAS_CONTAS_MESES_MAX) {
             throw new IllegalArgumentException(
                     "O parâmetro 'meses' deve estar entre " + PROXIMAS_CONTAS_MESES_MIN
                     + " e " + PROXIMAS_CONTAS_MESES_MAX + ".");
         }
-        LocalDate fimHorizonte = YearMonth.now().plusMonths(meses).atEndOfMonth();
+        LocalDate fimHorizonte = YearMonth.now().plusMonths(meses - 1L).atEndOfMonth();
         return repository.agendaProximasContas(usuarioId, fimHorizonte);
     }
 

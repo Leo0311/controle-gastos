@@ -118,9 +118,10 @@ public class GastoController {
         return service.venceHoje(usuario.usuarioId());
     }
 
-    // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas até o
-    // fim do mês a `meses` de distância + todas as atrasadas. meses: 1..12 (default
-    // 1); fora do range o service lança IllegalArgumentException -> 400.
+    // Agenda da aba "Próximas contas": recorrência/parcela ainda não pagas dentro da
+    // janela de `meses` meses (mês corrente conta como o primeiro) + todas as
+    // atrasadas. meses: 1..12 (default 1); fora do range o service lança
+    // IllegalArgumentException -> 400.
     @GetMapping("/proximas-contas")
     public List<Gasto> proximasContas(
             @RequestParam(defaultValue = "1") int meses,

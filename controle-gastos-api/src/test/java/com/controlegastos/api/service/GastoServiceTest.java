@@ -283,22 +283,25 @@ class GastoServiceTest {
     // ---------- aba "Próximas contas": agenda + contadores (abordagem B+D) ----------
 
     @Test
-    void proximasContas_meses1_usaOFimDoMesQueVem() {
+    void proximasContas_meses1_paraNoFimDoMesCorrente() {
         when(repository.agendaProximasContas(eq(USUARIO), any(LocalDate.class))).thenReturn(List.of(new Gasto()));
 
         service.proximasContas(USUARIO, 1);
 
-        LocalDate fimEsperado = YearMonth.now().plusMonths(1).atEndOfMonth();
+        // meses=1 conta o mês corrente como o primeiro -> horizonte termina no fim
+        // do mês corrente, sem entrar no mês seguinte.
+        LocalDate fimEsperado = YearMonth.now().atEndOfMonth();
         verify(repository).agendaProximasContas(USUARIO, fimEsperado);
     }
 
     @Test
-    void proximasContas_meses12_usaOFimDoDecimoSegundoMes() {
+    void proximasContas_meses12_paraNoFimDoDecimoPrimeiroMesAdiante() {
         when(repository.agendaProximasContas(eq(USUARIO), any(LocalDate.class))).thenReturn(List.of());
 
         service.proximasContas(USUARIO, 12);
 
-        verify(repository).agendaProximasContas(USUARIO, YearMonth.now().plusMonths(12).atEndOfMonth());
+        // 12 meses no total = corrente + 11 seguintes.
+        verify(repository).agendaProximasContas(USUARIO, YearMonth.now().plusMonths(11).atEndOfMonth());
     }
 
     @Test

@@ -167,13 +167,15 @@ origem, descrição e valor). O **mês mais próximo já abre expandido**; os de
 começam colapsados, para a agenda inteira caber numa olhada. É uma lista/agenda (não
 uma grade de calendário), pensada para funcionar bem no mobile.
 
-Ao abrir, a aba mostra só o **próximo mês** (mais as atrasadas). Um seletor no topo
+Ao abrir, a aba mostra só o **mês corrente** (mais as atrasadas). Um seletor no topo
 — **"1 mês"** (padrão) / **"3 meses"** / **"6 meses"** / **"12 meses"** — amplia a
-janela; trocar a opção busca de novo, com o spinner só na área da lista. O
-**backend** já devolve só o recorte pedido (`GET /api/gastos/proximas-contas?meses=N`,
-1 a 12) em vez do histórico inteiro, então uma parcelada de 120x não traz nem renderiza
-os 120 meses de uma vez. As **atrasadas aparecem em qualquer opção** do seletor — a
-janela de meses limita só o que ainda vai vencer. O agrupamento por mês é no cliente,
+janela; trocar a opção busca de novo, com o spinner só na área da lista. A opção
+conta o **mês corrente como o primeiro**: "3 meses" mostra o mês corrente e os dois
+seguintes. O **backend** já devolve só o recorte pedido
+(`GET /api/gastos/proximas-contas?meses=N`, 1 a 12) em vez do histórico inteiro,
+então uma parcelada de 120x não traz nem renderiza os 120 meses de uma vez. As
+**atrasadas aparecem em qualquer opção** do seletor — a janela de meses limita só o
+que ainda vai vencer. O agrupamento por mês é no cliente,
 a partir dos campos que a API devolve; o registro do pagamento (`PATCH /api/gastos/{id}/pagar`
 e as ações em lote) usa endpoint próprio. Os badges "N atrasada(s)/N pendente(s)" das
 abas Recorrentes e Parceladas e o "N lançamentos futuros já gerados" vêm de um segundo

@@ -57,8 +57,8 @@ export class GastosRecorrentesComponent implements OnInit {
   carregandoCalendario = false;
   erroCalendario = false;
 
-  // Janela de meses da agenda (seletor da aba "Próximas contas"). 1 = só o próximo
-  // mês (+ atrasadas), o padrão ao abrir.
+  // Janela de meses da agenda (seletor da aba "Próximas contas"), contando o mês
+  // corrente como o primeiro. 1 = só o mês corrente (+ atrasadas), o padrão ao abrir.
   mesesAgenda = 1;
 
   ngOnInit(): void {

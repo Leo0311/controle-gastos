@@ -6,6 +6,7 @@ import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.model.GastoRecorrente;
 import com.controlegastos.api.model.StatusPagamento;
 import com.controlegastos.api.model.Usuario;
+import com.controlegastos.api.service.GastoService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,23 +16,26 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Queries da aba "Próximas contas" (abordagem B+D, 2026-09-09): a agenda
- * (agendaProximasContas, com teto de meses) e os contadores agregados
- * (contarStatusPorRecorrente / contarStatusPorParcelada). @SpringBootTest com o
- * Postgres local - mesmo padrão do GastoRecorrenteConcorrenciaTest.
+ * Aba "Próximas contas" (abordagem B+D): a agenda e os contadores agregados.
+ * @SpringBootTest com o Postgres local - mesmo padrão do
+ * GastoRecorrenteConcorrenciaTest.
  *
- * Datas são relativas a hoje (a query é só aritmética de data, então o teste vale
- * em qualquer dia); os IDs de gasto ficam guardados pra as asserções.
+ * A agenda é testada pelo GastoService de verdade (não pela query direto), porque
+ * o off-by-one da janela mora no cálculo do horizonte do service: `meses` conta o
+ * MÊS CORRENTE como o primeiro (meses=1 -> só o mês corrente, nada do mês
+ * seguinte). Datas são relativas a hoje; a ocorrência "do mês corrente" usa a data
+ * de hoje (>= hoje em qualquer dia -> sempre PENDENTE, nunca atrasada, o que
+ * mantém as contagens determinísticas).
  */
 @SpringBootTest
 class ProximasContasAgendaTest {
 
+    @Autowired private GastoService gastoService;
     @Autowired private GastoRepository gastoRepository;
     @Autowired private GastoRecorrenteRepository gastoRecorrenteRepository;
     @Autowired private CompraParceladaRepository compraParceladaRepository;
@@ -48,11 +52,13 @@ class ProximasContasAgendaTest {
     // Gastos da recorrência
     private Integer rPagaAntiga;
     private Integer rAtrasada;
-    private Integer rProxMes;
+    private Integer rMesCorrente;
+    private Integer rMesSeguinte;
     private Integer rDaquiA5Meses;
     // Gastos da parcelada
     private Integer pPagaAntiga;
-    private Integer pProxMes;
+    private Integer pMesCorrente;
+    private Integer pMesSeguinte;
     private Integer pDaquiA2Meses;
     private Integer pDaquiA3Meses;
 
@@ -95,11 +101,13 @@ class ProximasContasAgendaTest {
 
         rPagaAntiga = salvarRecorrente(HOJE.minusMonths(2), StatusPagamento.PAGO);
         rAtrasada = salvarRecorrente(HOJE.minusMonths(1), StatusPagamento.PENDENTE);
-        rProxMes = salvarRecorrente(HOJE.plusMonths(1), StatusPagamento.PENDENTE);
+        rMesCorrente = salvarRecorrente(HOJE, StatusPagamento.PENDENTE);
+        rMesSeguinte = salvarRecorrente(HOJE.plusMonths(1), StatusPagamento.PENDENTE);
         rDaquiA5Meses = salvarRecorrente(HOJE.plusMonths(5), StatusPagamento.PENDENTE);
 
         pPagaAntiga = salvarParcela(HOJE.minusMonths(1), StatusPagamento.PAGO);
-        pProxMes = salvarParcela(HOJE.plusMonths(1), StatusPagamento.PENDENTE);
+        pMesCorrente = salvarParcela(HOJE, StatusPagamento.PENDENTE);
+        pMesSeguinte = salvarParcela(HOJE.plusMonths(1), StatusPagamento.PENDENTE);
         pDaquiA2Meses = salvarParcela(HOJE.plusMonths(2), StatusPagamento.PENDENTE);
         pDaquiA3Meses = salvarParcela(HOJE.plusMonths(3), StatusPagamento.PENDENTE);
     }
@@ -138,25 +146,38 @@ class ProximasContasAgendaTest {
         return gastoRepository.save(g).getId();
     }
 
-    @Test
-    void agenda_comMeses1_soTrazAtrasadasMaisOProximoMes() {
-        LocalDate fim = YearMonth.from(HOJE).plusMonths(1).atEndOfMonth();
-
-        List<Integer> ids = gastoRepository.agendaProximasContas(usuarioId, fim).stream().map(Gasto::getId).toList();
-
-        assertThat(ids).contains(rAtrasada, rProxMes, pProxMes);
-        assertThat(ids).doesNotContain(
-                rPagaAntiga, pPagaAntiga,     // pagas nunca entram
-                rDaquiA5Meses, pDaquiA2Meses, pDaquiA3Meses); // fora da janela de 1 mês
+    private List<Integer> agenda(int meses) {
+        return gastoService.proximasContas(usuarioId, meses).stream().map(Gasto::getId).toList();
     }
 
     @Test
-    void agenda_comMeses12_trazTodasAsPendentesEAtrasadas() {
-        LocalDate fim = YearMonth.from(HOJE).plusMonths(12).atEndOfMonth();
+    void agenda_meses1_soOMesCorrenteMaisAtrasadas_naoOMesSeguinte() {
+        List<Integer> ids = agenda(1);
 
-        List<Integer> ids = gastoRepository.agendaProximasContas(usuarioId, fim).stream().map(Gasto::getId).toList();
+        assertThat(ids).contains(rAtrasada, rMesCorrente, pMesCorrente);
+        assertThat(ids).doesNotContain(
+                rPagaAntiga, pPagaAntiga,                              // pagas nunca entram
+                rMesSeguinte, pMesSeguinte,                            // mês seguinte fica fora com meses=1
+                rDaquiA5Meses, pDaquiA2Meses, pDaquiA3Meses);
+    }
 
-        assertThat(ids).contains(rAtrasada, rProxMes, rDaquiA5Meses, pProxMes, pDaquiA2Meses, pDaquiA3Meses);
+    @Test
+    void agenda_meses2_passaAIncluirOMesSeguinte_masNaoOTerceiro() {
+        List<Integer> ids = agenda(2);
+
+        assertThat(ids).contains(rAtrasada, rMesCorrente, pMesCorrente, rMesSeguinte, pMesSeguinte);
+        assertThat(ids).doesNotContain(
+                pDaquiA2Meses, pDaquiA3Meses, rDaquiA5Meses,           // 3º mês em diante fica fora
+                rPagaAntiga, pPagaAntiga);
+    }
+
+    @Test
+    void agenda_meses12_trazTodasAsPendentesEAtrasadas() {
+        List<Integer> ids = agenda(12);
+
+        assertThat(ids).contains(
+                rAtrasada, rMesCorrente, rMesSeguinte, rDaquiA5Meses,
+                pMesCorrente, pMesSeguinte, pDaquiA2Meses, pDaquiA3Meses);
         assertThat(ids).doesNotContain(rPagaAntiga, pPagaAntiga);
     }
 
@@ -169,8 +190,8 @@ class ProximasContasAgendaTest {
         GastoRepository.ContagemStatusFonte c = contagem.get(0);
         assertThat(c.getFonteId()).isEqualTo(recorrenteId);
         assertThat(c.getAtrasadas()).as("1 ocorrência vencida e não paga").isEqualTo(1L);
-        assertThat(c.getPendentes()).as("2 ocorrências futuras ainda pendentes").isEqualTo(2L);
-        assertThat(c.getFuturos()).as("2 lançamentos com data de hoje em diante").isEqualTo(2L);
+        assertThat(c.getPendentes()).as("mês corrente + mês seguinte + daqui a 5 meses").isEqualTo(3L);
+        assertThat(c.getFuturos()).as("3 lançamentos com data de hoje em diante").isEqualTo(3L);
     }
 
     @Test
@@ -182,7 +203,7 @@ class ProximasContasAgendaTest {
         GastoRepository.ContagemStatusFonte c = contagem.get(0);
         assertThat(c.getFonteId()).isEqualTo(parceladaId);
         assertThat(c.getAtrasadas()).isEqualTo(0L);
-        assertThat(c.getPendentes()).as("3 parcelas em aberto").isEqualTo(3L);
-        assertThat(c.getFuturos()).isEqualTo(3L);
+        assertThat(c.getPendentes()).as("4 parcelas em aberto (corrente + 3 seguintes)").isEqualTo(4L);
+        assertThat(c.getFuturos()).isEqualTo(4L);
     }
 }
