@@ -42,6 +42,16 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Dívida técnica de segurança (baixa prioridade): CSP ausente. Esta API só
+                // devolve JSON - nunca serve HTML/JS/CSS que um navegador renderize como
+                // documento -, então o mais seguro é bloquear tudo (`'none'`) em vez de tentar
+                // adivinhar uma allowlist. Não afeta o frontend: o CSP de uma resposta vale só
+                // para o próprio documento que a recebe como navegação de página, nunca para
+                // quem faz fetch/XHR nela a partir de outra origem - a Angular app (Render)
+                // continua carregando fontes/chamando a API normalmente, sob o CSP dela
+                // própria (ou a ausência dele), não o desta API.
+                .headers(headers -> headers.contentSecurityPolicy(csp -> csp
+                        .policyDirectives("default-src 'none'; frame-ancestors 'none'; base-uri 'none'")))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
