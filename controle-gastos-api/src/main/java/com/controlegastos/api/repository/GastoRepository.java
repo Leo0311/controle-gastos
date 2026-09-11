@@ -225,6 +225,13 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
     BigDecimal somarNoPeriodo(
             @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
+    // COUNT via SQL em vez de buscar a lista inteira só pra contar - usado por
+    // GastoService.resumo (achado de performance, rodada 2026-09-11: o Dashboard
+    // baixava a lista completa de gastos do mês/ano só pra somar/contar no cliente).
+    @Query("SELECT COUNT(g) FROM Gasto g WHERE g.usuarioId = :usuarioId AND g.data BETWEEN :inicio AND :fim")
+    long contarNoPeriodo(
+            @Param("usuarioId") Integer usuarioId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+
     // Mesmo agrupamento de somarPorCategoriaNoPeriodo, mas também por subcategoriaId/
     // LOWER(subcategoria) - usado no ranking de categorias com detalhamento por
     // subcategoria (ver GastoService.rankingCategorias). LOWER(NULL) continua NULL, então

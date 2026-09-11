@@ -617,4 +617,42 @@ class GastoServiceTest {
         assertThat(dto.totalPaginas()).isEqualTo(3);
         assertThat(dto.ultima()).isFalse();
     }
+
+    // ---------- resumo() / totaisMensaisDoAno() ----------
+    // Achado de performance (rodada 2026-09-11): o Dashboard baixava a lista
+    // completa de gastos do mês/ano só pra somar/contar no cliente. Agora o total
+    // e a quantidade vêm agregados do banco.
+
+    @Test
+    void resumo_usaTotalEQuantidadeAgregadosDoRepositorioSemBuscarAListaDeGastos() {
+        LocalDate inicio = LocalDate.of(2026, 9, 1);
+        LocalDate fim = LocalDate.of(2026, 9, 30);
+        when(repository.somarNoPeriodo(USUARIO, inicio, fim)).thenReturn(new BigDecimal("1234.50"));
+        when(repository.contarNoPeriodo(USUARIO, inicio, fim)).thenReturn(7L);
+        when(repository.somarPorCategoriaNoPeriodo(USUARIO, inicio, fim)).thenReturn(List.of());
+
+        var resumo = service.resumo(USUARIO, inicio, fim);
+
+        assertThat(resumo.getTotalGeral()).isEqualByComparingTo("1234.50");
+        assertThat(resumo.getQuantidadeGastos()).isEqualTo(7L);
+        verify(repository, never()).findByUsuarioIdAndDataBetweenOrderByDataDescIdDesc(any(), any(), any());
+    }
+
+    @Test
+    void totaisMensaisDoAno_devolveOs12MesesDoAnoEscolhido_naoOsUltimosNAPartirDeHoje() {
+        for (int mes = 1; mes <= 12; mes++) {
+            YearMonth mesAno = YearMonth.of(2025, mes);
+            when(repository.somarNoPeriodo(USUARIO, mesAno.atDay(1), mesAno.atEndOfMonth()))
+                    .thenReturn(BigDecimal.valueOf(mes * 10L));
+        }
+
+        var totais = service.totaisMensaisDoAno(2025, USUARIO);
+
+        assertThat(totais).hasSize(12);
+        assertThat(totais.get(0).getMes()).isEqualTo(1);
+        assertThat(totais.get(0).getAno()).isEqualTo(2025);
+        assertThat(totais.get(0).getTotal()).isEqualByComparingTo("10");
+        assertThat(totais.get(11).getMes()).isEqualTo(12);
+        assertThat(totais.get(11).getTotal()).isEqualByComparingTo("120");
+    }
 }

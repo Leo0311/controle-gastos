@@ -21,7 +21,7 @@ import { CategoriaService } from '../../../services/categoria.service';
 import { GastoRecorrenteService } from '../../../services/gasto-recorrente.service';
 import { TemaService } from '../../../services/tema.service';
 import { MetaMes, MetaRequest } from '../../../models/meta.model';
-import { CategoriaTotal, Gasto, TotalDiario } from '../../../models/gasto.model';
+import { CategoriaTotal, Gasto, TotalDiario, TotalMensal } from '../../../models/gasto.model';
 import { Categoria } from '../../../models/categoria.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
@@ -255,16 +255,20 @@ export class DashboardComponent implements OnInit {
 
     const inicioMes = this.formatarData(new Date(this.ano, this.mes - 1, 1));
     const fimMes = this.formatarData(new Date(this.ano, this.mes, 0));
-    const inicioAno = `${this.ano}-01-01`;
-    const fimAno = `${this.ano}-12-31`;
 
     forkJoin({
-      gastosMes: this.gastoService.listarPorPeriodo(inicioMes, fimMes),
-      gastosAno: this.gastoService.listarPorPeriodo(inicioAno, fimAno),
       // "Distribuição por categoria" sempre reflete o mês/ano selecionado no topo,
       // independente do toggle "Destacar mês"/"Destacar ano" (que só afeta o gráfico
-      // de barras abaixo) - resumo do mês, nunca do ano inteiro.
+      // de barras abaixo) - resumo do mês, nunca do ano inteiro. resumo.totalGeral/
+      // quantidadeGastos também alimentam o card "Total gasto em {mês}" - antes disto
+      // baixava a lista inteira de gastos do mês só pra somar/contar no cliente
+      // (achado de performance, rodada 2026-09-11).
       resumo: this.gastoService.resumo(inicioMes, fimMes),
+      // Os 12 totais mensais do ano selecionado, já agregados no backend - antes
+      // baixava TODOS os gastos do ano inteiro só pra somar por mês no cliente
+      // (mesmo achado de performance). Sempre buscado (não só quando "Destacar ano"
+      // está ativo) porque também alimenta o card "Total gasto em {ano}".
+      totaisMensaisAno: this.gastoService.totaisMensaisDoAno(this.ano),
       // Só busca os totais diários quando realmente vão ser exibidos (toggle "Destacar
       // mês") - evita uma chamada à API sem uso quando o gráfico anual está ativo.
       totaisDiarios: this.periodoDestaque === 'mes'
@@ -283,10 +287,10 @@ export class DashboardComponent implements OnInit {
       venceHoje: this.gastoService.venceHoje().pipe(catchError(() => of<Gasto[]>([]))),
       aVencer: this.gastoService.aVencer().pipe(catchError(() => of<Gasto[]>([])))
     }).subscribe({
-      next: ({ gastosMes, gastosAno, resumo, totaisDiarios, metaMes, categorias, atrasadas, venceHoje, aVencer }) => {
-        this.totalMesSelecionado = gastosMes.reduce((soma, g) => soma + g.valor, 0);
-        this.numeroGastosMes = gastosMes.length;
-        this.totalAnoSelecionado = gastosAno.reduce((soma, g) => soma + g.valor, 0);
+      next: ({ resumo, totaisMensaisAno, totaisDiarios, metaMes, categorias, atrasadas, venceHoje, aVencer }) => {
+        this.totalMesSelecionado = resumo.totalGeral;
+        this.numeroGastosMes = resumo.quantidadeGastos;
+        this.totalAnoSelecionado = totaisMensaisAno.reduce((soma, t) => soma + t.total, 0);
 
         this.atrasadas = atrasadas;
         this.totalAtrasadas = atrasadas.reduce((soma, g) => soma + g.valor, 0);
@@ -302,7 +306,7 @@ export class DashboardComponent implements OnInit {
 
         this.barrasData = this.periodoDestaque === 'mes'
           ? this.construirBarrasDiarias(totaisDiarios)
-          : this.construirBarrasAnuais(gastosAno);
+          : this.construirBarrasAnuais(totaisMensaisAno);
         this.metaMes = metaMes;
 
         this.carregando = false;
@@ -359,14 +363,12 @@ export class DashboardComponent implements OnInit {
   }
 
   // Os 12 meses (Jan-Dez) do ano selecionado - usado quando "Destacar ano" está
-  // ativo. Reaproveita gastosAno (já buscado pro card "Total gasto em {{ ano }}"),
-  // agregando por mês no cliente em vez de mais uma chamada.
-  private construirBarrasAnuais(gastosAno: Gasto[]): ChartData<'bar', number[], string> {
+  // ativo. Reaproveita totaisMensaisAno (já buscado pro card "Total gasto em
+  // {{ ano }}"), já agregado por mês pelo backend (achado de performance, rodada
+  // 2026-09-11 - antes baixava todos os gastos do ano e somava por mês aqui).
+  private construirBarrasAnuais(totaisMensaisAno: TotalMensal[]): ChartData<'bar', number[], string> {
     const totalPorMes = new Array(12).fill(0);
-    gastosAno.forEach((g) => {
-      const mes = Number(g.data.split('-')[1]);
-      totalPorMes[mes - 1] += g.valor;
-    });
+    totaisMensaisAno.forEach((t) => { totalPorMes[t.mes - 1] = t.total; });
     return {
       labels: MESES_ABREV,
       datasets: [{ label: 'Total gasto', data: totalPorMes, backgroundColor: COR_BARRA }]

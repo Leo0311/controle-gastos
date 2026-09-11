@@ -10,5 +10,8 @@ import java.util.List;
 @AllArgsConstructor
 public class ResumoDTO {
     private BigDecimal totalGeral;
+    // Quantidade de gastos no período - poupa o frontend de baixar a lista inteira
+    // só pra fazer .length (achado de performance, rodada 2026-09-11).
+    private long quantidadeGastos;
     private List<CategoriaTotalDTO> porCategoria;
 }

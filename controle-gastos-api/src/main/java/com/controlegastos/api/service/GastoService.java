@@ -429,10 +429,11 @@ public class GastoService {
 
     public ResumoDTO resumo(Integer usuarioId, LocalDate inicio, LocalDate fim) {
         BigDecimal totalGeral = repository.somarNoPeriodo(usuarioId, inicio, fim);
+        long quantidadeGastos = repository.contarNoPeriodo(usuarioId, inicio, fim);
         List<CategoriaTotalDTO> porCategoria = repository.somarPorCategoriaNoPeriodo(usuarioId, inicio, fim).stream()
                 .map(c -> new CategoriaTotalDTO(c.getCategoriaId(), c.getCategoria(), c.getTotal()))
                 .collect(Collectors.toList());
-        return new ResumoDTO(totalGeral, porCategoria);
+        return new ResumoDTO(totalGeral, quantidadeGastos, porCategoria);
     }
 
     public List<TotalMensalDTO> totaisMensais(int meses, Integer usuarioId) {
@@ -443,6 +444,22 @@ public class GastoService {
             YearMonth mesAno = atual.minusMonths(i);
             BigDecimal total = repository.somarNoPeriodo(usuarioId, mesAno.atDay(1), mesAno.atEndOfMonth());
             resultado.add(new TotalMensalDTO(mesAno.getMonthValue(), mesAno.getYear(), total));
+        }
+        return resultado;
+    }
+
+    // Os 12 meses (Jan-Dez) de um ano específico - usado pelo gráfico "Destacar ano"
+    // do Dashboard, que antes baixava TODOS os gastos do ano inteiro só pra somar por
+    // mês no cliente (achado de performance, rodada 2026-09-11). Mesmo padrão de
+    // totaisMensais (1 SUM por mês), só que pro ano escolhido em vez dos últimos N
+    // meses a partir de hoje - os dois não são intercambiáveis porque o seletor do
+    // Dashboard permite escolher um ano passado.
+    public List<TotalMensalDTO> totaisMensaisDoAno(int ano, Integer usuarioId) {
+        List<TotalMensalDTO> resultado = new ArrayList<>();
+        for (int mes = 1; mes <= 12; mes++) {
+            YearMonth mesAno = YearMonth.of(ano, mes);
+            BigDecimal total = repository.somarNoPeriodo(usuarioId, mesAno.atDay(1), mesAno.atEndOfMonth());
+            resultado.add(new TotalMensalDTO(mes, ano, total));
         }
         return resultado;
     }

@@ -60,6 +60,7 @@ export interface CategoriaTotal {
 
 export interface Resumo {
   totalGeral: number;
+  quantidadeGastos: number;
   porCategoria: CategoriaTotal[];
 }
 

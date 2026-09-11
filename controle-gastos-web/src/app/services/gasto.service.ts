@@ -129,6 +129,14 @@ export class GastoService {
     return this.http.get<TotalMensal[]>(`${this.baseUrl}/totais-mensais`, { params });
   }
 
+  // Os 12 meses (Jan-Dez) de um ano específico, agregados no backend - usado pelo
+  // gráfico "Destacar ano" do Dashboard em vez de baixar todos os gastos do ano
+  // (achado de performance, rodada 2026-09-11).
+  totaisMensaisDoAno(ano: number): Observable<TotalMensal[]> {
+    const params = new HttpParams().set('ano', ano);
+    return this.http.get<TotalMensal[]>(`${this.baseUrl}/totais-mensais-do-ano`, { params });
+  }
+
   totaisDiarios(mes: number, ano: number): Observable<TotalDiario[]> {
     const params = new HttpParams().set('mes', mes).set('ano', ano);
     return this.http.get<TotalDiario[]>(`${this.baseUrl}/totais-diarios`, { params });

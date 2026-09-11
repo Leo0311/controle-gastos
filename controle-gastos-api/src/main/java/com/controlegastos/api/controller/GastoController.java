@@ -171,6 +171,12 @@ public class GastoController {
         return service.totaisMensais(meses, usuario.usuarioId());
     }
 
+    @GetMapping("/totais-mensais-do-ano")
+    public List<TotalMensalDTO> totaisMensaisDoAno(
+            @RequestParam int ano, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.totaisMensaisDoAno(ano, usuario.usuarioId());
+    }
+
     @GetMapping("/totais-diarios")
     public List<TotalDiarioDTO> totaisDiarios(
             @RequestParam int mes, @RequestParam int ano, @AuthenticationPrincipal UsuarioPrincipal usuario) {
