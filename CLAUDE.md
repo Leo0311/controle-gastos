@@ -35,10 +35,6 @@ banco no Neon.
 - **Não atualize dependências reativamente.** Nada de `npm audit fix --force`,
   `ng update` ou bump de major sem uma tarefa dedicada. O Angular está no 18.2 de
   propósito; a maioria das vulnerabilidades do `npm audit` é do toolchain de build.
-- **Consulte o context7 (MCP) antes de confiar na memória para Spring Boot 4, Angular
-  18.2, Angular Material, JPA/Hibernate ou Flyway.** São versões específicas que mudam
-  API entre releases — se a dúvida é de sintaxe, assinatura ou breaking change, puxe a
-  doc real em vez de assumir.
 - **Repositório público: nunca escreva senha, token ou connection string em arquivo
   versionado nem no chat.** Use placeholder e peça o valor ao usuário na hora.
   Credencial em texto puro em lugar versionado → avise para rotacionar.
@@ -58,23 +54,3 @@ banco no Neon.
 - **`ambiente-local`** — subir/derrubar servidores, rodar testes, semear/limpar dados
   de teste, testar no navegador.
 - **`anti-ui-slop`** — desenho de tela nova, redesign, layout/paleta, auditoria visual.
-
-### Do plugin `agent-skills` (instalado local, fora do repo) — leia quando casar
-
-- **`agent-skills:test-driven-development`** — ao implementar lógica nova ou corrigir
-  um bug em `controle-gastos-api/` ou `controle-gastos-web/src/app/`: escreva o teste
-  que falha antes do fix/feature (`./mvnw test` / `ng test`).
-- **`agent-skills:debugging-and-error-recovery`** — quando um teste, build ou
-  comportamento em produção não bate com o esperado e a causa não é óbvia de cara:
-  busque a causa-raiz antes de tentar consertar por tentativa e erro.
-- **`agent-skills:code-simplification`** — depois de qualquer refator ou fix que
-  deixou o código mais complexo do que precisava: simplifique sem mudar comportamento.
-- **`agent-skills:performance-optimization`** — ao suspeitar de N+1 numa
-  query/repositório JPA, ou de regressão de performance no frontend: perfile antes
-  de otimizar às cegas.
-- **`agent-skills:api-and-interface-design`** — ao desenhar um endpoint REST novo
-  ou mudar um DTO existente em `controle-gastos-api/`: pense no contrato (nome,
-  verbo, formato, versionamento) antes de implementar.
-- **`agent-skills:ci-cd-and-automation`** — ao editar
-  `.github/workflows/deploy-api.yml` ou qualquer coisa que mude o pipeline de
-  deploy/CI: valide o efeito no job `migration-guard` e no `deploy`.

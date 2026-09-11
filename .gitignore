@@ -29,6 +29,9 @@ Thumbs.db
 .claude/
 skills-lock.json
 
+# ===== Instruções locais (extensão pessoal do CLAUDE.md, não versionada) =====
+CLAUDE.local.md
+
 # ===== Validação de navegador (snapshots e screenshots gerados pelo Playwright MCP) =====
 .playwright-mcp/
 
