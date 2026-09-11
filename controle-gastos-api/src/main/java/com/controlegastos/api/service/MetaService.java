@@ -19,6 +19,10 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class MetaService {
 
+    // Mesmo teto usado em GastoService.GASTO_ANOS_FUTURO_MAXIMO - pega ano digitado
+    // errado (ex: 999999999) no mes/ano da meta.
+    private static final int ANO_MAXIMO_ANOS_FUTURO = 15;
+
     private final MetaRepository repository;
     private final UsuarioRepository usuarioRepository;
     private final GastoRepository gastoRepository;
@@ -72,8 +76,9 @@ public class MetaService {
         if (dados.mes() < 1 || dados.mes() > 12) {
             throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
         }
-        if (dados.ano() <= 0) {
-            throw new IllegalArgumentException("Ano inválido.");
+        int anoMaximo = LocalDate.now().getYear() + ANO_MAXIMO_ANOS_FUTURO;
+        if (dados.ano() <= 0 || dados.ano() > anoMaximo) {
+            throw new IllegalArgumentException("Ano inválido. Informe um valor entre 1 e " + anoMaximo + ".");
         }
     }
 }

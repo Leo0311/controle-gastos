@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,6 +28,10 @@ public class OrcamentoService {
     // Sentinela para "nenhum ID a excluir" na checagem de duplicidade (create): os
     // IDs reais começam em 1 (SERIAL), então 0 nunca corresponde a um orçamento existente.
     private static final int SEM_ID = 0;
+
+    // Mesmo teto usado em GastoService.GASTO_ANOS_FUTURO_MAXIMO - pega ano digitado
+    // errado (ex: 999999999) no mes/ano do orçamento.
+    private static final int ANO_MAXIMO_ANOS_FUTURO = 15;
 
     private final OrcamentoRepository repository;
     private final GastoRepository gastoRepository;
@@ -152,8 +157,9 @@ public class OrcamentoService {
         if (orcamento.getMes() < 1 || orcamento.getMes() > 12) {
             throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
         }
-        if (orcamento.getAno() <= 0) {
-            throw new IllegalArgumentException("Ano inválido.");
+        int anoMaximo = LocalDate.now().getYear() + ANO_MAXIMO_ANOS_FUTURO;
+        if (orcamento.getAno() <= 0 || orcamento.getAno() > anoMaximo) {
+            throw new IllegalArgumentException("Ano inválido. Informe um valor entre 1 e " + anoMaximo + ".");
         }
     }
 }

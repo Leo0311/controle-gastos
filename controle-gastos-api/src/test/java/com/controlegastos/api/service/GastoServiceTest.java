@@ -578,6 +578,29 @@ class GastoServiceTest {
     }
 
     @Test
+    void listarPaginado_rejeitaAnoAbsurdamenteGrande_soComAno() {
+        assertThatThrownBy(() -> service.listarPaginado(USUARIO, null, 999999999, null, 0, 50))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ano inválido");
+    }
+
+    @Test
+    void listarPaginado_rejeitaAnoAbsurdamenteGrande_comMes() {
+        assertThatThrownBy(() -> service.listarPaginado(USUARIO, 2, 999999999, null, 0, 50))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ano inválido");
+    }
+
+    @Test
+    void listarPaginado_aceitaAnoDentroDoTeto() {
+        when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
+
+        service.listarPaginado(USUARIO, null, LocalDate.now().getYear() + 1, null, 0, 50);
+
+        verify(repository).buscarPagina(eq(USUARIO), isNull(), any(), any(), any(Pageable.class));
+    }
+
+    @Test
     void listarPaginado_ordenaPorDataDescIdDescEClampaOTamanho() {
         when(repository.buscarPagina(any(), any(), any(), any(), any())).thenReturn(paginaComUmGasto());
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);

@@ -158,6 +158,24 @@ class OrcamentoServiceTest {
     }
 
     @Test
+    void definir_rejeitaAnoAbsurdamenteGrande() {
+        Orcamento o = orcamentoValido();
+        o.setAno(999999999);
+
+        assertThatThrownBy(() -> service.definir(o, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ano inválido");
+    }
+
+    @Test
+    void definir_aceitaAnoDentroDoTeto() {
+        Orcamento o = orcamentoValido();
+        o.setAno(java.time.LocalDate.now().getYear() + 1);
+
+        assertThat(service.definir(o, USUARIO)).isNotNull();
+    }
+
+    @Test
     void definir_aceitaMesesDeFronteira() {
         Orcamento janeiro = orcamentoValido();
         janeiro.setMes(1);

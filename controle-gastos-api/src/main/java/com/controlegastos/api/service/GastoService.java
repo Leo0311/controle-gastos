@@ -85,9 +85,7 @@ public class GastoService {
         LocalDate inicio = null;
         LocalDate fim = null;
         if (ano != null) {
-            if (ano <= 0) {
-                throw new IllegalArgumentException("Ano inválido.");
-            }
+            validarAno(ano);
             if (mes != null) {
                 validarMesAno(mes, ano);
                 inicio = LocalDate.of(ano, mes, 1);
@@ -584,8 +582,17 @@ public class GastoService {
         if (mes < 1 || mes > 12) {
             throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
         }
-        if (ano <= 0) {
-            throw new IllegalArgumentException("Ano inválido.");
+        validarAno(ano);
+    }
+
+    // Mesmo teto de GASTO_ANOS_FUTURO_MAXIMO (comentário na declaração da constante,
+    // acima) - pega ano digitado errado (ex: 999999999) num parâmetro de filtro, sem
+    // precisar trocar o tipo do parâmetro pra algo mais estreito. Sem teto pro
+    // passado: filtrar por um ano antigo é uso legítimo (ver histórico do usuário).
+    private void validarAno(int ano) {
+        int anoMaximo = LocalDate.now().getYear() + GASTO_ANOS_FUTURO_MAXIMO;
+        if (ano <= 0 || ano > anoMaximo) {
+            throw new IllegalArgumentException("Ano inválido. Informe um valor entre 1 e " + anoMaximo + ".");
         }
     }
 
