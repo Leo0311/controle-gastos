@@ -250,7 +250,7 @@ CREATE DATABASE controle_gastos;
 
 **API (`controle-gastos-api`):** o schema é versionado com [Flyway](https://flywaydb.org/). A API aplica as migrations (`src/main/resources/db/migration/V*.sql`) sozinha no boot — num banco vazio o Flyway cria tudo do zero; num banco que já tem as tabelas ele grava o baseline (`V1`) e aplica só o que falta. Não é preciso rodar nada à mão, nem localmente nem em produção.
 
-**Console Java (`controle-gastos`):** não usa Spring nem Flyway. Rode o script `controle-gastos/src/main/resources/schema.sql` à mão nesse banco — ele cria as mesmas tabelas (`usuarios`, `gastos`, `orcamentos`, `metas`, `categorias`, `subcategorias`, etc.), é idempotente e espelha o conteúdo do `V1__baseline.sql` da API.
+**Console Java (`controle-gastos`):** não usa Spring nem Flyway. Rode o script `controle-gastos/src/main/resources/schema.sql` à mão nesse banco — ele cria as mesmas tabelas (`usuarios`, `gastos`, `orcamentos`, `metas`, `categorias`, `subcategorias`, etc.). **Passa a ser um artefato gerado, não editado à mão:** a partir de agora, quem mudar uma migration regenera este arquivo com `bash scripts/regenerar-schema-console.sh` (dump `pg_dump --schema-only` das migrations aplicadas do zero num Postgres 18) em vez de editá-lo manualmente — a checagem automática que barra um push com o arquivo desatualizado ainda está pendente de entrar no CI.
 
 ## Como rodar cada parte localmente
 

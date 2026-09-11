@@ -17,7 +17,7 @@ controle-gastos/
     │   └── util/ConexaoBD.java    # Conexão com o PostgreSQL
     └── resources/
         ├── database.properties    # Configuração de conexão
-        └── schema.sql             # Script de criação da tabela
+        └── schema.sql             # Script de criação da tabela (gerado - ver nota abaixo)
 ```
 
 ## Como abrir no IntelliJ
@@ -34,7 +34,10 @@ controle-gastos/
    CREATE DATABASE controle_gastos;
    ```
 2. Conectado a esse banco, rode o script `src/main/resources/schema.sql`
-   (cria a tabela `gastos`).
+   (cria a tabela `gastos`, entre outras). **Passa a ser um artefato gerado, não
+   editado à mão:** a partir de agora, regenere-o com
+   `bash scripts/regenerar-schema-console.sh` (raiz do repo) sempre que uma migration
+   do Flyway mudar o schema, em vez de editá-lo manualmente.
 3. Edite `src/main/resources/database.properties` com suas credenciais reais:
    ```properties
    db.url=jdbc:postgresql://localhost:5432/controle_gastos
