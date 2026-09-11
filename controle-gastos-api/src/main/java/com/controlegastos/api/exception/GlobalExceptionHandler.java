@@ -86,12 +86,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("erro", e.getMessage()));
     }
 
-    @ExceptionHandler(EmailJaCadastradoException.class)
-    public ResponseEntity<Map<String, String>> tratarEmailJaCadastrado(EmailJaCadastradoException e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("erro", e.getMessage()));
-    }
-
-    @ExceptionHandler(TokenInvalidoException.class)
+@ExceptionHandler(TokenInvalidoException.class)
     public ResponseEntity<Map<String, String>> tratarTokenInvalido(TokenInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("erro", e.getMessage()));
     }

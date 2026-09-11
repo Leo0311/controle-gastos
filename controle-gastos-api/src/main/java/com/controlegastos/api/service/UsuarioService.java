@@ -5,7 +5,6 @@ import com.controlegastos.api.dto.LoginRequestDTO;
 import com.controlegastos.api.dto.LoginResponseDTO;
 import com.controlegastos.api.dto.RendaDTO;
 import com.controlegastos.api.exception.CredenciaisInvalidasException;
-import com.controlegastos.api.exception.EmailJaCadastradoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.exception.TokenInvalidoException;
 import com.controlegastos.api.model.Usuario;
@@ -42,8 +41,16 @@ public class UsuarioService {
     public LoginResponseDTO cadastrar(CadastroRequestDTO dados) {
         validarCadastro(dados);
 
+        // Mensagem genérica de propósito (dívida técnica de segurança, item de
+        // enumeração de usuário): não confirma que o e-mail já tem conta - antes
+        // disparava EmailJaCadastradoException com "Já existe uma conta com esse
+        // e-mail." em 409, um sinal fácil de automatizar (status + texto distintos
+        // de toda outra falha de validação). Agora cai no mesmo formato 400 +
+        // IllegalArgumentException das demais checagens de validarCadastro, com um
+        // texto que não confirma nem nega a existência da conta - mesmo espírito do
+        // esqueciSenha logo abaixo, que também nunca revela se o e-mail existe.
         if (repository.findByEmailIgnoreCase(dados.email()).isPresent()) {
-            throw new EmailJaCadastradoException("Já existe uma conta com esse e-mail.");
+            throw new IllegalArgumentException("Não foi possível concluir o cadastro. Verifique os dados informados.");
         }
 
         Usuario usuario = new Usuario();

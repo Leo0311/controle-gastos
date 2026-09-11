@@ -5,7 +5,6 @@ import com.controlegastos.api.dto.LoginRequestDTO;
 import com.controlegastos.api.dto.LoginResponseDTO;
 import com.controlegastos.api.dto.RendaDTO;
 import com.controlegastos.api.exception.CredenciaisInvalidasException;
-import com.controlegastos.api.exception.EmailJaCadastradoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.exception.TokenInvalidoException;
 import com.controlegastos.api.model.Usuario;
@@ -140,11 +139,15 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void cadastrar_rejeitaEmailJaCadastradoSemSalvar() {
+    void cadastrar_rejeitaEmailJaCadastradoSemSalvar_comMensagemGenericaQueNaoConfirmaAContaExistente() {
         when(repository.findByEmailIgnoreCase("leo@example.com")).thenReturn(Optional.of(usuarioExistente("hash")));
 
+        // Dívida técnica de segurança (enumeração de usuário): a mensagem não pode
+        // dizer "já existe"/"cadastrad[oa]" nem nada que confirme a conta - só o
+        // mesmo 400 genérico de qualquer outra falha de validarCadastro.
         assertThatThrownBy(() -> service.cadastrar(new CadastroRequestDTO("Léo", "leo@example.com", "segredo123")))
-                .isInstanceOf(EmailJaCadastradoException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Não foi possível concluir o cadastro. Verifique os dados informados.");
 
         verify(repository, never()).save(any());
     }
