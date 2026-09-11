@@ -201,9 +201,9 @@ public class CategoriaService {
 
         // Nenhuma subcategoria dela pode estar em uso sem a categoria também estar
         // (todo gasto/orçamento com subcategoria tem a categoria correspondente
-        // preenchida), então a checagem acima já garante que é seguro apagar em cascata.
-        subcategoriaRepository.findByUsuarioIdAndCategoriaIdOrderByNomeAsc(usuarioId, id)
-                .forEach(s -> subcategoriaRepository.deleteById(s.getId()));
+        // preenchida), então a checagem acima já garante que é seguro apagar em
+        // cascata. 1 DELETE em lote, não mais um SELECT + N DELETEs em série.
+        subcategoriaRepository.excluirTodasDaCategoria(usuarioId, id);
         repository.delete(existente);
     }
 

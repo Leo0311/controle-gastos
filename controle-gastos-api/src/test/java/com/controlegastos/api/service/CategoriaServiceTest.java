@@ -3,7 +3,6 @@ package com.controlegastos.api.service;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.CategoriaOrdemUsuario;
-import com.controlegastos.api.model.Subcategoria;
 import com.controlegastos.api.repository.CategoriaOrdemUsuarioRepository;
 import com.controlegastos.api.repository.CategoriaRepository;
 import com.controlegastos.api.repository.GastoRepository;
@@ -208,35 +207,21 @@ class CategoriaServiceTest {
                 .hasMessageContaining("em uso em 2 gastos e 1 orçamento");
 
         verify(repository, never()).delete(any());
-        verify(subcategoriaRepository, never()).deleteById(any());
+        verify(subcategoriaRepository, never()).excluirTodasDaCategoria(any(), any());
     }
 
     @Test
-    void excluir_apagaCategoriaPropriaEEmCascataAsSubcategorias() {
+    void excluir_apagaCategoriaPropriaEEmCascataAsSubcategoriasNumSoDelete() {
+        // Achado de performance (rodada 2026-09-11): antes buscava as subcategorias
+        // e apagava uma a uma (findByUsuarioIdAndCategoriaIdOrderByNomeAsc + N
+        // deleteById); agora é 1 DELETE em lote - não importa quantas existam.
         Categoria existente = categoria(3, "Casa", USUARIO);
         when(repository.findById(3)).thenReturn(Optional.of(existente));
-        Subcategoria sub1 = new Subcategoria();
-        sub1.setId(50);
-        Subcategoria sub2 = new Subcategoria();
-        sub2.setId(51);
-        when(subcategoriaRepository.findByUsuarioIdAndCategoriaIdOrderByNomeAsc(USUARIO, 3))
-                .thenReturn(List.of(sub1, sub2));
 
         service.excluir(3, USUARIO);
 
-        verify(subcategoriaRepository).deleteById(50);
-        verify(subcategoriaRepository).deleteById(51);
-        verify(repository).delete(existente);
-    }
-
-    @Test
-    void excluir_apagaCategoriaPropriaSemSubcategorias() {
-        Categoria existente = categoria(3, "Casa", USUARIO);
-        when(repository.findById(3)).thenReturn(Optional.of(existente));
-        when(subcategoriaRepository.findByUsuarioIdAndCategoriaIdOrderByNomeAsc(USUARIO, 3)).thenReturn(List.of());
-
-        service.excluir(3, USUARIO);
-
+        verify(subcategoriaRepository).excluirTodasDaCategoria(USUARIO, 3);
+        verify(subcategoriaRepository, never()).findByUsuarioIdAndCategoriaIdOrderByNomeAsc(any(), any());
         verify(subcategoriaRepository, never()).deleteById(any());
         verify(repository).delete(existente);
     }

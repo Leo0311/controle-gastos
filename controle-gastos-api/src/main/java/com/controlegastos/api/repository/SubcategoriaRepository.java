@@ -2,6 +2,7 @@ package com.controlegastos.api.repository;
 
 import com.controlegastos.api.model.Subcategoria;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -13,6 +14,13 @@ public interface SubcategoriaRepository extends JpaRepository<Subcategoria, Inte
     // Estritas (só do próprio usuário) - usadas só onde a intenção é "posso editar/
     // excluir isso?", nunca pra decidir o que é exibido (ver as *Visiveis abaixo).
     List<Subcategoria> findByUsuarioIdAndCategoriaIdOrderByNomeAsc(Integer usuarioId, Integer categoriaId);
+
+    // 1 DELETE em vez de buscar as subcategorias e apagar uma a uma (achado de
+    // performance, rodada 2026-09-11) - usado por CategoriaService.excluir, que já
+    // confirmou via ContadorDeUso que nenhuma delas está em uso antes de chamar isto.
+    @Modifying
+    @Query("DELETE FROM Subcategoria s WHERE s.usuarioId = :usuarioId AND s.categoriaId = :categoriaId")
+    int excluirTodasDaCategoria(@Param("usuarioId") Integer usuarioId, @Param("categoriaId") Integer categoriaId);
 
     Optional<Subcategoria> findByIdAndUsuarioId(Integer id, Integer usuarioId);
 
