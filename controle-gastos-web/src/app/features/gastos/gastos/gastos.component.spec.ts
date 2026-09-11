@@ -4,6 +4,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { GastosComponent } from './gastos.component';
 import { provedoresDeTeste } from '../../../testing/test-providers';
 import { API_BASE_URL } from '../../../core/api.constants';
+import { ImportacaoGastosOrquestrador, ResultadoImportacao } from '../importacao/importacao-gastos.orquestrador';
 
 describe('GastosComponent', () => {
   let component: GastosComponent;
@@ -46,6 +47,16 @@ describe('GastosComponent', () => {
 
   function requisicaoPagina() {
     return httpMock.expectOne((r) => r.url === `${API_BASE_URL}/gastos/pagina`);
+  }
+
+  function eventoComArquivo(nome: string): Event {
+    const arquivo = new File(['conteudo'], nome, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const input = document.createElement('input');
+    input.type = 'file';
+    Object.defineProperty(input, 'files', { value: [arquivo] });
+    return { target: input } as unknown as Event;
   }
 
   it('should create', () => {
@@ -121,5 +132,39 @@ describe('GastosComponent', () => {
     const reqPagina = requisicaoPagina();
     expect(reqPagina.request.params.get('categoriaId')).toBe('2');
     reqPagina.flush(paginaVazia);
+  });
+
+  it('desabilita "Importar planilha" (importando=true) enquanto o arquivo é processado, e reabilita ao terminar', async () => {
+    drenarPendentes();
+
+    const orquestrador = TestBed.inject(ImportacaoGastosOrquestrador);
+    let resolverImportacao!: (resultado: ResultadoImportacao) => void;
+    const importacaoPendente = new Promise<ResultadoImportacao>((resolve) => {
+      resolverImportacao = resolve;
+    });
+    spyOn(orquestrador, 'importarDeArquivo').and.returnValue(importacaoPendente);
+
+    expect(component.importando).toBeFalse();
+
+    const promessaFluxo = component.onArquivoSelecionado(eventoComArquivo('gastos.xlsx'));
+    // Ainda não resolveu - é a janela em que um segundo clique não pode ser possível.
+    expect(component.importando).toBeTrue();
+
+    resolverImportacao({ status: 'cancelado', categoriasAtualizadas: [] });
+    await promessaFluxo;
+
+    expect(component.importando).toBeFalse();
+  });
+
+  it('reabilita "Importar planilha" mesmo quando a importação termina em erro', async () => {
+    drenarPendentes();
+
+    const orquestrador = TestBed.inject(ImportacaoGastosOrquestrador);
+    spyOn(orquestrador, 'importarDeArquivo')
+      .and.resolveTo({ status: 'erro', categoriasAtualizadas: [] });
+
+    await component.onArquivoSelecionado(eventoComArquivo('gastos.xlsx'));
+
+    expect(component.importando).toBeFalse();
   });
 });

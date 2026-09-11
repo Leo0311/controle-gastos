@@ -92,6 +92,11 @@ export class GastosComponent implements OnInit {
   temMais = false;
   carregandoMais = false;
 
+  // Cobre só o fluxo de importação (onArquivoSelecionado), pra desabilitar o botão
+  // "Importar planilha" e impedir clicar de novo enquanto o processamento roda -
+  // achado M6 da auditoria (segunda importação em paralelo podia duplicar).
+  importando = false;
+
   readonly meses = MESES_OPCOES;
   readonly anos: number[];
 
@@ -692,17 +697,24 @@ export class GastosComponent implements OnInit {
     // O spinner do trio carregando/erro/vazio cobre a leitura do .xlsx até o
     // primeiro diálogo abrir; daí em diante os diálogos do orquestrador cobrem a
     // tela. Todas as mensagens (linhas ignoradas, resumos, "já cadastrado") são
-    // do orquestrador - aqui só cuidamos do estado da lista.
+    // do orquestrador - aqui só cuidamos do estado da lista. this.importando fica
+    // true por todo o fluxo (não só até o 1º diálogo) - é o que desabilita o botão
+    // "Importar planilha" contra um segundo clique em paralelo.
     this.carregando = true;
-    const resultado = await this.orquestradorImportacao.importarDeArquivo(arquivo);
-    this.carregando = false;
+    this.importando = true;
+    try {
+      const resultado = await this.orquestradorImportacao.importarDeArquivo(arquivo);
+      this.carregando = false;
 
-    if (resultado.status !== 'ok') {
-      return;
+      if (resultado.status !== 'ok') {
+        return;
+      }
+      // A importação pode ter criado categorias - reflete o emoji delas na tabela.
+      this.categoriasPorId = new Map(resultado.categoriasAtualizadas.map((c) => [c.id!, c]));
+      this.carregar();
+    } finally {
+      this.importando = false;
     }
-    // A importação pode ter criado categorias - reflete o emoji delas na tabela.
-    this.categoriasPorId = new Map(resultado.categoriasAtualizadas.map((c) => [c.id!, c]));
-    this.carregar();
   }
 
 }
