@@ -47,7 +47,7 @@ export class RedefinirSenhaComponent implements OnInit {
   private token = '';
 
   readonly form = this.fb.group({
-    novaSenha: ['', [Validators.required, Validators.minLength(6)]],
+    novaSenha: ['', [Validators.required, Validators.minLength(8)]],
     confirmarNovaSenha: ['', [Validators.required]]
   }, { validators: senhasIguaisValidator });
 

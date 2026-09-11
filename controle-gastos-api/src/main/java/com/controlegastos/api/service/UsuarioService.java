@@ -26,7 +26,10 @@ import java.util.regex.Pattern;
 @Slf4j
 public class UsuarioService {
 
-    private static final int TAMANHO_MINIMO_SENHA = 6;
+    // 8, não 6: subiu na dívida técnica de segurança de 2026-09-11 (item de baixa
+    // prioridade da auditoria). Mensagens de erro interpolam esta constante - nunca
+    // hardcode o número de novo, senão ele destoa se subir outra vez.
+    private static final int TAMANHO_MINIMO_SENHA = 8;
 
     // Só checa formato razoável (algo@algo.algo, sem espaço), não entrega - o
     // objetivo (achado R4 da auditoria 2026-09-05) é barrar "a@", "@@@", "x@y" no
@@ -116,7 +119,8 @@ public class UsuarioService {
         }
 
         if (novaSenha == null || novaSenha.length() < TAMANHO_MINIMO_SENHA) {
-            throw new IllegalArgumentException("A nova senha deve ter pelo menos 6 caracteres.");
+            throw new IllegalArgumentException(
+                    "A nova senha deve ter pelo menos " + TAMANHO_MINIMO_SENHA + " caracteres.");
         }
 
         usuario.setSenha(passwordEncoder.encode(novaSenha));
@@ -151,7 +155,7 @@ public class UsuarioService {
             throw new IllegalArgumentException("E-mail inválido.");
         }
         if (dados.senha() == null || dados.senha().length() < TAMANHO_MINIMO_SENHA) {
-            throw new IllegalArgumentException("A senha deve ter pelo menos 6 caracteres.");
+            throw new IllegalArgumentException("A senha deve ter pelo menos " + TAMANHO_MINIMO_SENHA + " caracteres.");
         }
     }
 }

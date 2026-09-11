@@ -130,12 +130,13 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void cadastrar_rejeitaSenhaComMenosDeSeisCaracteres() {
-        CadastroRequestDTO dados = new CadastroRequestDTO("Léo", "leo@example.com", "12345");
+    void cadastrar_rejeitaSenhaComMenosDeOitoCaracteres() {
+        // "1234567" tem 7 - passava no limite antigo (6), tem que falhar no novo (8).
+        CadastroRequestDTO dados = new CadastroRequestDTO("Léo", "leo@example.com", "1234567");
 
         assertThatThrownBy(() -> service.cadastrar(dados))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("pelo menos 6 caracteres");
+                .hasMessageContaining("pelo menos 8 caracteres");
     }
 
     @Test
@@ -358,9 +359,10 @@ class UsuarioServiceTest {
         usuario.setTokenRedefinicaoExpiracao(LocalDateTime.now().plusMinutes(30));
         when(repository.findByTokenRedefinicaoSenha("tok")).thenReturn(Optional.of(usuario));
 
-        assertThatThrownBy(() -> service.redefinirSenha("tok", "curta"))
+        // "1234567" tem 7 - passava no limite antigo (6), tem que falhar no novo (8).
+        assertThatThrownBy(() -> service.redefinirSenha("tok", "1234567"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("pelo menos 6 caracteres");
+                .hasMessageContaining("pelo menos 8 caracteres");
 
         verify(repository, never()).save(any());
     }
