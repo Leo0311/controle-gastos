@@ -116,6 +116,7 @@ public class OrcamentoService {
     }
 
     public List<OrcamentoMesDTO> orcamentosDoMes(int mes, int ano, Integer usuarioId) {
+        validarMesAno(mes, ano);
         List<Orcamento> orcamentos = repository.findByUsuarioIdAndMesAndAno(usuarioId, mes, ano);
         if (orcamentos.isEmpty()) {
             return List.of();
@@ -154,11 +155,18 @@ public class OrcamentoService {
         if (orcamento.getValorLimite() == null || orcamento.getValorLimite().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Valor limite deve ser maior que zero.");
         }
-        if (orcamento.getMes() < 1 || orcamento.getMes() > 12) {
+        validarMesAno(orcamento.getMes(), orcamento.getAno());
+    }
+
+    // Compartilhado entre validar() (definir/atualizar) e orcamentosDoMes() (GET
+    // /api/orcamentos/mes) - achado da auditoria 2026-09-11: o endpoint de leitura
+    // não validava mes/ano nenhum, aceitando qualquer valor sem erro.
+    private void validarMesAno(int mes, int ano) {
+        if (mes < 1 || mes > 12) {
             throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
         }
         int anoMaximo = LocalDate.now().getYear() + ANO_MAXIMO_ANOS_FUTURO;
-        if (orcamento.getAno() <= 0 || orcamento.getAno() > anoMaximo) {
+        if (ano <= 0 || ano > anoMaximo) {
             throw new IllegalArgumentException("Ano inválido. Informe um valor entre 1 e " + anoMaximo + ".");
         }
     }

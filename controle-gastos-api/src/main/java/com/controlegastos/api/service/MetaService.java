@@ -46,6 +46,8 @@ public class MetaService {
     }
 
     public MetaMesDTO metaDoMes(int mes, int ano, Integer usuarioId) {
+        validarMesAno(mes, ano);
+
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado."));
 
@@ -73,11 +75,19 @@ public class MetaService {
         if (dados.valorMeta() == null || dados.valorMeta().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Valor da meta deve ser maior que zero.");
         }
-        if (dados.mes() < 1 || dados.mes() > 12) {
+        validarMesAno(dados.mes(), dados.ano());
+    }
+
+    // Compartilhado entre validar() (definir) e metaDoMes() (GET /api/metas/mes) -
+    // achado da auditoria 2026-09-11: o endpoint de leitura não validava mes/ano
+    // nenhum, e um mes fora de 1-12 chegava sem guarda no LocalDate.of() logo abaixo,
+    // estourando DateTimeException em vez de um 400 com mensagem clara.
+    private void validarMesAno(int mes, int ano) {
+        if (mes < 1 || mes > 12) {
             throw new IllegalArgumentException("Mês inválido, informe um valor entre 1 e 12.");
         }
         int anoMaximo = LocalDate.now().getYear() + ANO_MAXIMO_ANOS_FUTURO;
-        if (dados.ano() <= 0 || dados.ano() > anoMaximo) {
+        if (ano <= 0 || ano > anoMaximo) {
             throw new IllegalArgumentException("Ano inválido. Informe um valor entre 1 e " + anoMaximo + ".");
         }
     }

@@ -2,6 +2,7 @@ package com.controlegastos.api.service;
 
 import com.controlegastos.api.dto.MetaRequestDTO;
 import com.controlegastos.api.model.Meta;
+import com.controlegastos.api.model.Usuario;
 import com.controlegastos.api.repository.GastoRepository;
 import com.controlegastos.api.repository.MetaRepository;
 import com.controlegastos.api.repository.UsuarioRepository;
@@ -17,14 +18,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Cobertura de MetaService.definir() - Mockito puro, mesmo padrão de
+ * Cobertura de MetaService - Mockito puro, mesmo padrão de
  * OrcamentoServiceTest/CategoriaServiceTest. A classe estava sem nenhum teste;
- * este arquivo cobre só os ramos de validar() (o que a auditoria de 2026-09-11
- * pediu pra fechar o teto do ano) - metaDoMes() e a query agregada de
- * economia real não entram no escopo desta rodada.
+ * cobre os ramos de validar()/validarMesAno() (definir() e metaDoMes(), este
+ * último sem nenhuma validação até a auditoria de 2026-09-11 - achado fechado
+ * nesta rodada) - a agregação de economia real de metaDoMes() em si não entra
+ * no escopo.
  */
 class MetaServiceTest {
 
@@ -89,5 +94,39 @@ class MetaServiceTest {
 
         assertThat(salva).isNotNull();
         assertThat(salva.getUsuarioId()).isEqualTo(USUARIO);
+    }
+
+    // ---------- metaDoMes() ----------
+
+    @Test
+    void metaDoMes_rejeitaMesInvalidoSemConsultarRepositorio() {
+        assertThatThrownBy(() -> service.metaDoMes(13, ANO, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Mês inválido");
+
+        verifyNoInteractions(usuarioRepository, gastoRepository);
+        verify(repository, never()).findByUsuarioIdAndMesAndAno(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void metaDoMes_rejeitaAnoAbsurdamenteGrandeSemConsultarRepositorio() {
+        assertThatThrownBy(() -> service.metaDoMes(MES, 999999999, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ano inválido");
+
+        verifyNoInteractions(usuarioRepository, gastoRepository);
+        verify(repository, never()).findByUsuarioIdAndMesAndAno(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void metaDoMes_aceitaAnoDentroDoTeto() {
+        Usuario usuario = new Usuario();
+        usuario.setId(USUARIO);
+        usuario.setRendaMensal(new BigDecimal("3000.00"));
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        when(gastoRepository.somarNoPeriodo(any(), any(), any())).thenReturn(new BigDecimal("500.00"));
+
+        int anoValido = LocalDate.now().getYear() + 1;
+        assertThat(service.metaDoMes(MES, anoValido, USUARIO)).isNotNull();
     }
 }
