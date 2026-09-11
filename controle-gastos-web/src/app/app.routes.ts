@@ -12,6 +12,7 @@ import { LoginComponent } from './features/auth/login/login.component';
 import { CadastroComponent } from './features/auth/cadastro/cadastro.component';
 import { EsqueciSenhaComponent } from './features/auth/esqueci-senha/esqueci-senha.component';
 import { RedefinirSenhaComponent } from './features/auth/redefinir-senha/redefinir-senha.component';
+import { PaginaNaoEncontradaComponent } from './features/pagina-nao-encontrada/pagina-nao-encontrada.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'gastos', pathMatch: 'full' },
@@ -24,5 +25,8 @@ export const routes: Routes = [
   { path: 'orcamentos', component: OrcamentosComponent, canActivate: [authGuard] },
   { path: 'analises', component: AnalisesComponent, canActivate: [authGuard] },
   { path: 'categorias', component: CategoriasComponent, canActivate: [authGuard] },
-  { path: 'gastos-recorrentes', component: GastosRecorrentesComponent, canActivate: [authGuard] }
+  { path: 'gastos-recorrentes', component: GastosRecorrentesComponent, canActivate: [authGuard] },
+  // Sempre por último: pega qualquer URL que não bateu com nenhuma rota acima
+  // (ver PaginaNaoEncontradaComponent).
+  { path: '**', component: PaginaNaoEncontradaComponent }
 ];

@@ -1,0 +1,9 @@
+/* Mesmo padrão de centralização vertical das páginas de auth (ver
+   login.component.css) - 96px é a folga do header + bottom nav no mobile. */
+.pagina-404 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 96px);
+  padding: 24px 16px;
+}
