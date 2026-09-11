@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth.guard';
+import { guestGuard } from './core/guest.guard';
 import { DashboardComponent } from './features/dashboard/dashboard/dashboard.component';
 import { GastosComponent } from './features/gastos/gastos/gastos.component';
 import { OrcamentosComponent } from './features/orcamentos/orcamentos/orcamentos.component';
@@ -14,9 +15,9 @@ import { RedefinirSenhaComponent } from './features/auth/redefinir-senha/redefin
 
 export const routes: Routes = [
   { path: '', redirectTo: 'gastos', pathMatch: 'full' },
-  { path: 'login', component: LoginComponent },
-  { path: 'cadastro', component: CadastroComponent },
-  { path: 'esqueci-senha', component: EsqueciSenhaComponent },
+  { path: 'login', component: LoginComponent, canActivate: [guestGuard] },
+  { path: 'cadastro', component: CadastroComponent, canActivate: [guestGuard] },
+  { path: 'esqueci-senha', component: EsqueciSenhaComponent, canActivate: [guestGuard] },
   { path: 'redefinir-senha', component: RedefinirSenhaComponent },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'gastos', component: GastosComponent, canActivate: [authGuard] },
