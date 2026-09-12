@@ -4,7 +4,7 @@ Sistema de controle de gastos pessoais com autenticação, categorias e subcateg
 
 ## Produção
 
-- **Frontend**: https://controle-gastos-web-v8wf.onrender.com — [Render](https://render.com) Static Site (Blueprint em `render.yaml`), **auto-deploy a cada push na `master`**.
+- **Frontend**: https://controle-gastos-web-v8wf.onrender.com — [Render](https://render.com) Static Site (Blueprint em `render.yaml`), **auto-deploy a cada push na `master`, sem filtro de path** — diferente do deploy da API (abaixo), que só roda em push que toque `controle-gastos-api/**`. Um push que mexa só em teste de frontend, documentação ou até só no console Java também gera build no Render (inofensivo — mesmo HTML/JS de sempre — mas esperado, não é bug).
 - **API**: https://controle-gastos-leo.duckdns.org (base dos endpoints: `/api`) — VM na [Oracle Cloud](https://www.oracle.com/cloud/) (Always Free). Roda como serviço `systemd` (`controle-gastos`); nginx faz o proxy reverso com TLS via Let's Encrypt; as variáveis de ambiente (banco, JWT, e-mail) ficam em `/etc/controle-gastos.env`. **O deploy é automático** via GitHub Actions a cada push na `master` que mexa em `controle-gastos-api/` — ver ["Deploy da API"](#deploy-da-api) abaixo. (O deploy em container pro Render foi descontinuado em setembro de 2026 — o `Dockerfile` correspondente saiu do repo, mas continua no histórico do Git.)
 - **Banco**: PostgreSQL gerenciado pelo [Neon](https://neon.tech).
 - **Monitoramento**: `GET /api/health` (público, sem autenticação) responde `{"status":"UP"}` com HTTP 200 quando a API e o banco estão no ar, e `{"status":"DOWN"}` com HTTP 503 se a conexão com o banco falha. É o endpoint que um serviço externo de uptime (UptimeRobot etc.) consulta para alertar quando a API cai.
