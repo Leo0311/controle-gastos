@@ -158,10 +158,13 @@ tem, como primeira opção, **"Ver detalhe"** — abre um diálogo só de visual
 (nenhuma ação de pagamento aqui; isso continua no próprio menu ⋮ e em Gastos) com
 o valor total/parcelas, uma barra de progresso, **quanto já foi pago e quanto
 falta pagar em R$** (não só a contagem de parcelas) e a lista das parcelas.
-Parcelamentos de até 12x mostram a lista inteira; acima disso (o caso de um
-financiamento em 104x, ~8,6 anos) as parcelas vêm **agrupadas por ano civil** em
-painéis expansíveis — o ano corrente já aberto, os demais colapsados — em vez de
-listar mês a mês indefinidamente. Dados vêm de
+Parcelamentos de até 12x mostram a lista inteira. Acima disso (o caso de um
+financiamento em 104x, ~8,6 anos), em vez de um painel por ano até o fim da
+compra, só **o ano atual e o ano seguinte** viram painel mês a mês (o atual já
+aberto; se ele não existir — 1ª parcela só cai no ano seguinte —, o seguinte é
+quem abre). **Tudo a partir de 2 anos à frente** consolida numa única linha final
+— "Restante da compra: mais X anos e Y meses · Z parcelas · R\$ total" —, sem
+seta, sem clique: é resumo, não mais um painel pra abrir. Dados vêm de
 `GET /api/compras-parceladas/{id}/detalhe` (valor pago/restante somados no
 backend a partir do status de cada parcela).
 
