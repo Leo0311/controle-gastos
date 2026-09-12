@@ -112,6 +112,13 @@ public interface GastoRepository extends JpaRepository<Gasto, Integer>, GastoRep
 
     List<Gasto> findByCompraParceladaIdAndStatusPagamento(Integer compraParceladaId, StatusPagamento statusPagamento);
 
+    // Todas as parcelas de uma compra, em ordem cronológica - para o detalhe da
+    // compra (GET /api/compras-parceladas/{id}/detalhe): progresso, valor
+    // pago/restante e a lista completa (o agrupamento por ano é no cliente).
+    // Chamado só depois de buscarPorId(id, usuarioId) já validar o dono, mesmo
+    // padrão de findByCompraParceladaIdAndStatusPagamento/AndDataAfter acima.
+    List<Gasto> findByCompraParceladaIdOrderByDataAsc(Integer compraParceladaId);
+
     // Contas atrasadas do usuário: PENDENTE com vencimento no passado, em qualquer
     // mês (uma conta vencida há 2 meses continua atrasada). Ordenadas do vencimento
     // mais antigo pro mais recente. Usado no destaque de atrasadas do Dashboard.

@@ -1,5 +1,6 @@
 package com.controlegastos.api.controller;
 
+import com.controlegastos.api.dto.CompraParceladaDetalheDTO;
 import com.controlegastos.api.model.CompraParcelada;
 import com.controlegastos.api.model.Gasto;
 import com.controlegastos.api.security.UsuarioPrincipal;
@@ -36,6 +37,14 @@ public class CompraParceladaController {
     public CompraParcelada cadastrar(
             @RequestBody CompraParcelada dados, @AuthenticationPrincipal UsuarioPrincipal usuario) {
         return service.cadastrar(dados, usuario.usuarioId());
+    }
+
+    // Detalhe completo de uma compra: progresso (parcelas pagas/lançadas), valor
+    // pago/restante e a lista das parcelas - alimenta a tela de "ver detalhe" (só
+    // leitura, nenhuma ação de pagamento aqui).
+    @GetMapping("/{id}/detalhe")
+    public CompraParceladaDetalheDTO detalhe(@PathVariable Integer id, @AuthenticationPrincipal UsuarioPrincipal usuario) {
+        return service.detalhe(id, usuario.usuarioId());
     }
 
     // Exclui a compra parcelada por completo (e as parcelas futuras) - ver
