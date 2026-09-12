@@ -55,7 +55,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/health", "/api/health/smtp").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -74,7 +74,7 @@ public class SecurityConfig {
     public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
         FilterRegistrationBean<RateLimitFilter> registro = new FilterRegistrationBean<>(new RateLimitFilter());
         registro.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        registro.addUrlPatterns("/api/auth/*");
+        registro.addUrlPatterns("/api/auth/*", "/api/health/smtp");
         return registro;
     }
 

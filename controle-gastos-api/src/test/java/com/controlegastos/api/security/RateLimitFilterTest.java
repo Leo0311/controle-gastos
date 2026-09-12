@@ -66,6 +66,28 @@ class RateLimitFilterTest {
         }
     }
 
+    // Achado M7: GET /api/health/smtp abre conexão de rede real com o Gmail a
+    // cada chamada não cacheada - mesmo limite por IP dos endpoints de auth.
+
+    @Test
+    void limitaTambemOProbeDeSaudeDoSmtp() throws Exception {
+        for (int i = 1; i <= RateLimitFilter.MAX_REQUISICOES; i++) {
+            assertThat(chamar("GET", "/api/health/smtp", "10.0.0.6").getStatus()).isEqualTo(200);
+        }
+
+        MockHttpServletResponse bloqueada = chamar("GET", "/api/health/smtp", "10.0.0.6");
+        assertThat(bloqueada.getStatus()).isEqualTo(429);
+        assertThat(bloqueada.getHeader("Retry-After")).isEqualTo("60");
+    }
+
+    @Test
+    void naoLimitaOApiHealthPrincipalNemOutrosMetodosDoSmtp() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            assertThat(chamar("GET", "/api/health", "10.0.0.7").getStatus()).isEqualTo(200);
+            assertThat(chamar("POST", "/api/health/smtp", "10.0.0.7").getStatus()).isEqualTo(200);
+        }
+    }
+
     @Test
     void caiParaRemoteAddrQuandoNaoHaXForwardedFor() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/esqueci-senha");
