@@ -16,6 +16,10 @@ import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/err
 import { NotificacaoService } from '../../../core/notificacao.service';
 import { rotuloCategoria, rotuloSubcategoria } from '../categoria-rotulo';
 import { ResumoStatusConta } from '../../../core/status-conta';
+import {
+  CompraParceladaDetalheDialogComponent,
+  CompraParceladaDetalheDialogData
+} from '../compra-parcelada-detalhe-dialog/compra-parcelada-detalhe-dialog.component';
 
 /**
  * Aba "Parceladas" (achado M8). Lista as compras parceladas e permite excluí-las;
@@ -72,6 +76,15 @@ export class ParceladasListaComponent implements OnInit {
         this.erro = true;
       }
     });
+  }
+
+  // Só visualização - progresso, valor pago/restante e a lista de parcelas. Marcar
+  // parcela como paga continua em Gastos/Recorrentes, não neste diálogo.
+  verDetalhe(parcelada: CompraParcelada): void {
+    this.dialog.open<CompraParceladaDetalheDialogComponent, CompraParceladaDetalheDialogData>(
+      CompraParceladaDetalheDialogComponent,
+      { data: { compraParceladaId: parcelada.id! }, width: '560px', maxWidth: '95vw' }
+    );
   }
 
   excluirParcelada(parcelada: CompraParcelada): void {

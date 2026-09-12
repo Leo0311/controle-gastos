@@ -158,6 +158,24 @@ class OrcamentoServiceTest {
     }
 
     @Test
+    void definir_rejeitaAnoAbsurdamenteGrande() {
+        Orcamento o = orcamentoValido();
+        o.setAno(999999999);
+
+        assertThatThrownBy(() -> service.definir(o, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ano inválido");
+    }
+
+    @Test
+    void definir_aceitaAnoDentroDoTeto() {
+        Orcamento o = orcamentoValido();
+        o.setAno(java.time.LocalDate.now().getYear() + 1);
+
+        assertThat(service.definir(o, USUARIO)).isNotNull();
+    }
+
+    @Test
     void definir_aceitaMesesDeFronteira() {
         Orcamento janeiro = orcamentoValido();
         janeiro.setMes(1);
@@ -428,6 +446,32 @@ class OrcamentoServiceTest {
                 return new BigDecimal(valor);
             }
         };
+    }
+
+    @Test
+    void orcamentosDoMes_rejeitaMesInvalidoSemConsultarRepositorio() {
+        assertThatThrownBy(() -> service.orcamentosDoMes(13, ANO, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Mês inválido");
+
+        verify(repository, never()).findByUsuarioIdAndMesAndAno(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void orcamentosDoMes_rejeitaAnoAbsurdamenteGrandeSemConsultarRepositorio() {
+        assertThatThrownBy(() -> service.orcamentosDoMes(MES, 999999999, USUARIO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ano inválido");
+
+        verify(repository, never()).findByUsuarioIdAndMesAndAno(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void orcamentosDoMes_aceitaAnoDentroDoTeto() {
+        int anoValido = java.time.LocalDate.now().getYear() + 1;
+        when(repository.findByUsuarioIdAndMesAndAno(USUARIO, MES, anoValido)).thenReturn(List.of());
+
+        assertThat(service.orcamentosDoMes(MES, anoValido, USUARIO)).isEmpty();
     }
 
     @Test

@@ -386,6 +386,15 @@ class CategoriaServiceTest {
         verify(gastoRepository, never()).categoriaIdsComGasto(any(), any(), any());
     }
 
+    @Test
+    void listarComGastos_anoAbsurdamenteGrande_lancaSemConsultarRepositorio() {
+        assertThatThrownBy(() -> service.listarComGastos(USUARIO, null, 999999999))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ano inválido");
+
+        verify(gastoRepository, never()).categoriaIdsComGasto(any(), any(), any());
+    }
+
     private CategoriaOrdemUsuario ordem(int categoriaId, int posicao) {
         CategoriaOrdemUsuario o = new CategoriaOrdemUsuario();
         o.setUsuarioId(USUARIO);

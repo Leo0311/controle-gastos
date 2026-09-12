@@ -1,5 +1,6 @@
 package com.controlegastos.api.service;
 
+import com.controlegastos.api.dto.CompraParceladaDetalheDTO;
 import com.controlegastos.api.dto.ConfigDTO;
 import com.controlegastos.api.exception.OrcamentoInvalidoException;
 import com.controlegastos.api.exception.RecursoNaoEncontradoException;
@@ -128,6 +129,33 @@ public class CompraParceladaService {
         }
         gastoRepository.saveAll(pendentes);
         return pendentes;
+    }
+
+    // Detalhe completo de uma compra: progresso (parcelas pagas/lançadas), valor
+    // pago/restante em R$, e a lista das parcelas em si (o agrupamento por ano
+    // fica por conta do cliente). Só leitura - nenhuma ação de pagamento aqui.
+    // parcelasLancadas usa o tamanho real da lista, não numeroParcelas nominal -
+    // mesma cautela de listarTodos com parcelamento incompleto (uma parcela
+    // removida fora do fluxo).
+    public CompraParceladaDetalheDTO detalhe(Integer id, Integer usuarioId) {
+        CompraParcelada compra = buscarPorId(id, usuarioId);
+        List<Gasto> parcelas = gastoRepository.findByCompraParceladaIdOrderByDataAsc(id);
+
+        BigDecimal valorPago = BigDecimal.ZERO;
+        BigDecimal valorRestante = BigDecimal.ZERO;
+        int parcelasPagas = 0;
+        for (Gasto parcela : parcelas) {
+            if (parcela.getStatusPagamento() == StatusPagamento.PAGO) {
+                valorPago = valorPago.add(parcela.getValor());
+                parcelasPagas++;
+            } else {
+                valorRestante = valorRestante.add(parcela.getValor());
+            }
+        }
+
+        return new CompraParceladaDetalheDTO(
+                compra.getId(), compra.getDescricao(), compra.getValorTotal(), compra.getNumeroParcelas(),
+                parcelas.size(), parcelasPagas, valorPago, valorRestante, parcelas);
     }
 
     // Gera as N parcelas como gastos individuais, uma por mês consecutivo a partir da

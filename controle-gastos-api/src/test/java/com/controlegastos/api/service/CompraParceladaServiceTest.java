@@ -1,5 +1,7 @@
 package com.controlegastos.api.service;
 
+import com.controlegastos.api.dto.CompraParceladaDetalheDTO;
+import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.model.Categoria;
 import com.controlegastos.api.model.CompraParcelada;
 import com.controlegastos.api.model.Gasto;
@@ -402,5 +404,70 @@ class CompraParceladaServiceTest {
             }
         }
         assertThat(cruzaVirada).as("14 parcelas devem cobrir uma virada de ano (Dez -> Jan)").isTrue();
+    }
+
+    private Gasto parcela(StatusPagamento status, String valor) {
+        Gasto g = new Gasto();
+        g.setValor(new BigDecimal(valor));
+        g.setStatusPagamento(status);
+        g.setCompraParceladaId(99);
+        return g;
+    }
+
+    @Test
+    void detalhe_somaValorPagoERestanteEContaParcelasPagasSeparadamente() {
+        when(repository.findByIdAndUsuarioId(99, USUARIO)).thenReturn(Optional.of(compraComId(99, 4)));
+        when(gastoRepository.findByCompraParceladaIdOrderByDataAsc(99)).thenReturn(List.of(
+                parcela(StatusPagamento.PAGO, "100.00"),
+                parcela(StatusPagamento.PAGO, "100.00"),
+                parcela(StatusPagamento.PENDENTE, "100.00"),
+                parcela(StatusPagamento.PENDENTE, "100.00")));
+
+        CompraParceladaDetalheDTO detalhe = service.detalhe(99, USUARIO);
+
+        assertThat(detalhe.parcelasLancadas()).isEqualTo(4);
+        assertThat(detalhe.parcelasPagas()).isEqualTo(2);
+        assertThat(detalhe.valorPago()).isEqualByComparingTo("200.00");
+        assertThat(detalhe.valorRestante()).isEqualByComparingTo("200.00");
+        assertThat(detalhe.parcelas()).hasSize(4);
+    }
+
+    @Test
+    void detalhe_parcelamentoIncompleto_parcelasLancadasReflcteOTamanhoRealNaoONominal() {
+        // numeroParcelas=5 nominal, mas só 3 gastos vinculados hoje (uma foi
+        // removida fora do fluxo) - mesma noção de listarTodos/parcelasLancadas.
+        when(repository.findByIdAndUsuarioId(99, USUARIO)).thenReturn(Optional.of(compraComId(99, 5)));
+        when(gastoRepository.findByCompraParceladaIdOrderByDataAsc(99)).thenReturn(List.of(
+                parcela(StatusPagamento.PAGO, "100.00"),
+                parcela(StatusPagamento.PAGO, "100.00"),
+                parcela(StatusPagamento.PENDENTE, "100.00")));
+
+        CompraParceladaDetalheDTO detalhe = service.detalhe(99, USUARIO);
+
+        assertThat(detalhe.numeroParcelas()).isEqualTo(5);
+        assertThat(detalhe.parcelasLancadas()).isEqualTo(3);
+    }
+
+    @Test
+    void detalhe_semParcelaNenhuma_valoresZeradosSemQuebrar() {
+        when(repository.findByIdAndUsuarioId(99, USUARIO)).thenReturn(Optional.of(compraComId(99, 3)));
+        when(gastoRepository.findByCompraParceladaIdOrderByDataAsc(99)).thenReturn(List.of());
+
+        CompraParceladaDetalheDTO detalhe = service.detalhe(99, USUARIO);
+
+        assertThat(detalhe.parcelasLancadas()).isZero();
+        assertThat(detalhe.parcelasPagas()).isZero();
+        assertThat(detalhe.valorPago()).isEqualByComparingTo("0");
+        assertThat(detalhe.valorRestante()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void detalhe_compraDeOutroUsuarioOuInexistente_lancaNaoEncontrado() {
+        when(repository.findByIdAndUsuarioId(99, USUARIO)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.detalhe(99, USUARIO))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+
+        verifyNoInteractions(gastoService);
     }
 }

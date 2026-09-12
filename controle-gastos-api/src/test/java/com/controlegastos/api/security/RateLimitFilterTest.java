@@ -50,11 +50,56 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void limitaTambemOEndpointDeLoginComGoogle() throws Exception {
+        for (int i = 1; i <= RateLimitFilter.MAX_REQUISICOES; i++) {
+            assertThat(chamar("POST", "/api/auth/google", "10.0.0.5").getStatus()).isEqualTo(200);
+        }
+
+        assertThat(chamar("POST", "/api/auth/google", "10.0.0.5").getStatus()).isEqualTo(429);
+    }
+
+    @Test
     void naoLimitaOutrosEndpointsNemOutrosMetodos() throws Exception {
         for (int i = 0; i < 20; i++) {
             assertThat(chamar("POST", "/api/gastos", "10.0.0.4").getStatus()).isEqualTo(200);
             assertThat(chamar("GET", "/api/auth/login", "10.0.0.4").getStatus()).isEqualTo(200);
         }
+    }
+
+    // Achado M7: GET /api/health/smtp abre conexão de rede real com o Gmail a
+    // cada chamada não cacheada - mesmo limite por IP dos endpoints de auth.
+
+    @Test
+    void limitaTambemOProbeDeSaudeDoSmtp() throws Exception {
+        for (int i = 1; i <= RateLimitFilter.MAX_REQUISICOES; i++) {
+            assertThat(chamar("GET", "/api/health/smtp", "10.0.0.6").getStatus()).isEqualTo(200);
+        }
+
+        MockHttpServletResponse bloqueada = chamar("GET", "/api/health/smtp", "10.0.0.6");
+        assertThat(bloqueada.getStatus()).isEqualTo(429);
+        assertThat(bloqueada.getHeader("Retry-After")).isEqualTo("60");
+    }
+
+    @Test
+    void naoLimitaOApiHealthPrincipalNemOutrosMetodosDoSmtp() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            assertThat(chamar("GET", "/api/health", "10.0.0.7").getStatus()).isEqualTo(200);
+            assertThat(chamar("POST", "/api/health/smtp", "10.0.0.7").getStatus()).isEqualTo(200);
+        }
+    }
+
+    // Regressão real de produção (2026-09-12): o UptimeRobot manda HEAD, não
+    // GET, quando o monitor não tem checagem de keyword - SecurityConfig
+    // libera HEAD pro /smtp (ver teste de regressão em SecurityConfig), então
+    // o rate limit precisa contar HEAD também, senão o probe real ao Gmail
+    // fica sem limite nenhum quando o monitor usa esse método.
+    @Test
+    void limitaOProbeDeSmtpTambemViaHead() throws Exception {
+        for (int i = 1; i <= RateLimitFilter.MAX_REQUISICOES; i++) {
+            assertThat(chamar("HEAD", "/api/health/smtp", "10.0.0.8").getStatus()).isEqualTo(200);
+        }
+
+        assertThat(chamar("HEAD", "/api/health/smtp", "10.0.0.8").getStatus()).isEqualTo(429);
     }
 
     @Test

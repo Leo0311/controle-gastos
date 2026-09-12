@@ -14,9 +14,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Limita a frequência de chamadas aos endpoints de autenticação
- * (login/cadastro/esqueci-senha), que são públicos e alvo natural de força
- * bruta, enumeração de conta e bombardeio de e-mail de redefinição.
+ * Limita a frequência de chamadas a endpoints públicos que são alvo natural de
+ * abuso: os de autenticação (login/cadastro/esqueci-senha/google - força
+ * bruta, enumeração de conta, bombardeio de e-mail de redefinição) e o probe
+ * de saúde do SMTP (achado M7 - a cada chamada não cacheada ele abre uma
+ * conexão de rede real e autentica no Gmail; sem limite por IP, muitos IPs
+ * distintos batendo nele ao mesmo tempo poderiam gerar tentativas de
+ * autenticação suficientes pro Gmail sinalizar a conta como suspeita, mesmo
+ * com o {@code HealthController} cacheando o resultado por 30s).
  *
  * Janela fixa de {@value #MAX_REQUISICOES} requisições por
  * {@link #JANELA} por IP de origem + caminho. Ao exceder, responde
@@ -33,11 +38,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
     static final int MAX_REQUISICOES = 5;
     static final Duration JANELA = Duration.ofMinutes(1);
 
-    private static final Set<String> CAMINHOS_LIMITADOS = Set.of(
+    private static final Set<String> CAMINHOS_POST_LIMITADOS = Set.of(
             "/api/auth/login",
             "/api/auth/cadastro",
-            "/api/auth/esqueci-senha"
+            "/api/auth/esqueci-senha",
+            "/api/auth/google"
     );
+
+    private static final String CAMINHO_HEALTH_SMTP = "/api/health/smtp";
 
     // Poda oportunista: quando o mapa passa disso, remove as janelas já
     // expiradas numa varredura. Evita crescimento ilimitado sob tráfego
@@ -48,8 +56,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        return !"POST".equalsIgnoreCase(request.getMethod())
-                || !CAMINHOS_LIMITADOS.contains(request.getRequestURI());
+        String metodo = request.getMethod();
+        String uri = request.getRequestURI();
+        boolean autenticacao = "POST".equalsIgnoreCase(metodo) && CAMINHOS_POST_LIMITADOS.contains(uri);
+        // GET e HEAD: SecurityConfig libera os dois (monitores de uptime mandam
+        // HEAD quando não têm checagem de keyword) e @GetMapping responde a
+        // ambos executando o mesmo handler - sem contar HEAD aqui, um monitor
+        // configurado com HEAD testaria o SMTP de verdade sem limite nenhum.
+        boolean healthSmtp = ("GET".equalsIgnoreCase(metodo) || "HEAD".equalsIgnoreCase(metodo))
+                && CAMINHO_HEALTH_SMTP.equals(uri);
+        return !(autenticacao || healthSmtp);
     }
 
     @Override

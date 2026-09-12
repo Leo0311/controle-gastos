@@ -22,7 +22,7 @@
         <mat-icon>download</mat-icon>
         <span>Baixar modelo de importação</span>
       </button>
-      <button mat-menu-item (click)="importarPlanilha()">
+      <button mat-menu-item (click)="importarPlanilha()" [disabled]="importando">
         <mat-icon>upload_file</mat-icon>
         <span>Importar planilha</span>
       </button>

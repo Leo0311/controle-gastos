@@ -28,6 +28,10 @@ public class CategoriaService {
     private static final String EMOJI_PADRAO = "📁";
     private static final int SEM_ID = 0;
 
+    // Mesmo teto usado em GastoService.GASTO_ANOS_FUTURO_MAXIMO - pega ano digitado
+    // errado (ex: 999999999) no filtro mes/ano de listarComGastos.
+    private static final int ANO_MAXIMO_ANOS_FUTURO = 15;
+
     // Ordem padrão quando o usuário nunca personalizou nada (ou pra categorias
     // novas ainda sem posição salva): categorias do sistema primeiro, depois as
     // pessoais, cada grupo em ordem alfabética.
@@ -56,8 +60,9 @@ public class CategoriaService {
         LocalDate inicio = null;
         LocalDate fim = null;
         if (ano != null) {
-            if (ano <= 0) {
-                throw new IllegalArgumentException("Ano inválido.");
+            int anoMaximo = LocalDate.now().getYear() + ANO_MAXIMO_ANOS_FUTURO;
+            if (ano <= 0 || ano > anoMaximo) {
+                throw new IllegalArgumentException("Ano inválido. Informe um valor entre 1 e " + anoMaximo + ".");
             }
             if (mes != null) {
                 if (mes < 1 || mes > 12) {

@@ -9,6 +9,8 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.exception.TokenInvalidoException;
 import com.controlegastos.api.model.Usuario;
 import com.controlegastos.api.repository.UsuarioRepository;
+import com.controlegastos.api.security.GooglePayload;
+import com.controlegastos.api.security.GoogleTokenVerifier;
 import com.controlegastos.api.security.JwtService;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -58,9 +60,10 @@ class UsuarioServiceTest {
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final JwtService jwtService = mock(JwtService.class);
     private final EmailService emailService = mock(EmailService.class);
+    private final GoogleTokenVerifier googleTokenVerifier = mock(GoogleTokenVerifier.class);
 
     private final UsuarioService service = new UsuarioService(
-            repository, passwordEncoder, jwtService, emailService);
+            repository, passwordEncoder, jwtService, emailService, googleTokenVerifier);
 
     @BeforeEach
     void stubsPadrao() {
@@ -226,6 +229,82 @@ class UsuarioServiceTest {
 
         assertThat(resposta.token()).isEqualTo("jwt-login");
         assertThat(resposta.usuarioId()).isEqualTo(7);
+    }
+
+    // ---------- loginComGoogle() ----------
+
+    @Test
+    void loginComGoogle_emailNovoCriaContaSemSenhaComGoogleIdETokenVersionZero() {
+        when(googleTokenVerifier.verificar("token-valido"))
+                .thenReturn(new GooglePayload("sub-123", "novo@example.com", true, "Novo Usuário"));
+
+        LoginResponseDTO resposta = service.loginComGoogle("token-valido");
+
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(repository).save(captor.capture());
+        Usuario salvo = captor.getValue();
+        assertThat(salvo.getEmail()).isEqualTo("novo@example.com");
+        assertThat(salvo.getNome()).isEqualTo("Novo Usuário");
+        assertThat(salvo.getSenha()).isNull();
+        assertThat(salvo.getGoogleId()).isEqualTo("sub-123");
+        assertThat(salvo.getTokenVersion()).isZero();
+        assertThat(resposta.usuarioId()).isEqualTo(42);
+    }
+
+    @Test
+    void loginComGoogle_emailJaCadastradoPorSenhaVinculaEInvalidaTokenVersion() {
+        Usuario existente = usuarioExistente("hash-senha"); // tokenVersion = 3, googleId = null
+        when(googleTokenVerifier.verificar("token-valido"))
+                .thenReturn(new GooglePayload("sub-456", "leo@example.com", true, "Léo"));
+        when(repository.findByGoogleId("sub-456")).thenReturn(Optional.empty());
+        when(repository.findByEmailIgnoreCase("leo@example.com")).thenReturn(Optional.of(existente));
+
+        service.loginComGoogle("token-valido");
+
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(repository).save(captor.capture());
+        Usuario salvo = captor.getValue();
+        assertThat(salvo.getGoogleId()).isEqualTo("sub-456");
+        assertThat(salvo.getSenha()).isEqualTo("hash-senha"); // senha original preservada
+        assertThat(salvo.getTokenVersion()).isEqualTo(4); // era 3 - desloga sessões anteriores
+    }
+
+    @Test
+    void loginComGoogle_contaJaVinculadaSoLogaSemSalvarDeNovo() {
+        Usuario existente = usuarioExistente("hash-senha");
+        existente.setGoogleId("sub-789");
+        when(googleTokenVerifier.verificar("token-valido"))
+                .thenReturn(new GooglePayload("sub-789", "leo@example.com", true, "Léo"));
+        when(repository.findByGoogleId("sub-789")).thenReturn(Optional.of(existente));
+
+        LoginResponseDTO resposta = service.loginComGoogle("token-valido");
+
+        assertThat(resposta.usuarioId()).isEqualTo(7);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void loginComGoogle_emailNaoVerificadoBloqueiaSemConsultarRepository() {
+        when(googleTokenVerifier.verificar("token-nao-verificado"))
+                .thenReturn(new GooglePayload("sub-999", "naoverificado@example.com", false, "Alguém"));
+
+        assertThatThrownBy(() -> service.loginComGoogle("token-nao-verificado"))
+                .isInstanceOf(CredenciaisInvalidasException.class);
+
+        verify(repository, never()).findByGoogleId(any());
+        verify(repository, never()).findByEmailIgnoreCase(any());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void loginComGoogle_tokenInvalidoPropagaAExcecaoDoVerifierSemTocarRepository() {
+        when(googleTokenVerifier.verificar("token-invalido"))
+                .thenThrow(new CredenciaisInvalidasException("Não foi possível validar o login do Google."));
+
+        assertThatThrownBy(() -> service.loginComGoogle("token-invalido"))
+                .isInstanceOf(CredenciaisInvalidasException.class);
+
+        verify(repository, never()).save(any());
     }
 
     // ---------- esqueciSenha() ----------

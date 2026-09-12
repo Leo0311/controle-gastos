@@ -6,6 +6,15 @@
     </mat-card-header>
 
     <mat-card-content>
+      <app-google-sign-in-button
+        (credencial)="entrarComGoogle($event)"
+        (erro)="erroGoogle($event)"
+      ></app-google-sign-in-button>
+
+      <div class="divisor" role="separator" aria-label="ou">
+        <span>ou</span>
+      </div>
+
       <form [formGroup]="form" (ngSubmit)="entrar()">
         <mat-form-field appearance="outline" class="campo-largo">
           <mat-label>E-mail</mat-label>
