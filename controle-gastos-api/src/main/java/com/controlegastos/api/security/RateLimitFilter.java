@@ -15,8 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Limita a frequência de chamadas aos endpoints de autenticação
- * (login/cadastro/esqueci-senha), que são públicos e alvo natural de força
- * bruta, enumeração de conta e bombardeio de e-mail de redefinição.
+ * (login/cadastro/esqueci-senha/google), que são públicos e alvo natural de
+ * força bruta, enumeração de conta e bombardeio de e-mail de redefinição.
  *
  * Janela fixa de {@value #MAX_REQUISICOES} requisições por
  * {@link #JANELA} por IP de origem + caminho. Ao exceder, responde
@@ -36,7 +36,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Set<String> CAMINHOS_LIMITADOS = Set.of(
             "/api/auth/login",
             "/api/auth/cadastro",
-            "/api/auth/esqueci-senha"
+            "/api/auth/esqueci-senha",
+            "/api/auth/google"
     );
 
     // Poda oportunista: quando o mapa passa disso, remove as janelas já

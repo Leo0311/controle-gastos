@@ -50,6 +50,15 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void limitaTambemOEndpointDeLoginComGoogle() throws Exception {
+        for (int i = 1; i <= RateLimitFilter.MAX_REQUISICOES; i++) {
+            assertThat(chamar("POST", "/api/auth/google", "10.0.0.5").getStatus()).isEqualTo(200);
+        }
+
+        assertThat(chamar("POST", "/api/auth/google", "10.0.0.5").getStatus()).isEqualTo(429);
+    }
+
+    @Test
     void naoLimitaOutrosEndpointsNemOutrosMetodos() throws Exception {
         for (int i = 0; i < 20; i++) {
             assertThat(chamar("POST", "/api/gastos", "10.0.0.4").getStatus()).isEqualTo(200);

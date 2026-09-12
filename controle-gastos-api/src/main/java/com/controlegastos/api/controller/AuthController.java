@@ -2,6 +2,7 @@ package com.controlegastos.api.controller;
 
 import com.controlegastos.api.dto.CadastroRequestDTO;
 import com.controlegastos.api.dto.EsqueciSenhaRequestDTO;
+import com.controlegastos.api.dto.GoogleLoginRequestDTO;
 import com.controlegastos.api.dto.LoginRequestDTO;
 import com.controlegastos.api.dto.LoginResponseDTO;
 import com.controlegastos.api.dto.RedefinirSenhaRequestDTO;
@@ -31,6 +32,11 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponseDTO login(@RequestBody LoginRequestDTO dados) {
         return service.login(dados);
+    }
+
+    @PostMapping("/google")
+    public LoginResponseDTO google(@RequestBody GoogleLoginRequestDTO dados) {
+        return service.loginComGoogle(dados.idToken());
     }
 
     @PostMapping("/esqueci-senha")
