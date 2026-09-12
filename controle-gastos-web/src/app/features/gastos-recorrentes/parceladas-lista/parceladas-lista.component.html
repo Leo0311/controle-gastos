@@ -53,6 +53,10 @@
           <mat-icon>more_vert</mat-icon>
         </button>
         <mat-menu #menuParcelada="matMenu">
+          <button mat-menu-item (click)="verDetalhe(parcelada)">
+            <mat-icon>receipt_long</mat-icon>
+            <span>Ver detalhe</span>
+          </button>
           @if (temPendentes(parcelada.id)) {
             <button mat-menu-item (click)="marcarPendentesComoPagas(parcelada)">
               <mat-icon>check_circle</mat-icon>

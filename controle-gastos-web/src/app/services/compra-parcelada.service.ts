@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../core/api.constants';
-import { CompraParcelada } from '../models/compra-parcelada.model';
+import { CompraParcelada, CompraParceladaDetalhe } from '../models/compra-parcelada.model';
 import { Gasto } from '../models/gasto.model';
 
 @Injectable({
@@ -17,6 +17,12 @@ export class CompraParceladaService {
 
   listarTodos(): Observable<CompraParcelada[]> {
     return this.http.get<CompraParcelada[]>(this.baseUrl);
+  }
+
+  // Detalhe completo de uma compra: progresso, valor pago/restante e a lista de
+  // parcelas - alimenta o diálogo "Ver detalhe" (só leitura).
+  detalhe(id: number): Observable<CompraParceladaDetalhe> {
+    return this.http.get<CompraParceladaDetalhe>(`${this.baseUrl}/${id}/detalhe`);
   }
 
   cadastrar(compra: CompraParcelada): Observable<CompraParcelada> {

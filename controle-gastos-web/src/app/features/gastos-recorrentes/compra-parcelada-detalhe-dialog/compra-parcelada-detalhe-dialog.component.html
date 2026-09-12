@@ -1,0 +1,77 @@
+<h2 mat-dialog-title>{{ detalhe?.descricao ?? 'Detalhe da compra' }}</h2>
+
+<mat-dialog-content class="conteudo">
+  @if (carregando) {
+    <div class="carregando">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (erro) {
+    <app-erro-carregamento oQue="o detalhe da compra" (tentarNovamente)="carregar()"></app-erro-carregamento>
+  } @else if (detalhe) {
+    @let d = detalhe;
+    <div class="resumo-compra">
+      <p class="linha-total">{{ d.valorTotal | currency:'BRL' }} em {{ d.numeroParcelas }}x</p>
+
+      <mat-progress-bar mode="determinate" [value]="percentualPago"></mat-progress-bar>
+
+      <div class="stats-compra">
+        <div class="stat">
+          <span class="stat-label">Pago</span>
+          <span class="stat-valor">{{ d.valorPago | currency:'BRL' }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Restante</span>
+          <span class="stat-valor">{{ d.valorRestante | currency:'BRL' }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Parcelas</span>
+          <span class="stat-valor">{{ d.parcelasPagas }} de {{ d.parcelasLancadas }}</span>
+        </div>
+      </div>
+    </div>
+
+    @if (d.parcelas.length === 0) {
+      <app-empty-state icon="receipt_long" mensagem="Nenhuma parcela encontrada."></app-empty-state>
+    } @else if (agrupaPorAno) {
+      <mat-accordion class="lista-anos" multi>
+        @for (grupo of grupos; track grupo.ano) {
+          <mat-expansion-panel [expanded]="grupo.expandidoPadrao">
+            <mat-expansion-panel-header>
+              <mat-panel-title>{{ grupo.ano }}</mat-panel-title>
+              <mat-panel-description>
+                {{ grupo.quantidade }} parcela{{ grupo.quantidade > 1 ? 's' : '' }} · {{ grupo.total | currency:'BRL' }}
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+            <ul class="lista-parcelas">
+              @for (parcela of grupo.parcelas; track parcela.id) {
+                <li>
+                  <span class="parcela-data">{{ parcela.data | date:'dd/MM/yyyy':'UTC' }}</span>
+                  <span class="parcela-valor">{{ parcela.valor | currency:'BRL' }}</span>
+                  <mat-chip [class]="'chip-status-' + classeStatus(statusDaConta(parcela))">
+                    {{ rotuloStatus(statusDaConta(parcela)) }}
+                  </mat-chip>
+                </li>
+              }
+            </ul>
+          </mat-expansion-panel>
+        }
+      </mat-accordion>
+    } @else {
+      <ul class="lista-parcelas">
+        @for (parcela of d.parcelas; track parcela.id) {
+          <li>
+            <span class="parcela-data">{{ parcela.data | date:'dd/MM/yyyy':'UTC' }}</span>
+            <span class="parcela-valor">{{ parcela.valor | currency:'BRL' }}</span>
+            <mat-chip [class]="'chip-status-' + classeStatus(statusDaConta(parcela))">
+              {{ rotuloStatus(statusDaConta(parcela)) }}
+            </mat-chip>
+          </li>
+        }
+      </ul>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="fechar()">Fechar</button>
+</mat-dialog-actions>

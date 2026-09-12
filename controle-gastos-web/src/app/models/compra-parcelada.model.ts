@@ -1,3 +1,5 @@
+import { Gasto } from './gasto.model';
+
 export interface CompraParcelada {
   id?: number;
   descricao: string;
@@ -19,4 +21,20 @@ export interface CompraParcelada {
   // (gastos vinculados) a compra realmente tem hoje. Menor que numeroParcelas =
   // parcelamento incompleto.
   parcelasLancadas?: number;
+}
+
+// Resposta de GET /api/compras-parceladas/{id}/detalhe - progresso de pagamento
+// (parcelas pagas/lançadas), valor pago/restante em R$, e a lista de parcelas em
+// si (o agrupamento por ano é feito no cliente, ver compra-parcelada-detalhe.ts).
+// Só leitura - nenhuma ação de pagamento vem daqui.
+export interface CompraParceladaDetalhe {
+  id: number;
+  descricao: string;
+  valorTotal: number;
+  numeroParcelas: number;
+  parcelasLancadas: number;
+  parcelasPagas: number;
+  valorPago: number;
+  valorRestante: number;
+  parcelas: Gasto[];
 }
