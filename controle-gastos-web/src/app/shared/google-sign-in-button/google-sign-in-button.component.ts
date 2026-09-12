@@ -9,9 +9,9 @@ import { GoogleSignInService } from '../../services/google-sign-in.service';
  * botão que o próprio Google renderiza, que só aceita customizar
  * tema/tamanho/formato/texto - ver investigação da feature). Quem aciona o
  * fluxo de verdade é o GoogleSignInService; este componente só sabe emitir
- * (credencial) com o ID token em caso de sucesso e (erro) com uma mensagem
- * pronta pra mostrar ao usuário - login/cadastro reagem igual ao que já fazem
- * com AuthService.login()/cadastrar().
+ * (credencial) com o access token em caso de sucesso e (erro) com uma
+ * mensagem pronta pra mostrar ao usuário - login/cadastro reagem igual ao
+ * que já fazem com AuthService.login()/cadastrar().
  */
 @Component({
   selector: 'app-google-sign-in-button',
@@ -29,8 +29,13 @@ export class GoogleSignInButtonComponent implements OnInit, OnDestroy {
   @Output() readonly erro = new EventEmitter<string>();
 
   ngOnInit(): void {
-    this.inscricoes.add(this.googleSignIn.credencial$.subscribe((idToken) => this.credencial.emit(idToken)));
+    this.inscricoes.add(this.googleSignIn.credencial$.subscribe((accessToken) => this.credencial.emit(accessToken)));
     this.inscricoes.add(this.googleSignIn.erro$.subscribe((mensagem) => this.erro.emit(mensagem)));
+    // Carrega o script do Google e cria o token client já aqui, não no
+    // clique - requestAccessToken() (em solicitarLogin()) precisa rodar de
+    // forma síncrona dentro do handler de clique pra não ser barrado como
+    // popup bloqueado (ver GoogleSignInService).
+    this.googleSignIn.precarregar();
   }
 
   ngOnDestroy(): void {

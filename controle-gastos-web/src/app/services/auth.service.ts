@@ -50,8 +50,8 @@ export class AuthService {
       .pipe(tap((resposta) => this.definirSessao(resposta)));
   }
 
-  loginComGoogle(idToken: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.baseUrl}/google`, { idToken })
+  loginComGoogle(accessToken: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.baseUrl}/google`, { accessToken })
       .pipe(tap((resposta) => this.definirSessao(resposta)));
   }
 

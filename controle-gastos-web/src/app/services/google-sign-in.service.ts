@@ -11,25 +11,48 @@ declare global {
   interface Window {
     google?: {
       accounts: {
-        id: {
-          initialize(config: {
+        oauth2: {
+          initTokenClient(config: {
             client_id: string;
-            callback: (resposta: { credential: string }) => void;
-          }): void;
-          prompt(): void;
+            scope: string;
+            callback: (resposta: GoogleTokenResponse) => void;
+            error_callback?: (erro: GoogleTokenErrorResponse) => void;
+          }): GoogleTokenClient;
         };
       };
     };
   }
 }
 
+interface GoogleTokenResponse {
+  access_token?: string;
+  error?: string;
+}
+
+interface GoogleTokenErrorResponse {
+  type: 'popup_failed_to_open' | 'popup_closed' | 'unknown';
+}
+
+interface GoogleTokenClient {
+  requestAccessToken(): void;
+}
+
 /**
- * Encapsula a lib "Google Identity Services" (Sign-In) - os componentes de
- * login/cadastro só conhecem credencial$/erro$/solicitarLogin(), nunca
- * `window.google` diretamente (mesmo espírito de AuthService escondendo o
- * HttpClient). O script do Google só é carregado quando alguém chama
- * solicitarLogin() pela 1ª vez - não em toda página do app, só nas telas de
- * login/cadastro que usam o botão.
+ * Encapsula a lib "Google Identity Services" (popup OAuth via
+ * accounts.oauth2.initTokenClient - NÃO o One Tap/FedCM de accounts.id, que é
+ * bloqueado por padrão em navegadores como a Brave e não suportado pelo
+ * Firefox). Os componentes de login/cadastro só conhecem
+ * credencial$/erro$/precarregar()/solicitarLogin(), nunca `window.google`
+ * diretamente (mesmo espírito de AuthService escondendo o HttpClient).
+ *
+ * precarregar() carrega o script e cria o token client ANTES do clique -
+ * chamado no ngOnInit do botão (ver GoogleSignInButtonComponent), não no
+ * clique. Isso é essencial: requestAccessToken() só é reconhecido pelo
+ * navegador como resultado direto de um gesto do usuário (e portanto livre
+ * do bloqueador de popup) se for chamado de forma SÍNCRONA dentro do handler
+ * de clique - se solicitarLogin() precisasse esperar uma Promise (carregar
+ * script, inicializar) antes de chamar requestAccessToken(), esse intervalo
+ * assíncrono quebraria a cadeia do gesto do usuário e o popup seria barrado.
  */
 @Injectable({
   providedIn: 'root'
@@ -37,24 +60,35 @@ declare global {
 export class GoogleSignInService {
 
   private scriptCarregado: Promise<void> | null = null;
-  private inicializado = false;
+  private tokenClient: GoogleTokenClient | null = null;
 
   private readonly credencialSubject = new Subject<string>();
   private readonly erroSubject = new Subject<string>();
 
-  // ID token do Google, já assinado - o backend (GoogleTokenVerifier) que
-  // confere assinatura/emissor/audiência antes de confiar em qualquer campo.
+  // Access token do Google (string opaca, não é JWT) - o backend
+  // (GoogleTokenVerifier) que confere validade/audiência via tokeninfo antes
+  // de confiar em qualquer dado, e busca email/nome via userinfo.
   readonly credencial$ = this.credencialSubject.asObservable();
   readonly erro$ = this.erroSubject.asObservable();
 
-  solicitarLogin(): void {
+  precarregar(): void {
     this.carregarScript()
-      .then(() => {
-        this.garantirInicializado();
-        window.google!.accounts.id.prompt();
-      })
-      .catch(() => this.erroSubject.next(
-        'Não foi possível carregar o login do Google. Verifique sua conexão e tente novamente.'));
+      .then(() => this.garantirTokenClient())
+      .catch(() => {
+        // Silencioso de propósito: isto roda no ngOnInit do botão, antes de
+        // qualquer intenção do usuário de logar. Se o script não carregou,
+        // solicitarLogin() (no clique) detecta tokenClient nulo e avisa então.
+      });
+  }
+
+  solicitarLogin(): void {
+    if (!this.tokenClient) {
+      this.erroSubject.next(
+        'O login do Google ainda não carregou. Aguarde um instante e tente de novo.');
+      return;
+    }
+    // Chamada síncrona - ver o porquê no javadoc da classe.
+    this.tokenClient.requestAccessToken();
   }
 
   private carregarScript(): Promise<void> {
@@ -63,7 +97,7 @@ export class GoogleSignInService {
     }
 
     this.scriptCarregado = new Promise<void>((resolve, reject) => {
-      if (window.google?.accounts?.id) {
+      if (window.google?.accounts?.oauth2) {
         resolve();
         return;
       }
@@ -79,14 +113,28 @@ export class GoogleSignInService {
     return this.scriptCarregado;
   }
 
-  private garantirInicializado(): void {
-    if (this.inicializado) {
+  private garantirTokenClient(): void {
+    if (this.tokenClient) {
       return;
     }
-    window.google!.accounts.id.initialize({
+    this.tokenClient = window.google!.accounts.oauth2.initTokenClient({
       client_id: environment.googleClientId,
-      callback: (resposta) => this.credencialSubject.next(resposta.credential)
+      scope: 'openid email profile',
+      callback: (resposta) => {
+        if (resposta.error || !resposta.access_token) {
+          this.erroSubject.next('Não foi possível entrar com o Google. Tente de novo.');
+          return;
+        }
+        this.credencialSubject.next(resposta.access_token);
+      },
+      error_callback: (erro) => {
+        // popup_closed: o usuário fechou o popup sem concluir - não é bem um
+        // "erro" pra alarmar, mas ainda precisa destravar a tela de loading.
+        const mensagem = erro.type === 'popup_closed'
+          ? 'Login com o Google cancelado.'
+          : 'Não foi possível abrir o login do Google. Verifique se o navegador não está bloqueando pop-ups.';
+        this.erroSubject.next(mensagem);
+      }
     });
-    this.inicializado = true;
   }
 }

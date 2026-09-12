@@ -1,11 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
+import { NEVER } from 'rxjs';
 
 import { CadastroComponent } from './cadastro.component';
 import { provedoresDeTeste } from '../../../testing/test-providers';
 import { API_BASE_URL } from '../../../core/api.constants';
 import { NotificacaoService } from '../../../core/notificacao.service';
+import { GoogleSignInService } from '../../../services/google-sign-in.service';
 
 describe('CadastroComponent', () => {
   let component: CadastroComponent;
@@ -17,7 +19,15 @@ describe('CadastroComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CadastroComponent],
-      providers: [provedoresDeTeste()]
+      providers: [
+        provedoresDeTeste(),
+        // GoogleSignInButtonComponent chama precarregar() já no ngOnInit -
+        // sem esse mock, o teste tocaria o DOM/window.google de verdade
+        // (inserção de <script> real) só por montar a tela, sem relação com
+        // o que este spec testa (isso é coberto em GoogleSignInService/
+        // GoogleSignInButtonComponent specs).
+        { provide: GoogleSignInService, useValue: { credencial$: NEVER, erro$: NEVER, precarregar: () => {}, solicitarLogin: () => {} } }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(CadastroComponent);
@@ -37,10 +47,10 @@ describe('CadastroComponent', () => {
   it('cadastrarComGoogle chama POST /auth/google e navega pro dashboard em caso de sucesso', () => {
     const navigateSpy = spyOn(router, 'navigate');
 
-    component.cadastrarComGoogle('id-token-fake');
+    component.cadastrarComGoogle('access-token-fake');
 
     const req = httpMock.expectOne(`${API_BASE_URL}/auth/google`);
-    expect(req.request.body).toEqual({ idToken: 'id-token-fake' });
+    expect(req.request.body).toEqual({ accessToken: 'access-token-fake' });
     req.flush({ token: 'jwt', usuarioId: 1, nome: 'Léo', email: 'leo@example.com' });
 
     expect(component.carregando).toBeFalse();
@@ -50,7 +60,7 @@ describe('CadastroComponent', () => {
   it('cadastrarComGoogle mostra notificação de erro quando o backend recusa o login', () => {
     const erroSpy = spyOn(notificacao, 'erro');
 
-    component.cadastrarComGoogle('id-token-invalido');
+    component.cadastrarComGoogle('access-token-invalido');
 
     const req = httpMock.expectOne(`${API_BASE_URL}/auth/google`);
     req.flush({ erro: 'O e-mail da conta Google não está verificado.' }, { status: 401, statusText: 'Unauthorized' });

@@ -10,11 +10,13 @@ describe('GoogleSignInButtonComponent', () => {
   let credencialSubject: Subject<string>;
   let erroSubject: Subject<string>;
   let solicitarLoginSpy: jasmine.Spy;
+  let precarregarSpy: jasmine.Spy;
 
   beforeEach(async () => {
     credencialSubject = new Subject<string>();
     erroSubject = new Subject<string>();
     solicitarLoginSpy = jasmine.createSpy('solicitarLogin');
+    precarregarSpy = jasmine.createSpy('precarregar');
 
     await TestBed.configureTestingModule({
       imports: [GoogleSignInButtonComponent],
@@ -23,7 +25,8 @@ describe('GoogleSignInButtonComponent', () => {
         useValue: {
           credencial$: credencialSubject.asObservable(),
           erro$: erroSubject.asObservable(),
-          solicitarLogin: solicitarLoginSpy
+          solicitarLogin: solicitarLoginSpy,
+          precarregar: precarregarSpy
         }
       }]
     }).compileComponents();
@@ -37,6 +40,13 @@ describe('GoogleSignInButtonComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('chama GoogleSignInService.precarregar() já no ngOnInit - antes de qualquer clique', () => {
+    // Essencial pro requestAccessToken() do clique poder ser síncrono (ver
+    // javadoc de GoogleSignInService) - carregar o script no clique quebraria
+    // a cadeia do gesto do usuário e o popup seria bloqueado.
+    expect(precarregarSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('clicar no botão aciona GoogleSignInService.solicitarLogin()', () => {
     const botao: HTMLButtonElement = fixture.nativeElement.querySelector('button');
     botao.click();
@@ -46,11 +56,11 @@ describe('GoogleSignInButtonComponent', () => {
 
   it('repassa credencial$ do serviço no output (credencial)', () => {
     const emitido: string[] = [];
-    component.credencial.subscribe((idToken) => emitido.push(idToken));
+    component.credencial.subscribe((accessToken) => emitido.push(accessToken));
 
-    credencialSubject.next('id-token-fake');
+    credencialSubject.next('access-token-fake');
 
-    expect(emitido).toEqual(['id-token-fake']);
+    expect(emitido).toEqual(['access-token-fake']);
   });
 
   it('repassa erro$ do serviço no output (erro)', () => {

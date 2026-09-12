@@ -73,10 +73,10 @@ export class CadastroComponent {
     });
   }
 
-  cadastrarComGoogle(idToken: string): void {
+  cadastrarComGoogle(accessToken: string): void {
     this.carregando = true;
 
-    this.authService.loginComGoogle(idToken).subscribe({
+    this.authService.loginComGoogle(accessToken).subscribe({
       next: () => {
         this.carregando = false;
         this.router.navigate(['/dashboard']);

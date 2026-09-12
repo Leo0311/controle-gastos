@@ -65,10 +65,10 @@ export class LoginComponent {
     });
   }
 
-  entrarComGoogle(idToken: string): void {
+  entrarComGoogle(accessToken: string): void {
     this.carregando = true;
 
-    this.authService.loginComGoogle(idToken).subscribe({
+    this.authService.loginComGoogle(accessToken).subscribe({
       next: () => {
         this.carregando = false;
         this.router.navigate(['/dashboard']);
