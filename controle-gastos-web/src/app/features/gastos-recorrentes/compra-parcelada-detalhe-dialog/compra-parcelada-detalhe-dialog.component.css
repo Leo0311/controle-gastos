@@ -53,6 +53,26 @@
   box-shadow: none;
 }
 
+/* Achado: o bucket "Restante da compra" (hideToggle+disabled) tem a única
+   descrição longa o bastante ("mais X anos e Y meses · Z parcelas ·
+   R$ W,WW") pra quebrar em 2 linhas no mobile (375px). O Material trava a
+   altura do header COLAPSADO em 48px sempre (só dá 64px quando o painel
+   está .mat-expanded, ver CSS dele) - com overflow:visible nesse header,
+   as 2 linhas que não cabem em 48px vazam por cima do painel anterior no
+   accordion (o ano seguinte), em vez de empurrá-lo. Dá a este header a
+   mesma altura de 2 linhas que o Material já reserva pro estado expandido -
+   só padding vertical (24px lateral já vem do próprio Material). Painéis de
+   ano ficam ilesos: descrição deles ("N parcelas · R$ X,XX") sempre cabe
+   numa linha só, não bate neste seletor com margem sobrando.
+   Seletor aponta pro aria-disabled que o Material aplica no header (não no
+   host <mat-expansion-panel>) quando [disabled] está no template. */
+:host ::ng-deep .lista-anos .mat-expansion-panel-header[aria-disabled="true"] {
+  height: auto;
+  min-height: 64px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
 .lista-parcelas {
   list-style: none;
   margin: 0;
