@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AuthService } from '../../../services/auth.service';
 import { NotificacaoService } from '../../../core/notificacao.service';
+import { GoogleSignInButtonComponent } from '../../../shared/google-sign-in-button/google-sign-in-button.component';
 
 function senhasIguaisValidator(control: AbstractControl): ValidationErrors | null {
   const senha = control.get('senha')?.value;
@@ -28,7 +29,8 @@ function senhasIguaisValidator(control: AbstractControl): ValidationErrors | nul
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    GoogleSignInButtonComponent
   ],
   templateUrl: './cadastro.component.html',
   styleUrl: './cadastro.component.css'
@@ -69,5 +71,24 @@ export class CadastroComponent {
         this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
       }
     });
+  }
+
+  cadastrarComGoogle(idToken: string): void {
+    this.carregando = true;
+
+    this.authService.loginComGoogle(idToken).subscribe({
+      next: () => {
+        this.carregando = false;
+        this.router.navigate(['/dashboard']);
+      },
+      error: (erro) => {
+        this.carregando = false;
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
+      }
+    });
+  }
+
+  erroGoogle(mensagem: string): void {
+    this.notificacao.erro(mensagem);
   }
 }

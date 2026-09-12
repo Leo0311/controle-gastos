@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AuthService } from '../../../services/auth.service';
 import { NotificacaoService } from '../../../core/notificacao.service';
+import { GoogleSignInButtonComponent } from '../../../shared/google-sign-in-button/google-sign-in-button.component';
 
 @Component({
   selector: 'app-login',
@@ -22,7 +23,8 @@ import { NotificacaoService } from '../../../core/notificacao.service';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    GoogleSignInButtonComponent
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
@@ -61,5 +63,24 @@ export class LoginComponent {
         this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
       }
     });
+  }
+
+  entrarComGoogle(idToken: string): void {
+    this.carregando = true;
+
+    this.authService.loginComGoogle(idToken).subscribe({
+      next: () => {
+        this.carregando = false;
+        this.router.navigate(['/dashboard']);
+      },
+      error: (erro) => {
+        this.carregando = false;
+        this.notificacao.erro(this.notificacao.mensagemDeErro(erro));
+      }
+    });
+  }
+
+  erroGoogle(mensagem: string): void {
+    this.notificacao.erro(mensagem);
   }
 }
