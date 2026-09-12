@@ -88,6 +88,20 @@ class RateLimitFilterTest {
         }
     }
 
+    // Regressão real de produção (2026-09-12): o UptimeRobot manda HEAD, não
+    // GET, quando o monitor não tem checagem de keyword - SecurityConfig
+    // libera HEAD pro /smtp (ver teste de regressão em SecurityConfig), então
+    // o rate limit precisa contar HEAD também, senão o probe real ao Gmail
+    // fica sem limite nenhum quando o monitor usa esse método.
+    @Test
+    void limitaOProbeDeSmtpTambemViaHead() throws Exception {
+        for (int i = 1; i <= RateLimitFilter.MAX_REQUISICOES; i++) {
+            assertThat(chamar("HEAD", "/api/health/smtp", "10.0.0.8").getStatus()).isEqualTo(200);
+        }
+
+        assertThat(chamar("HEAD", "/api/health/smtp", "10.0.0.8").getStatus()).isEqualTo(429);
+    }
+
     @Test
     void caiParaRemoteAddrQuandoNaoHaXForwardedFor() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/esqueci-senha");

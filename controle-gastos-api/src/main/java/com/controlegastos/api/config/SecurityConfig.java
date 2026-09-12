@@ -55,7 +55,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        // GET *e* HEAD: monitores de uptime (UptimeRobot) mandam HEAD quando o
+                        // monitor não tem checagem de keyword configurada - descoberto em
+                        // produção em 2026-09-12 (o monitor novo do /smtp veio como HEAD e
+                        // tomou 403; o do /api/health original só nunca pegou esse caminho
+                        // porque o monitor dele usa GET). @GetMapping já responde HEAD
+                        // automaticamente (Spring MVC), então só faltava liberar aqui.
                         .requestMatchers(HttpMethod.GET, "/api/health", "/api/health/smtp").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/api/health", "/api/health/smtp").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

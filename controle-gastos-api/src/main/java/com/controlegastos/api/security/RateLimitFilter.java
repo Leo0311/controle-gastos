@@ -59,7 +59,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String metodo = request.getMethod();
         String uri = request.getRequestURI();
         boolean autenticacao = "POST".equalsIgnoreCase(metodo) && CAMINHOS_POST_LIMITADOS.contains(uri);
-        boolean healthSmtp = "GET".equalsIgnoreCase(metodo) && CAMINHO_HEALTH_SMTP.equals(uri);
+        // GET e HEAD: SecurityConfig libera os dois (monitores de uptime mandam
+        // HEAD quando não têm checagem de keyword) e @GetMapping responde a
+        // ambos executando o mesmo handler - sem contar HEAD aqui, um monitor
+        // configurado com HEAD testaria o SMTP de verdade sem limite nenhum.
+        boolean healthSmtp = ("GET".equalsIgnoreCase(metodo) || "HEAD".equalsIgnoreCase(metodo))
+                && CAMINHO_HEALTH_SMTP.equals(uri);
         return !(autenticacao || healthSmtp);
     }
 
