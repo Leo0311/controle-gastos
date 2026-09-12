@@ -36,7 +36,7 @@ public class AuthController {
 
     @PostMapping("/google")
     public LoginResponseDTO google(@RequestBody GoogleLoginRequestDTO dados) {
-        return service.loginComGoogle(dados.idToken());
+        return service.loginComGoogle(dados.accessToken());
     }
 
     @PostMapping("/esqueci-senha")

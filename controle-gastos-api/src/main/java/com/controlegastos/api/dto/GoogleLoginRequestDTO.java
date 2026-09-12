@@ -1,4 +1,4 @@
 package com.controlegastos.api.dto;
 
-public record GoogleLoginRequestDTO(String idToken) {
+public record GoogleLoginRequestDTO(String accessToken) {
 }

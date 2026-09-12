@@ -1,8 +1,8 @@
 package com.controlegastos.api.security;
 
 /**
- * Dados extraídos de um ID token do Google já validado (assinatura/emissor/
- * audiência conferidos por {@link GoogleTokenVerifier}) - o que
+ * Dados da conta Google extraídos de um access token já validado (audiência
+ * conferida, dados obtidos via userinfo - ver {@link GoogleTokenVerifier}) - o que
  * {@code UsuarioService} precisa pra decidir criar conta nova, vincular a uma
  * existente, ou recusar o login.
  *

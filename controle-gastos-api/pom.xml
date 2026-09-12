@@ -65,15 +65,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-		<!-- Usado só pelo decoder JWKS-aware (NimbusJwtDecoder) que valida o ID token
-		     do login com Google (assinatura/emissor/audiência via
-		     https://www.googleapis.com/oauth2/v3/certs) - NAO configura esta API como
-		     resource server de verdade. A autenticação de toda requisição continua
-		     100% pelo JwtAuthFilter/JwtService próprios, sem mudança nenhuma. -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>

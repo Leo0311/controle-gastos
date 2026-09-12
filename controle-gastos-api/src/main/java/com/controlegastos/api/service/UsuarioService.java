@@ -81,8 +81,8 @@ public class UsuarioService {
         return gerarResposta(usuario);
     }
 
-    public LoginResponseDTO loginComGoogle(String idToken) {
-        GooglePayload payload = googleTokenVerifier.verificar(idToken);
+    public LoginResponseDTO loginComGoogle(String accessToken) {
+        GooglePayload payload = googleTokenVerifier.verificar(accessToken);
 
         // O próprio Google confirma a posse do e-mail; sem isso, alguém poderia criar
         // uma conta Google com um e-mail que não controla (Google permite isso em

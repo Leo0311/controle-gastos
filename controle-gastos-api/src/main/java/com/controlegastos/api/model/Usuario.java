@@ -56,10 +56,11 @@ public class Usuario {
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;
 
-    // "sub" do ID token do Google - identificador estável da conta Google vinculada,
-    // preenchido no 1º login/vínculo via Google (ver UsuarioService). Null pra quem
-    // nunca usou "Entrar com Google". Unique (V2__login_google.sql): duas contas
-    // nunca podem apontar pro mesmo usuário Google.
+    // "sub" da conta Google (identificador estável, devolvido pelo userinfo do
+    // Google - ver GoogleTokenVerifier), preenchido no 1º login/vínculo via
+    // Google (ver UsuarioService). Null pra quem nunca usou "Entrar com Google".
+    // Unique (V2__login_google.sql): duas contas nunca podem apontar pro mesmo
+    // usuário Google.
     @Column(name = "google_id", unique = true, length = 255)
     private String googleId;
 }
