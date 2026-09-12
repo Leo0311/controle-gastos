@@ -82,7 +82,9 @@ controle-gastos/            (raiz do repositório)
 ### Autenticação
 Cadastro e login com senha (hash BCrypt no banco), sessão persistida em `localStorage` (sobrevive a F5 e a fechar/reabrir a aba) com token JWT válido por 6 horas, logout automático quando o token expira, e recuperação de senha por e-mail (link com token válido por 1 hora).
 
-Os endpoints públicos de autenticação (`/api/auth/login`, `/api/auth/cadastro`, `/api/auth/esqueci-senha`) têm **rate limiting** por IP de origem — no máximo 5 requisições por minuto por endpoint; ao exceder, a API responde `429 Too Many Requests` com um cabeçalho `Retry-After`. Isso limita força bruta de senha, enumeração de contas e uso do endpoint de recuperação para bombardeio de e-mail.
+Também dá para entrar/cadastrar com **"Continuar com o Google"** (Google Identity Services), nas telas de Login e Cadastro, acima de um divisor "ou" e no mesmo estilo outline do resto do app. Login com Google **vincula automaticamente** a uma conta já existente com o mesmo e-mail (o `email_verified` do Google confirma a posse do e-mail, algo que o próprio cadastro por senha nunca checa) e invalida qualquer sessão anterior nesse 1º vínculo, como proteção extra; um e-mail do Google sem verificação é sempre recusado. Uma conta criada só pelo Google não tem senha (login por senha nela simplesmente não bate, sem erro).
+
+Os endpoints públicos de autenticação (`/api/auth/login`, `/api/auth/cadastro`, `/api/auth/esqueci-senha`, `/api/auth/google`) têm **rate limiting** por IP de origem — no máximo 5 requisições por minuto por endpoint; ao exceder, a API responde `429 Too Many Requests` com um cabeçalho `Retry-After`. Isso limita força bruta de senha, enumeração de contas e uso do endpoint de recuperação para bombardeio de e-mail.
 
 Trocar a senha (pelo link de recuperação) **invalida na hora qualquer token JWT emitido antes da troca**: cada usuário tem uma "versão de token" (`token_version`) que vai embutida no JWT no login e é reconferida a cada requisição — um token roubado deixa de funcionar assim que a vítima redefine a senha, sem depender da expiração de 6 horas.
 
