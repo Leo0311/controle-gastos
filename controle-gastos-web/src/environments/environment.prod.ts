@@ -6,5 +6,5 @@ export const environment = {
   // Igual a apiBaseUrl acima: build estatico (Render Static Site) nao tem env
   // var em runtime, entao o valor vai hardcoded aqui mesmo (nao em arquivo
   // versionado separado nem em variavel de ambiente).
-  googleClientId: 'SUBSTITUIR_PELO_CLIENT_ID_REAL.apps.googleusercontent.com'
+  googleClientId: '375547639242-4gncrf0roabv0m48d6i72gkeutnvhbaa.apps.googleusercontent.com'
 };
