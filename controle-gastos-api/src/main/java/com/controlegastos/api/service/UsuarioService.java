@@ -9,6 +9,8 @@ import com.controlegastos.api.exception.RecursoNaoEncontradoException;
 import com.controlegastos.api.exception.TokenInvalidoException;
 import com.controlegastos.api.model.Usuario;
 import com.controlegastos.api.repository.UsuarioRepository;
+import com.controlegastos.api.security.GooglePayload;
+import com.controlegastos.api.security.GoogleTokenVerifier;
 import com.controlegastos.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,7 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final GoogleTokenVerifier googleTokenVerifier;
 
     public LoginResponseDTO cadastrar(CadastroRequestDTO dados) {
         validarCadastro(dados);
@@ -74,6 +77,47 @@ public class UsuarioService {
         if (dados.senha() == null || !passwordEncoder.matches(dados.senha(), usuario.getSenha())) {
             throw new CredenciaisInvalidasException("E-mail ou senha inválidos.");
         }
+
+        return gerarResposta(usuario);
+    }
+
+    public LoginResponseDTO loginComGoogle(String idToken) {
+        GooglePayload payload = googleTokenVerifier.verificar(idToken);
+
+        // O próprio Google confirma a posse do e-mail; sem isso, alguém poderia criar
+        // uma conta Google com um e-mail que não controla (Google permite isso em
+        // certos fluxos) e vincular/logar numa conta que não é dela.
+        if (!payload.emailVerificado()) {
+            throw new CredenciaisInvalidasException("O e-mail da conta Google não está verificado.");
+        }
+
+        Usuario usuario = repository.findByGoogleId(payload.sub()).orElse(null);
+        if (usuario != null) {
+            return gerarResposta(usuario);
+        }
+
+        usuario = repository.findByEmailIgnoreCase(payload.email()).orElse(null);
+        if (usuario != null) {
+            // 1ª vinculação de uma conta que já existia por senha: o e-mail_verified
+            // do Google é, na prática, mais rigoroso que a checagem de formato do
+            // nosso próprio cadastro (nunca confirma posse de e-mail) - por isso
+            // vincular automaticamente é seguro. Mas se alguém já tivesse conseguido
+            // essa conta por senha vazada, teria acesso via Google a partir de agora;
+            // invalidar o tokenVersion desloga qualquer sessão anterior como defesa.
+            usuario.setGoogleId(payload.sub());
+            usuario.setTokenVersion(usuario.getTokenVersion() + 1);
+            usuario = repository.save(usuario);
+            return gerarResposta(usuario);
+        }
+
+        usuario = new Usuario();
+        usuario.setNome(payload.nome());
+        usuario.setEmail(payload.email().toLowerCase());
+        usuario.setSenha(null); // conta só-Google: sem senha real (ver V2__login_google.sql)
+        usuario.setGoogleId(payload.sub());
+        usuario.setDataCriacao(LocalDateTime.now());
+        usuario.setTokenVersion(0);
+        usuario = repository.save(usuario);
 
         return gerarResposta(usuario);
     }

@@ -10,4 +10,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByEmailIgnoreCase(String email);
 
     Optional<Usuario> findByTokenRedefinicaoSenha(String token);
+
+    Optional<Usuario> findByGoogleId(String googleId);
 }
