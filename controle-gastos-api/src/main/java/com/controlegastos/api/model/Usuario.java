@@ -30,7 +30,11 @@ public class Usuario {
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    // Nullable desde V2__login_google.sql: conta criada via "Entrar com Google" não
+    // tem senha real - null é o próprio marcador de "login só por Google", sem
+    // precisar de uma coluna boolean à parte (ver googleId abaixo). Uma conta pode
+    // ganhar senha depois via "esqueci minha senha" (não há restrição nesse fluxo).
+    @Column(length = 255)
     private String senha;
 
     @Column(name = "data_criacao", nullable = false)
@@ -51,4 +55,11 @@ public class Usuario {
     // troca de senha carrega a versão antiga e deixa de ser aceito, forçando logout.
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;
+
+    // "sub" do ID token do Google - identificador estável da conta Google vinculada,
+    // preenchido no 1º login/vínculo via Google (ver UsuarioService). Null pra quem
+    // nunca usou "Entrar com Google". Unique (V2__login_google.sql): duas contas
+    // nunca podem apontar pro mesmo usuário Google.
+    @Column(name = "google_id", unique = true, length = 255)
+    private String googleId;
 }
