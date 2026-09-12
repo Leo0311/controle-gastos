@@ -74,7 +74,13 @@
 .parcela-data {
   color: var(--texto-secundario);
   font-size: 13px;
-  min-width: 4.5em;
+  /* "dd/mm/aaaa" (10 caracteres) em Roboto 13px mede ~74px - min-width em em
+     (4.5em = 58.5px) subestimava isso e o texto vazava (overflow: visible por
+     padrão) por cima do valor ao lado. white-space+flex-shrink:0 deixa a caixa
+     sempre do tamanho exato do próprio conteúdo, sem precisar adivinhar um
+     número fixo nem arriscar quebra de linha. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .parcela-valor {
