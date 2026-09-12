@@ -11,7 +11,7 @@ import { CompraParceladaService } from '../../../services/compra-parcelada.servi
 import { CompraParceladaDetalhe } from '../../../models/compra-parcelada.model';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
-import { GrupoAnoParcelas, agruparPorAno, deveAgruparPorAno } from '../compra-parcelada-detalhe';
+import { GrupoParcelas, GrupoRestante, agruparPorAno, deveAgruparPorAno } from '../compra-parcelada-detalhe';
 import { classeStatus, hojeIso, rotuloStatus, statusDaConta } from '../../../core/status-conta';
 
 export interface CompraParceladaDetalheDialogData {
@@ -46,7 +46,7 @@ export interface CompraParceladaDetalheDialogData {
 export class CompraParceladaDetalheDialogComponent implements OnInit {
 
   detalhe: CompraParceladaDetalhe | null = null;
-  grupos: GrupoAnoParcelas[] = [];
+  grupos: GrupoParcelas[] = [];
   carregando = true;
   erro = false;
 
@@ -95,6 +95,21 @@ export class CompraParceladaDetalheDialogComponent implements OnInit {
       return 0;
     }
     return Math.min(100, (this.detalhe.valorPago / this.detalhe.valorTotal) * 100);
+  }
+
+  // "mais X ano(s) e Y mês(es)" pro bucket 'restante' - cuida do singular/plural
+  // e omite a unidade zerada (24 meses -> só "mais 2 anos", 1 mês -> só "mais 1
+  // mês", nunca "0 anos"/"0 meses"). Calculado aqui (não no template) pra evitar
+  // a fragilidade de espalhar @if dentro de texto interpolado.
+  rotuloRestante(grupo: GrupoRestante): string {
+    const partes: string[] = [];
+    if (grupo.anos > 0) {
+      partes.push(`${grupo.anos} ano${grupo.anos > 1 ? 's' : ''}`);
+    }
+    if (grupo.meses > 0) {
+      partes.push(`${grupo.meses} ${grupo.meses > 1 ? 'meses' : 'mês'}`);
+    }
+    return `mais ${partes.join(' e ')}`;
   }
 
   fechar(): void {

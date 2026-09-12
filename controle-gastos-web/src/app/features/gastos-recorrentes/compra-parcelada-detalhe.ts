@@ -3,18 +3,36 @@ import { Gasto } from '../../models/gasto.model';
 /**
  * Lógica pura do diálogo de detalhe de uma compra parcelada: decide se a lista de
  * parcelas deve ser agrupada por ano civil (parcelamentos longos, tipo 104x) ou
- * exibida como lista plana (curtos, tipo 3x/6x), e faz o agrupamento em si - sem
- * Angular, testável sem TestBed. O componente só chama estas funções.
+ * exibida como lista plana (curtos, tipo 3x/6x), e monta os buckets do agrupamento -
+ * sem Angular, testável sem TestBed. O componente só chama estas funções.
  */
 
-/** Um ano civil de parcelas, com total e se deve começar expandido no acordeão. */
-export interface GrupoAnoParcelas {
+/** Um ano civil (o atual ou o seguinte) com o mês a mês detalhado. */
+export interface GrupoAnoDetalhado {
+  tipo: 'ano';
   ano: number;
   total: number;
   quantidade: number;
   expandidoPadrao: boolean;
   parcelas: Gasto[];
 }
+
+/**
+ * Tudo a partir de 2 anos à frente de hoje, consolidado numa linha só (sem
+ * drill-down mês a mês - ver rec do diálogo). `anos`/`meses` são a DURAÇÃO restante
+ * (quantidade de parcelas ÷ 12), não a contagem de anos-calendário distintos - cada
+ * parcela é exatamente 1 mês e são consecutivas (gerarParcelas no backend garante
+ * isso), então não tem "meio de ano" a considerar: é só dividir a contagem.
+ */
+export interface GrupoRestante {
+  tipo: 'restante';
+  anos: number;
+  meses: number;
+  quantidade: number;
+  total: number;
+}
+
+export type GrupoParcelas = GrupoAnoDetalhado | GrupoRestante;
 
 /**
  * 12 é o mesmo teto de horizonte já usado em outros lugares do app (ex.:
@@ -27,36 +45,68 @@ export function deveAgruparPorAno(numeroParcelas: number): boolean {
 }
 
 /**
- * Agrupa as parcelas por ano civil (o ano da própria data da parcela), em ordem
- * cronológica. O ano que contém "hoje" começa expandido por padrão; se a compra
- * inteira já ficou no passado ou ainda nem começou, expande o ano mais próximo de
- * hoje (o mais recente ou o mais próximo no futuro) - nunca deixa tudo colapsado.
+ * Separa as parcelas em até 3 buckets fixos, ancorados em "hoje" (não mais um
+ * grupo por ano encontrado): ano atual (mês a mês, expandido por padrão), ano
+ * seguinte (mês a mês, colapsado) e o resto (consolidado, sem detalhe). Um bucket
+ * só aparece se tiver pelo menos 1 parcela - nunca renderiza vazio.
+ *
+ * Se o bucket do ano atual não existir (a 1ª parcela da compra só cai no ano
+ * seguinte), o ano seguinte assume o `expandidoPadrao` - sempre exatamente 1
+ * bucket tipo 'ano' expandido, quando existir ao menos um.
+ *
+ * Parcela com ano anterior ao de hoje (passado "profundo") cai no bucket do ano
+ * atual por segurança - teórico, não alcançável via formulário real: a validação
+ * de cadastro (`CompraParceladaService`, 1ª parcela no máx. 12 meses atrás) torna
+ * isso estruturalmente impossível para uma compra com mais de 12 parcelas.
  */
-export function agruparPorAno(parcelas: Gasto[], hoje: string): GrupoAnoParcelas[] {
+export function agruparPorAno(parcelas: Gasto[], hoje: string): GrupoParcelas[] {
   const anoHoje = Number(hoje.slice(0, 4));
-  const grupos = new Map<number, GrupoAnoParcelas>();
+
+  const doAnoAtual: Gasto[] = [];
+  const doAnoSeguinte: Gasto[] = [];
+  const doResto: Gasto[] = [];
 
   for (const parcela of parcelas) {
     const ano = Number(parcela.data.slice(0, 4));
-    let grupo = grupos.get(ano);
-    if (!grupo) {
-      grupo = { ano, total: 0, quantidade: 0, expandidoPadrao: false, parcelas: [] };
-      grupos.set(ano, grupo);
+    if (ano <= anoHoje) {
+      doAnoAtual.push(parcela);
+    } else if (ano === anoHoje + 1) {
+      doAnoSeguinte.push(parcela);
+    } else {
+      doResto.push(parcela);
     }
-    grupo.total += parcela.valor;
-    grupo.quantidade++;
-    grupo.parcelas.push(parcela);
   }
 
-  const lista = [...grupos.values()].sort((a, b) => a.ano - b.ano);
-  if (lista.length === 0) {
-    return lista;
+  const grupos: GrupoParcelas[] = [];
+
+  if (doAnoAtual.length > 0) {
+    grupos.push(montarGrupoAno(anoHoje, doAnoAtual, true));
+  }
+  if (doAnoSeguinte.length > 0) {
+    grupos.push(montarGrupoAno(anoHoje + 1, doAnoSeguinte, doAnoAtual.length === 0));
+  }
+  if (doResto.length > 0) {
+    grupos.push(montarGrupoRestante(doResto));
   }
 
-  const grupoDoAnoCorrente = lista.find((g) => g.ano === anoHoje);
-  const grupoParaExpandir = grupoDoAnoCorrente
-    ?? (lista[lista.length - 1].ano < anoHoje ? lista[lista.length - 1] : lista[0]);
-  grupoParaExpandir.expandidoPadrao = true;
+  return grupos;
+}
 
-  return lista;
+function somar(parcelas: Gasto[]): number {
+  return parcelas.reduce((soma, p) => soma + p.valor, 0);
+}
+
+function montarGrupoAno(ano: number, parcelas: Gasto[], expandidoPadrao: boolean): GrupoAnoDetalhado {
+  return { tipo: 'ano', ano, total: somar(parcelas), quantidade: parcelas.length, expandidoPadrao, parcelas };
+}
+
+function montarGrupoRestante(parcelas: Gasto[]): GrupoRestante {
+  const totalMeses = parcelas.length;
+  return {
+    tipo: 'restante',
+    anos: Math.floor(totalMeses / 12),
+    meses: totalMeses % 12,
+    quantidade: parcelas.length,
+    total: somar(parcelas)
+  };
 }
