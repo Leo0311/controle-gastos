@@ -119,6 +119,15 @@ jobs:
           SPRING_DATASOURCE_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
         run: ./mvnw -B -ntp test
 
+      - name: (cenário fresh) schema.sql bate com o que as migrations produzem?
+        # Só no cenário "fresh": aqui o Postgres chegou nesse estado rodando
+        # V1..Vn do zero via Flyway (linha de base real) - é a comparação que
+        # importa. No "from-prod-schema" o banco foi semeado A PARTIR do
+        # schema.sql (passo acima), então comparar contra ele mesmo não pega
+        # divergência nenhuma - seria só verificação circular.
+        if: matrix.scenario == 'fresh'
+        run: bash scripts/regenerar-schema-console.sh --check
+
   # ──────────────────────────────────────────────────────────────────────────
   # Deploy: idêntico ao de antes. Só roda em push/dispatch (nunca em PR) e só se
   # as duas pernas do guard passarem.

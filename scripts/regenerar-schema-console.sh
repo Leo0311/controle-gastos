@@ -55,8 +55,13 @@ cleanup() {
   if [ "$CONTAINER_SUBIU_AQUI" = "1" ]; then
     docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
   fi
-  [ -n "$TMP_FILE" ] && rm -f "$TMP_FILE"
-  [ -n "$DIFF_FILE" ] && rm -f "$DIFF_FILE"
+  # `if`, não `[ -n "$X" ] && rm -f "$X"`: com a variável vazia (modo "gerar",
+  # que não usa TMP_FILE/DIFF_FILE) o `&&` teria status 1 (condição falsa) e,
+  # como é o último comando do trap de EXIT e o script não chama `exit N`
+  # explícito nesse caminho, esse 1 vazava como o exit code do script inteiro
+  # mesmo em sucesso - `if` com bloco vazio sempre retorna 0.
+  if [ -n "$TMP_FILE" ]; then rm -f "$TMP_FILE"; fi
+  if [ -n "$DIFF_FILE" ]; then rm -f "$DIFF_FILE"; fi
 }
 trap cleanup EXIT
 
@@ -133,16 +138,45 @@ gerar_conteudo() {
 -- ============================================================================
 
 HEADER
-  # Só as duas linhas de versão são removidas - carregam a versão exata do
-  # pg_dump (ex: "18.6"), que pode avançar sozinha (patch release da tag
-  # `postgres:18`) sem NENHUMA mudança de schema real, o que faria o --check
-  # do CI acusar divergência por um motivo errado. O resto do preâmbulo do
-  # pg_dump (banners "-- PostgreSQL database dump", os SET de sessão) é texto
-  # fixo, sempre idêntico independente da versão - mantido como está.
+  # Além das duas linhas de versão - carregam a versão exata do pg_dump (ex:
+  # "18.6"), que pode avançar sozinha (patch release da tag `postgres:18`)
+  # sem NENHUMA mudança de schema real -, o pg_dump 18 também emite um par
+  # `\restrict <token>` / `\unrestrict <token>` (modo restrito do psql,
+  # recurso novo do pg_dump 18) com um token ALEATÓRIO gerado a cada dump,
+  # mesmo em dumps do schema idêntico. Sem filtrar essas duas linhas, o
+  # --check acusaria divergência em TODA execução, mesmo sem migration nova -
+  # falso positivo permanente que teria derrubado o CI assim que o passo
+  # --check fosse ligado ao workflow. O resto do preâmbulo do pg_dump (banners
+  # "-- PostgreSQL database dump", os SET de sessão) é texto fixo, sempre
+  # idêntico independente da versão - mantido como está.
+  # `SET transaction_timeout = 0;` só existe a partir do Postgres 17 (GUC nova).
+  # O pg_dump do Postgres 18 sempre emite essa linha no preâmbulo, mas este
+  # arquivo também precisa rodar contra o Postgres LOCAL do projeto, que é
+  # 14 (skill ambiente-local) - lá o `psql -f schema.sql` falhava de cara com
+  # "unrecognized configuration parameter" (erro no preâmbulo, ANTES de criar
+  # qualquer tabela - `psql -v ON_ERROR_STOP=1` aborta o script inteiro).
+  # É um timeout de sessão (desliga o timeout, não afeta o schema resultante)
+  # - seguro remover, mesmo raciocínio das outras linhas filtradas aqui.
+  #
+  # --exclude-table=flyway_schema_history: o container-fonte rodou o Flyway
+  # pra aplicar as migrations, então tem essa tabela de bookkeeping dele - mas
+  # ela NÃO é schema da aplicação, é estado interno do Flyway. Incluí-la aqui
+  # quebra o próprio cenário que este arquivo existe pra alimentar: no
+  # migration-guard (cenário from-prod-schema), o schema.sql semeia um
+  # Postgres 18 zerado e SÓ DEPOIS o Flyway sobe - com a tabela de histórico
+  # já presente (mesmo vazia), o Flyway não reconhece "schema populado sem
+  # baseline" e tenta rodar V1 E V2 do zero: V1 é idempotente (silencioso em
+  # objeto já existente) mas V2 não precisa ser (skill banco-schema) e quebra
+  # com "column already exists". Sem a tabela no dump, o Flyway vê schema
+  # populado + nenhum histórico -> baseline automático em V1, só aplica V2+.
   docker exec "$CONTAINER" pg_dump -U postgres -d controle_gastos \
     --schema-only --no-owner --no-privileges \
+    --exclude-table=flyway_schema_history \
     | grep -v '^-- Dumped from database version' \
-    | grep -v '^-- Dumped by pg_dump version'
+    | grep -v '^-- Dumped by pg_dump version' \
+    | grep -v '^\\restrict ' \
+    | grep -v '^\\unrestrict ' \
+    | grep -v '^SET transaction_timeout = 0;'
 }
 
 if [ "$MODO" = "gerar" ]; then
