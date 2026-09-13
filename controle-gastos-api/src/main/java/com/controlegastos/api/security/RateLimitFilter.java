@@ -106,14 +106,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return janela.contador() > MAX_REQUISICOES;
     }
 
-    // Atrás do proxy do Render, getRemoteAddr() é sempre o proxy - o IP real do
-    // cliente é o primeiro da lista em X-Forwarded-For. Cai para getRemoteAddr()
-    // no ambiente local (sem proxy, sem esse cabeçalho).
+    // Achado de auditoria 2026-09-13: ler X-Forwarded-For direto aqui (versão
+    // anterior) confiava cegamente no header - um cliente podia forjar um IP
+    // novo a cada requisição e reiniciar a própria contagem à vontade. A
+    // resolução do IP real agora acontece ANTES deste filtro, no RemoteIpValve
+    // nativo do Tomcat (server.forward-headers-strategy=NATIVE, ver
+    // application-prod.properties) - só aceita X-Forwarded-For de quem estiver
+    // em server.tomcat.remoteip.internal-proxies (aqui, restrito a localhost,
+    // onde o nginx desta VM roda). Fora dessa lista, o header é ignorado e
+    // getRemoteAddr() é o IP real da conexão TCP - não forjável por header. Em
+    // ambiente local (sem nginx/valve na frente), getRemoteAddr() já é o IP
+    // real de qualquer forma, então o comportamento não muda.
     private String ipCliente(HttpServletRequest request) {
-        String encaminhado = request.getHeader("X-Forwarded-For");
-        if (encaminhado != null && !encaminhado.isBlank()) {
-            return encaminhado.split(",")[0].trim();
-        }
         return request.getRemoteAddr();
     }
 

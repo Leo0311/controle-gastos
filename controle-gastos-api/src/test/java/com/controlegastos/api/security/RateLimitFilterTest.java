@@ -13,7 +13,7 @@ class RateLimitFilterTest {
 
     private MockHttpServletResponse chamar(String metodo, String uri, String ip) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest(metodo, uri);
-        request.addHeader("X-Forwarded-For", ip);
+        request.setRemoteAddr(ip);
         MockHttpServletResponse response = new MockHttpServletResponse();
         filtro.doFilter(request, response, new MockFilterChain());
         return response;
@@ -102,19 +102,28 @@ class RateLimitFilterTest {
         assertThat(chamar("HEAD", "/api/health/smtp", "10.0.0.8").getStatus()).isEqualTo(429);
     }
 
+    // Achado de auditoria 2026-09-13: antes da correção, um atacante forjava um
+    // X-Forwarded-For novo a cada chamada e resetava a própria contagem à
+    // vontade (o filtro lia o header direto, sem checar a origem). Agora
+    // ipCliente() só usa getRemoteAddr() - o valor do header, mesmo mudando a
+    // cada requisição, é irrelevante pra contagem.
     @Test
-    void caiParaRemoteAddrQuandoNaoHaXForwardedFor() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/esqueci-senha");
-        request.setRemoteAddr("192.168.0.9");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        for (int i = 0; i < 5; i++) {
-            response = new MockHttpServletResponse();
+    void ignoraXForwardedForForjadoEContaPeloRemoteAddrReal() throws Exception {
+        for (int i = 1; i <= RateLimitFilter.MAX_REQUISICOES; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+            request.setRemoteAddr("203.0.113.9");
+            request.addHeader("X-Forwarded-For", "1.2.3." + i);
+            MockHttpServletResponse response = new MockHttpServletResponse();
             filtro.doFilter(request, response, new MockFilterChain());
             assertThat(response.getStatus()).isEqualTo(200);
         }
-        response = new MockHttpServletResponse();
-        filtro.doFilter(request, response, new MockFilterChain());
-        assertThat(response.getStatus()).isEqualTo(429);
+
+        MockHttpServletRequest bloqueadaRequest = new MockHttpServletRequest("POST", "/api/auth/login");
+        bloqueadaRequest.setRemoteAddr("203.0.113.9");
+        bloqueadaRequest.addHeader("X-Forwarded-For", "9.9.9.9");
+        MockHttpServletResponse bloqueada = new MockHttpServletResponse();
+        filtro.doFilter(bloqueadaRequest, bloqueada, new MockFilterChain());
+
+        assertThat(bloqueada.getStatus()).isEqualTo(429);
     }
 }
