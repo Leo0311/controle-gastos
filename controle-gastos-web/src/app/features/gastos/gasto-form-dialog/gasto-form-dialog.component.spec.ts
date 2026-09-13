@@ -21,6 +21,11 @@ import { Gasto } from '../../../models/gasto.model';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { CompraParcelada } from '../../../models/compra-parcelada.model';
 import { Orcamento } from '../../../models/orcamento.model';
+import { CategoriaFormDialogComponent } from '../../../shared/categoria-form-dialog/categoria-form-dialog.component';
+import {
+  SubcategoriaFormDialogComponent,
+  SubcategoriaFormResultado
+} from '../../../shared/subcategoria-form-dialog/subcategoria-form-dialog.component';
 import { SugestaoCategoria } from './sugestao-categoria';
 
 const LIMITES = { parcelasMin: 2, parcelasMax: 120, primeiraParcelaMesesAtrasMax: 12, primeiraParcelaMesesFrenteMax: 2 };
@@ -184,6 +189,75 @@ function criarComponenteParaOrcamento(
   const fixture = TestBed.createComponent(GastoFormDialogComponent);
   fixture.detectChanges();
   return { fixture, component: fixture.componentInstance };
+}
+
+// Harness da Rodada 3 (área G - categoria/subcategoria + "+ Nova..."): mesmo
+// espírito dos harnesses anteriores (detectChanges() de propósito), com
+// CategoriaService controlável (listas iniciais + spies de criar/
+// criarSubcategoria). NÃO fornece MatDialog mockado - o componente importa
+// MatDialogModule direto (mesmo padrão do dashboard.component.spec.ts), que
+// declara `providers: [MatDialog]` no próprio @NgModule; deixar a instância
+// real se formar e espiar via fixture.debugElement.injector.get() (ver
+// espiarDialogo abaixo) evita a armadilha já documentada no Lote do Dashboard.
+function criarComponenteParaCategoria(
+  dialogData: unknown,
+  categoriasIniciais: Categoria[],
+  subcategoriasIniciais: Subcategoria[]
+): {
+  fixture: ComponentFixture<GastoFormDialogComponent>;
+  component: GastoFormDialogComponent;
+  criarCategoriaSpy: jasmine.Spy;
+  criarSubcategoriaSpy: jasmine.Spy;
+} {
+  const criarCategoriaSpy = jasmine.createSpy('criar');
+  const criarSubcategoriaSpy = jasmine.createSpy('criarSubcategoria');
+
+  TestBed.configureTestingModule({
+    imports: [GastoFormDialogComponent],
+    providers: [
+      provideNoopAnimations(),
+      { provide: MAT_DATE_LOCALE, useValue: 'pt-BR' },
+      { provide: DateAdapter, useClass: PtBrDateAdapter },
+      { provide: MAT_DATE_FORMATS, useValue: FORMATOS_DATA_PT_BR },
+      { provide: MatDialogRef, useValue: { close: () => {}, disableClose: false } },
+      { provide: MAT_DIALOG_DATA, useValue: dialogData },
+      { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false }) } },
+      { provide: ConfigService, useValue: { garantirCarregado: () => {}, limitesCompraParcelada: () => LIMITES } },
+      { provide: GastoService, useValue: { listarTodos: () => of([]) } },
+      {
+        provide: CategoriaService,
+        useValue: {
+          listarVisiveis: () => of(categoriasIniciais),
+          listarTodasSubcategorias: () => of(subcategoriasIniciais),
+          criar: criarCategoriaSpy,
+          criarSubcategoria: criarSubcategoriaSpy
+        }
+      },
+      { provide: OrcamentoService, useValue: { listarTodos: () => of([]) } },
+      { provide: GastoRecorrenteService, useValue: {} },
+      { provide: CompraParceladaService, useValue: {} },
+      { provide: NotificacaoService, useValue: { erro: () => {}, mensagemDeErro: () => '' } }
+    ]
+  });
+
+  const fixture = TestBed.createComponent(GastoFormDialogComponent);
+  fixture.detectChanges();
+  return { fixture, component: fixture.componentInstance, criarCategoriaSpy, criarSubcategoriaSpy };
+}
+
+// Adaptado de dashboard.component.spec.ts (espiarDialogo): usa
+// fixture.debugElement.injector.get(MatDialog), NÃO TestBed.inject(MatDialog)
+// - MatDialogModule declara providers: [MatDialog] no próprio @NgModule, então
+// o componente standalone que o importa ganha uma instância PRÓPRIA (injector
+// de ambiente por componente), diferente da que TestBed.inject devolveria.
+function espiarDialogo<TResultado = unknown>(
+  fixture: ComponentFixture<GastoFormDialogComponent>,
+  resultadoAoFechar?: TResultado
+): { abrirEspiao: jasmine.Spy; ref: jasmine.SpyObj<MatDialogRef<unknown, TResultado>> } {
+  const ref = jasmine.createSpyObj<MatDialogRef<unknown, TResultado>>('MatDialogRef', ['afterClosed']);
+  ref.afterClosed.and.returnValue(of(resultadoAoFechar as TResultado));
+  const abrirEspiao = spyOn(fixture.debugElement.injector.get(MatDialog), 'open').and.returnValue(ref);
+  return { abrirEspiao, ref };
 }
 
 describe('GastoFormDialogComponent', () => {
@@ -685,6 +759,100 @@ describe('GastoFormDialogComponent', () => {
 
       expect(component.opcoesOrcamento).toEqual([]);
       expect(component.form.controls.orcamentoId.value).toBe(1);
+    });
+  });
+
+  // ÁREA G — categoria/subcategoria + "+ Nova...". Risco: valor-sentinela
+  // (-1) tem que reverter a seleção visível sem reemitir evento (senão
+  // reentraria no próprio handler) e abrir o mini-diálogo certo; a entidade
+  // criada precisa ser inserida na lista E auto-selecionada de verdade (não só
+  // ficar disponível pra próxima abertura); e trocar de categoria tem que
+  // limpar uma subcategoria que não pertence mais à categoria nova (órfã).
+  describe('categoria/subcategoria: valor-sentinela "+ Nova..." e limpeza de órfã', () => {
+    const CATEGORIA_A: Categoria = { id: 1, nome: 'Alimentação', emoji: '🍔' };
+    const CATEGORIA_B: Categoria = { id: 2, nome: 'Lazer', emoji: '🎮' };
+    const SUB_A1: Subcategoria = { id: 10, nome: 'Supermercado', emoji: '🛒', categoriaId: 1 };
+    const SUB_B1: Subcategoria = { id: 20, nome: 'Cinema', emoji: '🎬', categoriaId: 2 };
+
+    it('"+ Nova categoria...": reverte pra categoria anterior SEM reemitir evento, e abre o mini-diálogo certo', () => {
+      const { fixture, component, criarCategoriaSpy } = criarComponenteParaCategoria({ gasto: null }, [CATEGORIA_A, CATEGORIA_B], []);
+      component.form.controls.categoriaId.setValue(CATEGORIA_A.id!);
+      component.onCategoriaChange({ value: CATEGORIA_A.id } as MatSelectChange);
+      const { abrirEspiao } = espiarDialogo<Categoria>(fixture, undefined); // usuário cancelou o mini-diálogo
+
+      let emissoes = 0;
+      component.form.controls.categoriaId.valueChanges.subscribe(() => emissoes++);
+
+      component.onCategoriaChange({ value: component.NOVA_CATEGORIA } as MatSelectChange);
+
+      expect(component.form.controls.categoriaId.value).toBe(CATEGORIA_A.id!); // reverteu, não ficou -1
+      expect(emissoes).toBe(0); // emitEvent:false - não reentra no próprio handler
+      expect(abrirEspiao.calls.mostRecent().args[0]).toBe(CategoriaFormDialogComponent);
+      expect(criarCategoriaSpy).not.toHaveBeenCalled(); // cancelou - nunca chama a API
+    });
+
+    it('"+ Nova subcategoria...": reverte pra subcategoria anterior SEM reemitir evento, e abre o mini-diálogo certo', () => {
+      const { fixture, component, criarSubcategoriaSpy } = criarComponenteParaCategoria({ gasto: null }, [CATEGORIA_A], [SUB_A1]);
+      component.form.controls.categoriaId.setValue(CATEGORIA_A.id!);
+      component.onCategoriaChange({ value: CATEGORIA_A.id } as MatSelectChange);
+      component.form.controls.subcategoriaId.setValue(SUB_A1.id!);
+      component.onSubcategoriaChange({ value: SUB_A1.id } as MatSelectChange);
+      const { abrirEspiao } = espiarDialogo<SubcategoriaFormResultado>(fixture, undefined); // cancelou
+
+      let emissoes = 0;
+      component.form.controls.subcategoriaId.valueChanges.subscribe(() => emissoes++);
+
+      component.onSubcategoriaChange({ value: component.NOVA_SUBCATEGORIA } as MatSelectChange);
+
+      expect(component.form.controls.subcategoriaId.value).toBe(SUB_A1.id!);
+      expect(emissoes).toBe(0);
+      expect(abrirEspiao.calls.mostRecent().args[0]).toBe(SubcategoriaFormDialogComponent);
+      expect(criarSubcategoriaSpy).not.toHaveBeenCalled();
+    });
+
+    it('criar categoria nova pelo mini-diálogo: insere na lista de opções E auto-seleciona de verdade', () => {
+      const preenchidoNoMiniForm: Categoria = { nome: 'Pets', emoji: '🐶' };
+      const categoriaCriada: Categoria = { id: 50, nome: 'Pets', emoji: '🐶' };
+      const { fixture, component, criarCategoriaSpy } = criarComponenteParaCategoria({ gasto: null }, [CATEGORIA_B], []);
+      criarCategoriaSpy.and.returnValue(of(categoriaCriada));
+      espiarDialogo<Categoria>(fixture, preenchidoNoMiniForm);
+
+      component.onCategoriaChange({ value: component.NOVA_CATEGORIA } as MatSelectChange);
+
+      expect(criarCategoriaSpy).toHaveBeenCalledWith(preenchidoNoMiniForm);
+      expect(component.opcoesCategoria.some((c) => c.id === 50)).toBeTrue(); // entrou na lista
+      expect(component.form.controls.categoriaId.value).toBe(50); // auto-selecionada de verdade
+    });
+
+    it('criar subcategoria nova pelo mini-diálogo: insere na lista E auto-seleciona de verdade', () => {
+      const preenchidoNoMiniForm: SubcategoriaFormResultado = { nome: 'Petiscos', emoji: '🦴' };
+      const subcategoriaCriada: Subcategoria = { id: 60, nome: 'Petiscos', emoji: '🦴', categoriaId: CATEGORIA_A.id! };
+      const { fixture, component, criarSubcategoriaSpy } = criarComponenteParaCategoria({ gasto: null }, [CATEGORIA_A], []);
+      criarSubcategoriaSpy.and.returnValue(of(subcategoriaCriada));
+      component.form.controls.categoriaId.setValue(CATEGORIA_A.id!);
+      component.onCategoriaChange({ value: CATEGORIA_A.id } as MatSelectChange);
+      espiarDialogo<SubcategoriaFormResultado>(fixture, preenchidoNoMiniForm);
+
+      component.onSubcategoriaChange({ value: component.NOVA_SUBCATEGORIA } as MatSelectChange);
+
+      expect(criarSubcategoriaSpy).toHaveBeenCalledWith(CATEGORIA_A.id, preenchidoNoMiniForm);
+      expect(component.opcoesSubcategoria.some((s) => s.id === 60)).toBeTrue();
+      expect(component.form.controls.subcategoriaId.value).toBe(60);
+    });
+
+    it('trocar a categoria limpa a subcategoria órfã (que não existe mais na nova lista)', () => {
+      const { component } = criarComponenteParaCategoria({ gasto: null }, [CATEGORIA_A, CATEGORIA_B], [SUB_A1, SUB_B1]);
+      component.form.controls.categoriaId.setValue(CATEGORIA_A.id!);
+      component.onCategoriaChange({ value: CATEGORIA_A.id } as MatSelectChange);
+      component.form.controls.subcategoriaId.setValue(SUB_A1.id!);
+      component.onSubcategoriaChange({ value: SUB_A1.id } as MatSelectChange);
+      expect(component.form.controls.subcategoriaId.value).toBe(SUB_A1.id!);
+
+      component.form.controls.categoriaId.setValue(CATEGORIA_B.id!);
+      component.onCategoriaChange({ value: CATEGORIA_B.id } as MatSelectChange);
+
+      expect(component.form.controls.subcategoriaId.value).toBeNull(); // SUB_A1 não pertence a CATEGORIA_B
+      expect(component.opcoesSubcategoria).toEqual([SUB_B1]); // opções já refletem a categoria nova
     });
   });
 });
