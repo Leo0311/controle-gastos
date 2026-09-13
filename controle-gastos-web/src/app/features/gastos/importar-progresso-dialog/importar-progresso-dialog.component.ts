@@ -4,7 +4,6 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
   selector: 'app-importar-progresso-dialog',
-  standalone: true,
   imports: [MatDialogModule, MatProgressBarModule],
   templateUrl: './importar-progresso-dialog.component.html',
   styleUrl: './importar-progresso-dialog.component.css'

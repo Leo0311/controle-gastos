@@ -12,7 +12,6 @@ import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-esqueci-senha',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     RouterLink,

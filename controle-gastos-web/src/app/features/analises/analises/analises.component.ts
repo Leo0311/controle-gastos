@@ -25,7 +25,6 @@ const LIMIAR_ALERTA_RENDA = 30;
 
 @Component({
   selector: 'app-analises',
-  standalone: true,
   imports: [
     CurrencyPipe,
     FormsModule,

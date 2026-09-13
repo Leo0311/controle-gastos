@@ -31,7 +31,6 @@ import { ProximasContasComponent } from '../proximas-contas/proximas-contas.comp
  */
 @Component({
   selector: 'app-gastos-recorrentes',
-  standalone: true,
   imports: [
     MatTabsModule,
     AbasArrastaveisDirective,

@@ -28,7 +28,6 @@ export interface ContasAPagarDialogData {
  */
 @Component({
   selector: 'app-contas-a-pagar-dialog',
-  standalone: true,
   imports: [CurrencyPipe, MatDialogModule, MatButtonModule, MatIconModule],
   templateUrl: './contas-a-pagar-dialog.component.html',
   styleUrl: './contas-a-pagar-dialog.component.css'

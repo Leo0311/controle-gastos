@@ -15,7 +15,6 @@ import { GoogleSignInService } from '../../services/google-sign-in.service';
  */
 @Component({
   selector: 'app-google-sign-in-button',
-  standalone: true,
   imports: [MatButtonModule],
   templateUrl: './google-sign-in-button.component.html',
   styleUrl: './google-sign-in-button.component.css'

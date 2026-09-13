@@ -116,7 +116,6 @@ const clarear = (hex: string, fracao: number): string => {
 
 @Component({
   selector: 'app-dashboard',
-  standalone: true,
   imports: [
     CurrencyPipe,
     FormsModule,

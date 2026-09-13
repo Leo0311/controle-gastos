@@ -37,7 +37,6 @@ const NOVA_SUBCATEGORIA = -1;
 
 @Component({
   selector: 'app-gasto-recorrente-form-dialog',
-  standalone: true,
   imports: [
     CurrencyPipe,
     ReactiveFormsModule,

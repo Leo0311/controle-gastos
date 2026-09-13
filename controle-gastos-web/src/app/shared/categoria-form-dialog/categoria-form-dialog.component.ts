@@ -14,7 +14,6 @@ export interface CategoriaFormDialogData {
 
 @Component({
   selector: 'app-categoria-form-dialog',
-  standalone: true,
   imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   templateUrl: './categoria-form-dialog.component.html',
   styleUrl: './categoria-form-dialog.component.css'

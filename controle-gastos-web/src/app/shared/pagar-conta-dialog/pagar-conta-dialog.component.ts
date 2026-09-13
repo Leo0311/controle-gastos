@@ -34,7 +34,6 @@ export interface PagarContaResultado {
  */
 @Component({
   selector: 'app-pagar-conta-dialog',
-  standalone: true,
   imports: [
     AsyncPipe,
     ReactiveFormsModule,

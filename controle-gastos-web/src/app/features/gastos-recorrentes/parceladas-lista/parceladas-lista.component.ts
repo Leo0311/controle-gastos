@@ -28,7 +28,6 @@ import {
  */
 @Component({
   selector: 'app-parceladas-lista',
-  standalone: true,
   imports: [
     CurrencyPipe,
     MatButtonModule,

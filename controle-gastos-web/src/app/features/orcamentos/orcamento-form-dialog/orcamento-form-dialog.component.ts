@@ -33,7 +33,6 @@ const NOVA_SUBCATEGORIA = -1;
 
 @Component({
   selector: 'app-orcamento-form-dialog',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatDialogModule,

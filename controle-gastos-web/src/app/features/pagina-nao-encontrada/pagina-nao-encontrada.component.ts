@@ -10,7 +10,6 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 // Playwright de 2026-09-10).
 @Component({
   selector: 'app-pagina-nao-encontrada',
-  standalone: true,
   imports: [EmptyStateComponent, MatButtonModule, RouterLink],
   templateUrl: './pagina-nao-encontrada.component.html',
   styleUrl: './pagina-nao-encontrada.component.css'

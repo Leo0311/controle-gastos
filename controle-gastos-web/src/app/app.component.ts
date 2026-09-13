@@ -52,7 +52,6 @@ const AMORTECIMENTO_VISUAL = 0.4;
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [
     AsyncPipe, RouterOutlet, RouterLink, RouterLinkActive,
     MatToolbarModule, MatTabsModule, MatIconModule, MatButtonModule, MatMenuModule, MatDialogModule,

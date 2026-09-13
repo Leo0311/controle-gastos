@@ -20,7 +20,6 @@ function senhasIguaisValidator(control: AbstractControl): ValidationErrors | nul
 
 @Component({
   selector: 'app-cadastro',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     RouterLink,

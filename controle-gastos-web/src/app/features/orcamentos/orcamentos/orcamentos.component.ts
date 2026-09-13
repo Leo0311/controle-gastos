@@ -25,7 +25,6 @@ import { emojiDaCategoria } from '../../../core/categoria-emoji';
 
 @Component({
   selector: 'app-orcamentos',
-  standalone: true,
   imports: [
     CurrencyPipe,
     FormsModule,

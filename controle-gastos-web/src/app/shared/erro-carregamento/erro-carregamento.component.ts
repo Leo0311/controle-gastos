@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
  */
 @Component({
   selector: 'app-erro-carregamento',
-  standalone: true,
   imports: [MatButtonModule, MatIconModule],
   templateUrl: './erro-carregamento.component.html',
   styleUrl: './erro-carregamento.component.css'

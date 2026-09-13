@@ -19,7 +19,6 @@ function senhasIguaisValidator(control: AbstractControl): ValidationErrors | nul
 
 @Component({
   selector: 'app-redefinir-senha',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     RouterLink,

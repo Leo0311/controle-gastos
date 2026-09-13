@@ -17,7 +17,6 @@ export interface MetaFormDialogData {
 
 @Component({
   selector: 'app-meta-form-dialog',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatDialogModule,

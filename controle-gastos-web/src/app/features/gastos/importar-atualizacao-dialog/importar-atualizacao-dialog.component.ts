@@ -25,7 +25,6 @@ export interface DecisaoAtualizacao {
 
 @Component({
   selector: 'app-importar-atualizacao-dialog',
-  standalone: true,
   imports: [FormsModule, MatDialogModule, MatTableModule, MatCheckboxModule, MatButtonModule],
   templateUrl: './importar-atualizacao-dialog.component.html',
   styleUrl: './importar-atualizacao-dialog.component.css'

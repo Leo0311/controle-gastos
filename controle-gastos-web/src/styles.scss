@@ -3,7 +3,8 @@
 @use '@angular/material' as mat;
 @use './m3-theme' as tema;
 
-@include mat.core();
+@include mat.elevation-classes();
+@include mat.app-background();
 
 // Tema completo (cor + tipografia + densidade) aplicado uma vez só, sempre como o
 // claro; o escuro (ativado via classe .tema-escuro no <html>) só reaplica os tokens

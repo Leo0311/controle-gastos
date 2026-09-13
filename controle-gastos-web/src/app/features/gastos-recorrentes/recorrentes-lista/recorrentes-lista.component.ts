@@ -32,7 +32,6 @@ import { ResumoStatusConta } from '../../../core/status-conta';
  */
 @Component({
   selector: 'app-recorrentes-lista',
-  standalone: true,
   imports: [
     CurrencyPipe,
     MatButtonModule,

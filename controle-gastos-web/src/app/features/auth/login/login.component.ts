@@ -14,7 +14,6 @@ import { GoogleSignInButtonComponent } from '../../../shared/google-sign-in-butt
 
 @Component({
   selector: 'app-login',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     RouterLink,

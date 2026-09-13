@@ -35,7 +35,6 @@ const OPCOES_MESES = [1, 3, 6, 12] as const;
  */
 @Component({
   selector: 'app-proximas-contas',
-  standalone: true,
   imports: [
     CurrencyPipe,
     MatButtonModule,

@@ -12,7 +12,6 @@ export interface InfoDialogData {
 // instalação manual do PWA no iOS Safari).
 @Component({
   selector: 'app-info-dialog',
-  standalone: true,
   imports: [MatDialogModule, MatButtonModule],
   templateUrl: './info-dialog.component.html'
 })

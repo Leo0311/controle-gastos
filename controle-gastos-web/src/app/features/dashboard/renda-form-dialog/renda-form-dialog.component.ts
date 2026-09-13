@@ -13,7 +13,6 @@ export interface RendaFormDialogData {
 
 @Component({
   selector: 'app-renda-form-dialog',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatDialogModule,

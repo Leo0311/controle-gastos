@@ -49,7 +49,6 @@ import {
 
 @Component({
   selector: 'app-gastos',
-  standalone: true,
   imports: [
     CurrencyPipe,
     DatePipe,

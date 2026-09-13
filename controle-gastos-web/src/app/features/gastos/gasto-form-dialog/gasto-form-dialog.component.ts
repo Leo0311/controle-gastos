@@ -75,7 +75,6 @@ const NOVA_SUBCATEGORIA = -1;
 
 @Component({
   selector: 'app-gasto-form-dialog',
-  standalone: true,
   imports: [
     AsyncPipe,
     CurrencyPipe,

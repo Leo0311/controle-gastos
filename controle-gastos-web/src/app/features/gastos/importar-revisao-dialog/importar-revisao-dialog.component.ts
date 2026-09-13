@@ -12,7 +12,6 @@ export interface ImportarRevisaoDialogData {
 
 @Component({
   selector: 'app-importar-revisao-dialog',
-  standalone: true,
   imports: [MatDialogModule, MatTableModule, MatButtonModule, MatIconModule],
   templateUrl: './importar-revisao-dialog.component.html',
   styleUrl: './importar-revisao-dialog.component.css'

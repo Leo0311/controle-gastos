@@ -23,7 +23,6 @@ export interface DashboardDetalheDialogData {
 
 @Component({
   selector: 'app-dashboard-detalhe-dialog',
-  standalone: true,
   imports: [
     CurrencyPipe,
     DatePipe,

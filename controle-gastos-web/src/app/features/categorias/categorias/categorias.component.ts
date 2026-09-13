@@ -27,7 +27,6 @@ import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/err
 
 @Component({
   selector: 'app-categorias',
-  standalone: true,
   imports: [
     CdkDropList,
     CdkDrag,

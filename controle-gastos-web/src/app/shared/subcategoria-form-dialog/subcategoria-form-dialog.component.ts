@@ -20,7 +20,6 @@ export interface SubcategoriaFormResultado {
 
 @Component({
   selector: 'app-subcategoria-form-dialog',
-  standalone: true,
   imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   templateUrl: './subcategoria-form-dialog.component.html',
   styleUrl: './subcategoria-form-dialog.component.css'

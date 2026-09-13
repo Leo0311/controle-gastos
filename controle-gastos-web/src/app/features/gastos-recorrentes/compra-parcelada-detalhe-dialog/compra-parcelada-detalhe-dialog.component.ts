@@ -27,7 +27,6 @@ export interface CompraParceladaDetalheDialogData {
  */
 @Component({
   selector: 'app-compra-parcelada-detalhe-dialog',
-  standalone: true,
   imports: [
     CurrencyPipe,
     DatePipe,

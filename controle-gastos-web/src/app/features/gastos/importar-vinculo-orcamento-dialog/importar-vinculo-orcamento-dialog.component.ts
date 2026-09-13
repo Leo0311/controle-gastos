@@ -28,7 +28,6 @@ export interface DecisaoVinculo {
 
 @Component({
   selector: 'app-importar-vinculo-orcamento-dialog',
-  standalone: true,
   imports: [
     CurrencyPipe,
     FormsModule,
