@@ -81,6 +81,8 @@ interface HarnessSalvar {
   fixture: ComponentFixture<GastoFormDialogComponent>;
   component: GastoFormDialogComponent;
   dialogRefMock: { close: jasmine.Spy; disableClose: boolean };
+  cadastrarGastoSpy: jasmine.Spy;
+  atualizarGastoSpy: jasmine.Spy;
   cadastrarRecorrenteSpy: jasmine.Spy;
   cadastrarParceladaSpy: jasmine.Spy;
   notificacaoErroSpy: jasmine.Spy;
@@ -97,6 +99,8 @@ interface HarnessSalvar {
 // continuam mockados com `of([])`, então ngOnInit roda sem efeito colateral.
 function criarComponenteParaSalvar(dialogData: unknown = { gasto: null }): HarnessSalvar {
   const dialogRefMock = { close: jasmine.createSpy('close'), disableClose: false };
+  const cadastrarGastoSpy = jasmine.createSpy('cadastrarGasto');
+  const atualizarGastoSpy = jasmine.createSpy('atualizarGasto');
   const cadastrarRecorrenteSpy = jasmine.createSpy('cadastrarRecorrente');
   const cadastrarParceladaSpy = jasmine.createSpy('cadastrarParcelada');
   const notificacaoErroSpy = jasmine.createSpy('erro');
@@ -118,7 +122,10 @@ function criarComponenteParaSalvar(dialogData: unknown = { gasto: null }): Harne
       { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(undefined) }) } },
       { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false }) } },
       { provide: ConfigService, useValue: { garantirCarregado: () => {}, limitesCompraParcelada: () => LIMITES } },
-      { provide: GastoService, useValue: { listarTodos: () => of([]) } },
+      {
+        provide: GastoService,
+        useValue: { listarTodos: () => of([]), cadastrar: cadastrarGastoSpy, atualizar: atualizarGastoSpy }
+      },
       { provide: CategoriaService, useValue: { listarVisiveis: () => of([]), listarTodasSubcategorias: () => of([]) } },
       { provide: OrcamentoService, useValue: { listarTodos: () => of([]) } },
       { provide: GastoRecorrenteService, useValue: { cadastrar: cadastrarRecorrenteSpy } },
@@ -137,6 +144,8 @@ function criarComponenteParaSalvar(dialogData: unknown = { gasto: null }): Harne
     fixture,
     component: fixture.componentInstance,
     dialogRefMock,
+    cadastrarGastoSpy,
+    atualizarGastoSpy,
     cadastrarRecorrenteSpy,
     cadastrarParceladaSpy,
     notificacaoErroSpy
@@ -501,8 +510,14 @@ describe('GastoFormDialogComponent', () => {
   // de Gastos, depois do diálogo já fechado (quem cadastra é o diálogo, mas
   // quem trata erro do insert avulso sempre foi o componente pai).
   describe('salvar() - monta o payload certo por tipo de lançamento', () => {
-    it('branch gasto avulso: trim na descrição, data formatada, fecha o diálogo direto (sem loading)', () => {
-      const { component, dialogRefMock } = criarComponenteParaSalvar();
+    it('branch gasto avulso (criar): chama gastoService.cadastrar com o payload certo, via salvarComLoading', () => {
+      // Achado 3 da auditoria de 2026-09-13: até aqui o diálogo fechava direto com
+      // os dados crus e quem chamava a API era o componente pai (gastos.component) -
+      // se a chamada falhasse, o usuário já tinha "perdido de vista" o formulário.
+      // Agora o gasto avulso passa pelo mesmo mecanismo de recorrente/parcelada:
+      // só fecha depois da API confirmar sucesso.
+      const { component, dialogRefMock, cadastrarGastoSpy } = criarComponenteParaSalvar(); // { gasto: null } = criando
+      cadastrarGastoSpy.and.returnValue(new Subject()); // nunca resolve - só quer ver a chamada
       preencherCamposComuns(component, { descricao: '  Mercado  ', valor: 150.5, categoriaId: 3 });
       // Trava a auto-seleção de orçamento (Área B, fora de escopo aqui) - senão
       // a mudança de "data" logo abaixo recalcula orcamentoId sozinha (sem
@@ -516,15 +531,25 @@ describe('GastoFormDialogComponent', () => {
 
       component.salvar();
 
-      expect(dialogRefMock.close).toHaveBeenCalledWith({
-        tipo: 'gasto',
-        gasto: {
-          descricao: 'Mercado', valor: 150.5, categoriaId: 3, subcategoriaId: 30,
-          data: '2026-09-15', orcamentoId: 7
-        }
+      expect(cadastrarGastoSpy).toHaveBeenCalledWith({
+        descricao: 'Mercado', valor: 150.5, categoriaId: 3, subcategoriaId: 30,
+        data: '2026-09-15', orcamentoId: 7
       });
-      // Insert avulso nunca passa por salvarComLoading - fecha na hora, sem loading.
-      expect(component.salvando).toBeFalse();
+      // Em voo (a chamada acima nunca resolve) - ainda não fechou.
+      expect(dialogRefMock.close).not.toHaveBeenCalled();
+      expect(component.salvando).toBeTrue();
+    });
+
+    it('branch gasto avulso (editar): chama gastoService.atualizar com o id do gasto original, não cadastrar', () => {
+      const gastoOriginal = { id: 55, descricao: 'Aluguel', valor: 1500, categoriaId: 10, data: '2026-07-01' };
+      const { component, cadastrarGastoSpy, atualizarGastoSpy } = criarComponenteParaSalvar({ gasto: gastoOriginal });
+      atualizarGastoSpy.and.returnValue(new Subject());
+      preencherCamposComuns(component, { descricao: 'Aluguel novo valor', valor: 1600, categoriaId: 10 });
+
+      component.salvar();
+
+      expect(atualizarGastoSpy).toHaveBeenCalledWith(55, jasmine.objectContaining({ descricao: 'Aluguel novo valor', valor: 1600 }));
+      expect(cadastrarGastoSpy).not.toHaveBeenCalled();
     });
 
     it('branch recorrente: payload inclui mesesGerar (regressão do bug real 805b7d6)', () => {
@@ -614,6 +639,52 @@ describe('GastoFormDialogComponent', () => {
       component.salvar();
 
       expect(dialogRefMock.close).toHaveBeenCalledWith({ tipo: 'parcelada', parcelada: entidadeSalva });
+    });
+
+    it('gasto avulso também passa pelo mesmo mecanismo de loading (sucesso fecha com o gasto persistido)', () => {
+      // Achado 3 da auditoria de 2026-09-13: gasto avulso não é mais um caso à
+      // parte - o resultado que fecha o diálogo é o que a API devolveu (já com
+      // id), não mais os dados crus do formulário.
+      const gastoSalvo: Gasto = {
+        id: 77, descricao: 'Mercado', valor: 150.5, categoriaId: 3, subcategoriaId: null,
+        data: '2026-09-15', orcamentoId: null
+      };
+      const { component, dialogRefMock, cadastrarGastoSpy } = criarComponenteParaSalvar();
+      cadastrarGastoSpy.and.returnValue(of(gastoSalvo));
+      preencherCamposComuns(component, { descricao: 'Mercado', valor: 150.5, categoriaId: 3 });
+
+      component.salvar();
+
+      expect(dialogRefMock.close).toHaveBeenCalledWith({ tipo: 'gasto', gasto: gastoSalvo });
+    });
+
+    it('gasto avulso: erro NÃO fecha o diálogo e preserva os dados digitados no formulário (achado 3 da auditoria 2026-09-13)', () => {
+      // Antes da correção, o diálogo fechava ANTES da API confirmar (o
+      // chamador que salvava depois) - um erro aqui perdia tudo que o usuário
+      // tinha digitado, sem chance de reenviar. Agora segue o mesmo padrão de
+      // recorrente/parcelada: só destrava e avisa, sem fechar nem limpar o form.
+      const chamada$ = new Subject<Gasto>();
+      const { fixture, component, dialogRefMock, cadastrarGastoSpy, notificacaoErroSpy } = criarComponenteParaSalvar();
+      cadastrarGastoSpy.and.returnValue(chamada$);
+      preencherCamposComuns(component, { descricao: 'Mercado', valor: 150.5, categoriaId: 3 });
+
+      component.salvar();
+      expect(component.salvando).toBeTrue(); // entrou em loading antes de errar
+
+      chamada$.error('sessão inválida');
+
+      expect(dialogRefMock.close).not.toHaveBeenCalled();
+      expect(component.salvando).toBeFalse();
+      expect(dialogRefMock.disableClose).toBeFalse();
+      expect(notificacaoErroSpy).toHaveBeenCalledWith('mensagem: sessão inválida');
+      // Os dados continuam no formulário, intactos - nada foi limpo nem perdido.
+      expect(component.form.controls.descricao.value).toBe('Mercado');
+      expect(component.form.controls.valor.value).toBe(150.5);
+      expect(component.form.controls.categoriaId.value).toBe(3);
+
+      fixture.detectChanges();
+      const submit = fixture.debugElement.query(By.css('button[type="submit"]'));
+      expect(submit.nativeElement.disabled).toBeFalse();
     });
 
     it('erro: diálogo NÃO fecha, destrava salvando/disableClose/botões, mostra a mensagem certa (regressão do bug real 1810354)', () => {

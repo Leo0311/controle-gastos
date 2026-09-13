@@ -3,6 +3,7 @@ package com.controlegastos.api.config;
 import com.controlegastos.api.security.JwtAuthFilter;
 import com.controlegastos.api.security.RateLimitAutenticadoFilter;
 import com.controlegastos.api.security.RateLimitFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -15,6 +16,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -33,6 +35,17 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    // Mesmo formato {"erro": "..."} do resto da API (GlobalExceptionHandler) - o
+    // frontend (NotificacaoService.mensagemDeErro) já espera esse shape.
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"erro\":\"Sessão expirada ou inválida. Faça login novamente.\"}");
+        };
     }
 
     @Bean
@@ -65,6 +78,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.HEAD, "/api/health", "/api/health/smtp").permitAll()
                         .anyRequest().authenticated()
                 )
+                // Sem isto, o Spring Security cai no padrão (Http403ForbiddenEntryPoint) pra
+                // qualquer falha de autenticação - token ausente, inválido, expirado ou com
+                // token_version revogado (JwtAuthFilter não seta Authentication nenhuma nesses
+                // casos, sem lançar exceção) viravam 403, indistinguíveis de uma autorização
+                // negada de verdade. Este projeto não tem @PreAuthorize/hasRole/AccessDenied em
+                // lugar nenhum (auditoria 2026-09-13 confirmou) - toda a autorização por dono do
+                // dado é feita a nível de repositório (findByIdAndUsuarioId -> 404, nunca 403),
+                // então não existe hoje um caso real de "autenticado mas sem permissão" que
+                // dependesse do 403 default. Com isto, falha de autenticação sempre vira 401 -
+                // o único ExceptionHandler que já devolvia 401 (CredenciaisInvalidasException,
+                // em /api/auth/login) continua intacto, sem conflito (rotas diferentes).
+                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint()))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 // Depois do JwtAuthFilter: já há um UsuarioPrincipal no contexto para
                 // a contagem por usuário dos endpoints de escrita pesada (achado M2).

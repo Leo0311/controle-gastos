@@ -456,8 +456,10 @@ export class GastosComponent implements OnInit {
       if (!resultado) {
         return;
       }
-      // recorrente/parcelada já foram persistidos pelo próprio diálogo (com
-      // spinner, ver GastoFormResultado) - aqui só o aviso e o recarregamento.
+      // As três formas já foram persistidas pelo próprio diálogo (com spinner,
+      // ver GastoFormResultado/salvarComLoading) - aqui só o aviso e o
+      // recarregamento (achado 3 da auditoria de 2026-09-13: 'gasto' costumava
+      // ser só dados, com o cadastrar() chamado daqui).
       if (resultado.tipo === 'recorrente') {
         this.notificacao.sucesso('Gasto recorrente cadastrado com sucesso!');
         this.carregar();
@@ -469,14 +471,9 @@ export class GastosComponent implements OnInit {
         this.carregar();
         return;
       }
-      this.gastoService.cadastrar(resultado.gasto).subscribe({
-        next: (gastoCriado) => {
-          this.notificacao.sucesso('Gasto cadastrado com sucesso!');
-          this.carregar();
-          this.verificarOrcamentoExcedido(gastoCriado);
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
+      this.notificacao.sucesso('Gasto cadastrado com sucesso!');
+      this.carregar();
+      this.verificarOrcamentoExcedido(resultado.gasto);
     });
   }
 
@@ -523,18 +520,15 @@ export class GastosComponent implements OnInit {
 
     ref.afterClosed().subscribe((resultado) => {
       // Editando um gasto existente o diálogo nunca oferece "tornar recorrente",
-      // então o resultado é sempre do tipo 'gasto'.
+      // então o resultado é sempre do tipo 'gasto' - já persistido pelo próprio
+      // diálogo (ver GastoFormResultado/salvarComLoading), aqui só o aviso e o
+      // recarregamento.
       if (!resultado || resultado.tipo !== 'gasto') {
         return;
       }
-      this.gastoService.atualizar(gasto.id!, resultado.gasto).subscribe({
-        next: (gastoAtualizado) => {
-          this.notificacao.sucesso('Gasto atualizado com sucesso!');
-          this.carregar();
-          this.verificarOrcamentoExcedido(gastoAtualizado);
-        },
-        error: (erro) => this.notificacao.erro(this.notificacao.mensagemDeErro(erro))
-      });
+      this.notificacao.sucesso('Gasto atualizado com sucesso!');
+      this.carregar();
+      this.verificarOrcamentoExcedido(resultado.gasto);
     });
   }
 

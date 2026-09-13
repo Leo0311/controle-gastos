@@ -58,9 +58,11 @@ export interface GastoFormDialogData {
 // compra parcelada em vez de um gasto avulso - por isso o resultado do diálogo é uma
 // dessas três formas, nunca mais de uma ao mesmo tempo.
 //
-// `recorrente` e `parcelada` já vêm PERSISTIDOS (o diálogo faz a chamada com
-// spinner - ver salvarComLoading); o chamador só mostra o aviso e recarrega.
-// `gasto` ainda é só os dados: o chamador é quem chama a API (insert único, rápido).
+// As três formas já vêm PERSISTIDAS (o diálogo faz a chamada com spinner - ver
+// salvarComLoading); o chamador só mostra o aviso e recarrega. Achado 3 da auditoria
+// de 2026-09-13: `gasto` costumava fechar o diálogo antes de chamar a API (o
+// chamador que salvava depois), perdendo os dados digitados em caso de erro -
+// alinhado ao mesmo padrão de recorrente/parcelada.
 export type GastoFormResultado =
   | { tipo: 'gasto'; gasto: Gasto }
   | { tipo: 'recorrente'; recorrente: GastoRecorrente }
@@ -115,6 +117,10 @@ export class GastoFormDialogComponent implements OnInit {
     .pipe(map((resultado) => resultado.matches));
 
   readonly editando: boolean;
+  // Id do gasto avulso sendo editado (null = criando) - usado em salvar() pra
+  // decidir entre gastoService.cadastrar/atualizar, agora que o próprio diálogo
+  // faz a chamada (ver GastoFormResultado).
+  private readonly gastoId: number | null;
   // Limites do parcelamento (janela da 1ª parcela, mín/máx de parcelas) vêm de
   // GET /api/config - o backend é a autoridade e não há dois conjuntos de
   // números pra divergir (achado M3). Começam nos padrões e são substituídos
@@ -134,11 +140,10 @@ export class GastoFormDialogComponent implements OnInit {
   readonly NOVA_CATEGORIA = NOVA_CATEGORIA;
   readonly NOVA_SUBCATEGORIA = NOVA_SUBCATEGORIA;
 
-  // Recorrência e compra parcelada fazem vários inserts no backend (a pré-geração
-  // de meses / parcelas) e podem demorar - o diálogo salva por conta própria e
-  // fica aberto com spinner + botões travados até terminar, pra não dar pra
-  // recarregar ou navegar no meio e disparar uma chamada concorrente. Gasto
-  // avulso é um insert só e continua sendo salvo pelo chamador (gastos.component).
+  // Todo salvamento (gasto avulso, recorrência ou compra parcelada) é feito aqui
+  // dentro, com spinner + botões travados até terminar - ver salvarComLoading. O
+  // diálogo só fecha depois da API confirmar sucesso; em erro, destrava e mantém
+  // os dados preenchidos (achado 3 da auditoria de 2026-09-13).
   salvando = false;
 
   /** Enquanto false, o orçamento selecionado é recalculado automaticamente conforme categoria/data mudam. */
@@ -195,6 +200,7 @@ export class GastoFormDialogComponent implements OnInit {
   ) {
     this.editando = !!data.gasto;
     this.ehParcela = !!data.gasto?.compraParceladaId;
+    this.gastoId = data.gasto?.id ?? null;
 
     // Puxa os limites do backend (uma vez por sessão) e aplica o snapshot atual
     // já - se o GET ainda não voltou, são os padrões acima, que coincidem com o
@@ -555,7 +561,10 @@ export class GastoFormDialogComponent implements OnInit {
       data: this.formatarDataIso(valores.data!),
       orcamentoId: valores.orcamentoId ?? null
     };
-    this.dialogRef.close({ tipo: 'gasto', gasto } satisfies GastoFormResultado);
+    const chamada$ = this.gastoId != null
+      ? this.gastoService.atualizar(this.gastoId, gasto)
+      : this.gastoService.cadastrar(gasto);
+    this.salvarComLoading(chamada$, (salvo) => ({ tipo: 'gasto', gasto: salvo }));
   }
 
   // Trava o diálogo (spinner no botão, `disableClose` contra ESC/backdrop, botões
