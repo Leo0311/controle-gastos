@@ -20,6 +20,7 @@ import { Categoria, Subcategoria } from '../../../models/categoria.model';
 import { Gasto } from '../../../models/gasto.model';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { CompraParcelada } from '../../../models/compra-parcelada.model';
+import { Orcamento } from '../../../models/orcamento.model';
 import { SugestaoCategoria } from './sugestao-categoria';
 
 const LIMITES = { parcelasMin: 2, parcelasMax: 120, primeiraParcelaMesesAtrasMax: 12, primeiraParcelaMesesFrenteMax: 2 };
@@ -148,6 +149,41 @@ function preencherParceladaValida(
     numeroParcelas: overrides.numeroParcelas ?? 6,
     dataPrimeiraParcela: overrides.dataPrimeiraParcela ?? new Date(2026, 9, 1)
   });
+}
+
+// Harness da Rodada 2 (área B - orçamento automático): mesmo espírito de
+// criarComponenteParaSalvar (detectChanges() de propósito, pra
+// atualizarOpcoesOrcamento reagir de verdade à mudança de "data" via
+// valueChanges), mas com OrcamentoService controlável - o harness da Rodada 1
+// fixa listarTodos() em `of([])`, que não serve aqui.
+function criarComponenteParaOrcamento(
+  dialogData: unknown,
+  orcamentos: Orcamento[]
+): { fixture: ComponentFixture<GastoFormDialogComponent>; component: GastoFormDialogComponent } {
+  TestBed.configureTestingModule({
+    imports: [GastoFormDialogComponent],
+    providers: [
+      provideNoopAnimations(),
+      { provide: MAT_DATE_LOCALE, useValue: 'pt-BR' },
+      { provide: DateAdapter, useClass: PtBrDateAdapter },
+      { provide: MAT_DATE_FORMATS, useValue: FORMATOS_DATA_PT_BR },
+      { provide: MatDialogRef, useValue: { close: () => {}, disableClose: false } },
+      { provide: MAT_DIALOG_DATA, useValue: dialogData },
+      { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(undefined) }) } },
+      { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false }) } },
+      { provide: ConfigService, useValue: { garantirCarregado: () => {}, limitesCompraParcelada: () => LIMITES } },
+      { provide: GastoService, useValue: { listarTodos: () => of([]) } },
+      { provide: CategoriaService, useValue: { listarVisiveis: () => of([]), listarTodasSubcategorias: () => of([]) } },
+      { provide: OrcamentoService, useValue: { listarTodos: () => of(orcamentos) } },
+      { provide: GastoRecorrenteService, useValue: {} },
+      { provide: CompraParceladaService, useValue: {} },
+      { provide: NotificacaoService, useValue: { erro: () => {}, mensagemDeErro: () => '' } }
+    ]
+  });
+
+  const fixture = TestBed.createComponent(GastoFormDialogComponent);
+  fixture.detectChanges();
+  return { fixture, component: fixture.componentInstance };
 }
 
 describe('GastoFormDialogComponent', () => {
@@ -501,6 +537,154 @@ describe('GastoFormDialogComponent', () => {
       fixture.detectChanges();
       const submit = fixture.debugElement.query(By.css('button[type="submit"]'));
       expect(submit.nativeElement.disabled).toBeFalse();
+    });
+  });
+
+  // ÁREA B — orçamento automático (atualizarOpcoesOrcamento). Reescrito do
+  // zero em cfde43d depois de 3 bugs relatados (a versão anterior comparava
+  // por categoria+mês, sem vínculo explícito) - a lógica atual nunca teve
+  // teste unitário desde então. Risco: prioridade específico > geral,
+  // recalcula ao mudar categoria/subcategoria/data, e a trava
+  // escolhaManualOrcamento (uma vez que o usuário escolhe à mão, ou o gasto
+  // já vem de edição, a auto-seleção para de mexer no campo).
+  describe('orçamento automático (atualizarOpcoesOrcamento)', () => {
+    const ORC_GERAL_ALIMENTACAO: Orcamento = {
+      id: 1, categoriaId: 10, subcategoriaId: null, categoria: 'Alimentação', subcategoria: null,
+      valorLimite: 800, mes: 9, ano: 2026
+    };
+    const ORC_ESPECIFICO_SUPERMERCADO: Orcamento = {
+      id: 2, categoriaId: 10, subcategoriaId: 100, categoria: 'Alimentação', subcategoria: 'Supermercado',
+      valorLimite: 500, mes: 9, ano: 2026
+    };
+    const ORC_OUTRO_MES: Orcamento = {
+      id: 3, categoriaId: 10, subcategoriaId: null, categoria: 'Alimentação', subcategoria: null,
+      valorLimite: 800, mes: 10, ano: 2026
+    };
+    const ORC_LAZER_GERAL: Orcamento = {
+      id: 4, categoriaId: 20, subcategoriaId: null, categoria: 'Lazer', subcategoria: null,
+      valorLimite: 300, mes: 9, ano: 2026
+    };
+
+    it('sem subcategoria escolhida, auto-seleciona o orçamento GERAL da categoria (mesmo mês/ano da data)', () => {
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_GERAL_ALIMENTACAO, ORC_LAZER_GERAL, ORC_OUTRO_MES]);
+      component.form.controls.data.setValue(new Date(2026, 8, 15)); // 15/09/2026
+
+      component.form.controls.categoriaId.setValue(10);
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+
+      expect(component.form.controls.orcamentoId.value).toBe(1);
+    });
+
+    it('com subcategoria escolhida, o orçamento ESPECÍFICO (categoria+subcategoria) vence sobre o geral', () => {
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_GERAL_ALIMENTACAO, ORC_ESPECIFICO_SUPERMERCADO]);
+      component.form.controls.data.setValue(new Date(2026, 8, 15));
+      component.form.controls.categoriaId.setValue(10);
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+      component.form.controls.subcategoriaId.enable();
+      component.form.controls.subcategoriaId.setValue(100);
+
+      component.onSubcategoriaChange({ value: 100 } as MatSelectChange);
+
+      expect(component.form.controls.orcamentoId.value).toBe(2); // específico, não o geral (1)
+    });
+
+    it('subcategoria escolhida sem orçamento específico pra ela: cai pro orçamento geral (fallback)', () => {
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_GERAL_ALIMENTACAO]); // só o geral existe
+      component.form.controls.data.setValue(new Date(2026, 8, 15));
+      component.form.controls.categoriaId.setValue(10);
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+      component.form.controls.subcategoriaId.enable();
+      component.form.controls.subcategoriaId.setValue(999); // subcategoria sem orçamento próprio
+
+      component.onSubcategoriaChange({ value: 999 } as MatSelectChange);
+
+      expect(component.form.controls.orcamentoId.value).toBe(1); // geral
+    });
+
+    it('filtra por mês/ano da data escolhida - orçamento de outro mês não é considerado nem selecionado', () => {
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_OUTRO_MES]); // só existe pra outubro
+      component.form.controls.data.setValue(new Date(2026, 8, 15)); // setembro
+      component.form.controls.categoriaId.setValue(10);
+
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+
+      expect(component.opcoesOrcamento).toEqual([]);
+      expect(component.form.controls.orcamentoId.value).toBeNull();
+    });
+
+    it('opcoesOrcamento ordena o geral antes do específico da mesma categoria', () => {
+      // ordem de entrada de propósito invertida (específico primeiro), pra provar que quem ordena é o componente
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_ESPECIFICO_SUPERMERCADO, ORC_GERAL_ALIMENTACAO]);
+      component.form.controls.data.setValue(new Date(2026, 8, 15));
+
+      component.form.controls.categoriaId.setValue(10);
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+
+      expect(component.opcoesOrcamento.map((o) => o.id)).toEqual([1, 2]); // geral (1) antes do específico (2)
+    });
+
+    it('depois de escolher orçamento manualmente (onOrcamentoSelecionadoManualmente), trocar categoria não sobrescreve a escolha', () => {
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_GERAL_ALIMENTACAO, ORC_LAZER_GERAL]);
+      component.form.controls.data.setValue(new Date(2026, 8, 15));
+      component.form.controls.categoriaId.setValue(10);
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+      expect(component.form.controls.orcamentoId.value).toBe(1); // auto-selecionou o geral de Alimentação
+
+      component.form.controls.orcamentoId.setValue(4); // escolha manual (ex.: usuário prefere vincular a Lazer)
+      component.onOrcamentoSelecionadoManualmente({} as MatSelectChange);
+
+      // Trocar a categoria de novo NÃO pode mexer no que foi escolhido à mão.
+      component.form.controls.categoriaId.setValue(20);
+      component.onCategoriaChange({ value: 20 } as MatSelectChange);
+
+      expect(component.form.controls.orcamentoId.value).toBe(4);
+    });
+
+    it('modo edição: respeita o orçamento já vinculado (escolhaManualOrcamento nasce true), nunca auto-seleciona por cima', () => {
+      const gasto: Gasto = {
+        id: 1, descricao: 'Mercado', valor: 200, categoriaId: 10, subcategoriaId: null,
+        orcamentoId: 99, data: '2026-09-01'
+      };
+      // ORC_GERAL_ALIMENTACAO (id 1) seria o "certo" pela auto-seleção - o vínculo
+      // salvo (99) tem que sobreviver mesmo assim.
+      const { component } = criarComponenteParaOrcamento({ gasto }, [ORC_GERAL_ALIMENTACAO]);
+
+      expect(component.form.controls.orcamentoId.value).toBe(99);
+
+      component.form.controls.data.setValue(new Date(2026, 8, 20)); // dispara atualizarOpcoesOrcamento de novo
+
+      expect(component.form.controls.orcamentoId.value).toBe(99);
+    });
+
+    it('sem categoria escolhida, orcamentoId fica nulo', () => {
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_GERAL_ALIMENTACAO]);
+      component.form.controls.data.setValue(new Date(2026, 8, 15));
+      component.form.controls.categoriaId.setValue(10);
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+      expect(component.form.controls.orcamentoId.value).toBe(1);
+
+      component.form.controls.categoriaId.setValue(null);
+      component.onCategoriaChange({ value: null } as unknown as MatSelectChange);
+
+      expect(component.form.controls.orcamentoId.value).toBeNull();
+    });
+
+    it('limpar a data esvazia as opções mas NÃO mexe no orcamentoId já selecionado (comportamento atual - ver nota no código)', () => {
+      // atualizarOpcoesOrcamento retorna cedo quando `data` é null (só zera
+      // opcoesOrcamento) - o orcamentoId escolhido antes fica como estava. Na
+      // prática é inofensivo (o próprio "Data" fica inválido/obrigatório nesse
+      // estado no modo avulso, bloqueando o salvar), mas documentado aqui pra
+      // não virar surpresa se um dia isso for lido como bug.
+      const { component } = criarComponenteParaOrcamento({ gasto: null }, [ORC_GERAL_ALIMENTACAO]);
+      component.form.controls.data.setValue(new Date(2026, 8, 15));
+      component.form.controls.categoriaId.setValue(10);
+      component.onCategoriaChange({ value: 10 } as MatSelectChange);
+      expect(component.form.controls.orcamentoId.value).toBe(1);
+
+      component.form.controls.data.setValue(null);
+
+      expect(component.opcoesOrcamento).toEqual([]);
+      expect(component.form.controls.orcamentoId.value).toBe(1);
     });
   });
 });
