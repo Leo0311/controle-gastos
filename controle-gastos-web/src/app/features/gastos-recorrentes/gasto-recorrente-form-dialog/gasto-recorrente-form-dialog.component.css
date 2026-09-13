@@ -23,7 +23,7 @@
   display: inline-block;
   margin-right: 8px;
   vertical-align: middle;
-  --mdc-circular-progress-active-indicator-color: var(--acento-primario);
+  --mat-progress-spinner-active-indicator-color: var(--acento-primario);
 }
 
 @media (max-width: 599px) {

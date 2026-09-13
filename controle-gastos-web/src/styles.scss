@@ -162,17 +162,17 @@ html.tema-escuro {
 // correto.
 // ─────────────────────────────────────────────────────────────────────────────
 @mixin raised-fill-escuro($container, $ink) {
-  --mdc-protected-button-container-color: #{$container};
-  --mdc-protected-button-label-text-color: #{$ink};
-  --mdc-protected-button-hover-label-text-color: #{$ink};
-  --mdc-protected-button-focus-label-text-color: #{$ink};
-  --mdc-protected-button-pressed-label-text-color: #{$ink};
-  --mdc-protected-button-with-icon-icon-color: #{$ink};
-  --mdc-protected-button-with-icon-hover-icon-color: #{$ink};
-  --mdc-protected-button-with-icon-focus-icon-color: #{$ink};
-  --mdc-protected-button-with-icon-pressed-icon-color: #{$ink};
-  --mat-protected-button-state-layer-color: #{$ink};
-  --mat-protected-button-ripple-color: #{rgba($ink, 0.12)};
+  --mat-button-protected-container-color: #{$container};
+  --mat-button-protected-label-text-color: #{$ink};
+  --mat-button-protected-hover-label-text-color: #{$ink};
+  --mat-button-protected-focus-label-text-color: #{$ink};
+  --mat-button-protected-pressed-label-text-color: #{$ink};
+  --mat-button-protected-with-icon-icon-color: #{$ink};
+  --mat-button-protected-with-icon-hover-icon-color: #{$ink};
+  --mat-button-protected-with-icon-focus-icon-color: #{$ink};
+  --mat-button-protected-with-icon-pressed-icon-color: #{$ink};
+  --mat-button-protected-state-layer-color: #{$ink};
+  --mat-button-protected-ripple-color: #{rgba($ink, 0.12)};
 }
 
 // primary: acento azul-petróleo (#6fbbd4, via --acento-primario) + teal escuro
@@ -229,14 +229,14 @@ html.tema-escuro .mat-mdc-raised-button.mat-warn {
 }
 
 .snack-alerta {
-  --mdc-snackbar-container-color: var(--fundo-snack-erro);
-  --mdc-snackbar-supporting-text-color: #fff;
+  --mat-snackbar-container-color: var(--fundo-snack-erro);
+  --mat-snackbar-supporting-text-color: #fff;
   --mat-mdc-snack-bar-button-color: #fff;
 }
 
 .snack-atencao {
-  --mdc-snackbar-container-color: var(--fundo-snack-atencao);
-  --mdc-snackbar-supporting-text-color: #fff;
+  --mat-snackbar-container-color: var(--fundo-snack-atencao);
+  --mat-snackbar-supporting-text-color: #fff;
   --mat-mdc-snack-bar-button-color: #fff;
 }
 
@@ -255,16 +255,16 @@ html.tema-escuro .mat-mdc-raised-button.mat-warn {
 }
 
 .chip-status-pago {
-  --mdc-chip-elevated-container-color: var(--status-ok-fundo);
-  --mdc-chip-label-text-color: var(--status-ok-texto);
+  --mat-chip-elevated-container-color: var(--status-ok-fundo);
+  --mat-chip-label-text-color: var(--status-ok-texto);
 }
 
 .chip-status-pendente {
-  --mdc-chip-elevated-container-color: var(--status-atencao-fundo);
-  --mdc-chip-label-text-color: var(--status-atencao-texto);
+  --mat-chip-elevated-container-color: var(--status-atencao-fundo);
+  --mat-chip-label-text-color: var(--status-atencao-texto);
 }
 
 .chip-status-atrasada {
-  --mdc-chip-elevated-container-color: var(--status-critico-fundo);
-  --mdc-chip-label-text-color: var(--status-critico-texto);
+  --mat-chip-elevated-container-color: var(--status-critico-fundo);
+  --mat-chip-label-text-color: var(--status-critico-texto);
 }

@@ -11,16 +11,16 @@
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  --mdc-chip-elevated-container-color: var(--status-ok-fundo);
-  --mdc-chip-label-text-color: var(--status-ok-texto);
+  --mat-chip-elevated-container-color: var(--status-ok-fundo);
+  --mat-chip-label-text-color: var(--status-ok-texto);
 }
 
 .chip-pausado {
   font-size: 11px;
   min-height: 22px;
   padding: 0 8px;
-  --mdc-chip-elevated-container-color: var(--trilha-neutra);
-  --mdc-chip-label-text-color: var(--texto-pagina);
+  --mat-chip-elevated-container-color: var(--trilha-neutra);
+  --mat-chip-label-text-color: var(--texto-pagina);
 }
 
 /* Explica o que "Pausado" significa na prática - o chip sozinho não diz que os

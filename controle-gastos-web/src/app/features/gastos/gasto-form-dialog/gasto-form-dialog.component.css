@@ -24,7 +24,7 @@
   display: inline-block;
   margin-right: 8px;
   vertical-align: middle;
-  --mdc-circular-progress-active-indicator-color: var(--acento-primario);
+  --mat-progress-spinner-active-indicator-color: var(--acento-primario);
 }
 
 /* Chip de sugestão de categoria (auto-categorização). Discreto: some no meio dos

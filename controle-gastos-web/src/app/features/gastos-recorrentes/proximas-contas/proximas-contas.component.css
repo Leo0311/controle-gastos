@@ -32,7 +32,7 @@
 }
 
 .seletor-meses mat-button-toggle-group {
-  --mat-standard-button-toggle-height: 32px;
+  --mat-button-toggle-height: 32px;
 }
 
 .lista-calendario {
