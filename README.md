@@ -18,7 +18,7 @@ O deploy da API é feito pelo workflow **`.github/workflows/deploy-api.yml`** (G
 
 O workflow tem **dois jobs em sequência**:
 
-**1. `migration-guard`** — antes de qualquer coisa tocar a VM, sobe um PostgreSQL 18 descartável e roda `./mvnw test` (com o Flyway ativo) em dois cenários de matriz: **banco vazio** (o Flyway aplica todas as migrations do zero) e **banco pré-carregado com o `schema.sql` atual** (o Flyway grava o baseline e aplica só as migrations novas por cima). Uma migration quebrada falha aqui e o `deploy` **nem roda**.
+**1. `migration-guard`** — antes de qualquer coisa tocar a VM, sobe um PostgreSQL 18 descartável e roda `./mvnw test` (com o Flyway ativo) em dois cenários de matriz: **banco vazio** (o Flyway aplica todas as migrations do zero — esse cenário também roda `scripts/regenerar-schema-console.sh --check`, que falha o job se o `schema.sql` do console divergir do que as migrations realmente produzem) e **banco pré-carregado com o `schema.sql` atual** (o Flyway grava o baseline e aplica só as migrations novas por cima). Uma migration quebrada, ou um `schema.sql` desatualizado, falha aqui e o `deploy` **nem roda**.
 
 **2. `deploy`** — só executa se o `migration-guard` passar. Conecta na VM por SSH (chave privada guardada como secret do GitHub, nunca no repo) e:
 
@@ -267,7 +267,7 @@ CREATE DATABASE controle_gastos;
 
 **API (`controle-gastos-api`):** o schema é versionado com [Flyway](https://flywaydb.org/). A API aplica as migrations (`src/main/resources/db/migration/V*.sql`) sozinha no boot — num banco vazio o Flyway cria tudo do zero; num banco que já tem as tabelas ele grava o baseline (`V1`) e aplica só o que falta. Não é preciso rodar nada à mão, nem localmente nem em produção.
 
-**Console Java (`controle-gastos`):** não usa Spring nem Flyway. Rode o script `controle-gastos/src/main/resources/schema.sql` à mão nesse banco — ele cria as mesmas tabelas (`usuarios`, `gastos`, `orcamentos`, `metas`, `categorias`, `subcategorias`, etc.). **Passa a ser um artefato gerado, não editado à mão:** a partir de agora, quem mudar uma migration regenera este arquivo com `bash scripts/regenerar-schema-console.sh` (dump `pg_dump --schema-only` das migrations aplicadas do zero num Postgres 18) em vez de editá-lo manualmente — a checagem automática que barra um push com o arquivo desatualizado ainda está pendente de entrar no CI.
+**Console Java (`controle-gastos`):** não usa Spring nem Flyway. Rode o script `controle-gastos/src/main/resources/schema.sql` à mão nesse banco — ele cria as mesmas tabelas (`usuarios`, `gastos`, `orcamentos`, `metas`, `categorias`, `subcategorias`, etc.). **É um artefato gerado, nunca editado à mão:** quem mudar uma migration regenera este arquivo com `bash scripts/regenerar-schema-console.sh` (dump `pg_dump --schema-only` das migrations aplicadas do zero num Postgres 18) no mesmo commit. O `migration-guard` (acima) confere isso sozinho — `scripts/regenerar-schema-console.sh --check` falha o job se alguém esquecer de regenerar.
 
 ## Como rodar cada parte localmente
 
