@@ -54,6 +54,29 @@ function criarComponente(dialogData: unknown = { gasto: null }): GastoFormDialog
   return TestBed.createComponent(GastoFormDialogComponent).componentInstance;
 }
 
+// Variante de criarComponente() com BreakpointObserver controlável - só a
+// área I (telaPequena$) precisa disso, sem depender de matchMedia real.
+function criarComponenteComBreakpoint(matches: boolean): GastoFormDialogComponent {
+  TestBed.configureTestingModule({
+    imports: [GastoFormDialogComponent],
+    providers: [
+      provideNoopAnimations(),
+      { provide: MatDialogRef, useValue: { close: () => {} } },
+      { provide: MAT_DIALOG_DATA, useValue: { gasto: null } },
+      { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(undefined) }) } },
+      { provide: BreakpointObserver, useValue: { observe: () => of({ matches }) } },
+      { provide: ConfigService, useValue: { garantirCarregado: () => {}, limitesCompraParcelada: () => LIMITES } },
+      { provide: GastoService, useValue: { listarTodos: () => of([]) } },
+      { provide: CategoriaService, useValue: { listarVisiveis: () => of([]), listarTodasSubcategorias: () => of([]) } },
+      { provide: OrcamentoService, useValue: { listarTodos: () => of([]) } },
+      { provide: GastoRecorrenteService, useValue: {} },
+      { provide: CompraParceladaService, useValue: {} },
+      { provide: NotificacaoService, useValue: { erro: () => {}, mensagemDeErro: () => '' } }
+    ]
+  });
+  return TestBed.createComponent(GastoFormDialogComponent).componentInstance;
+}
+
 interface HarnessSalvar {
   fixture: ComponentFixture<GastoFormDialogComponent>;
   component: GastoFormDialogComponent;
@@ -1004,6 +1027,161 @@ describe('GastoFormDialogComponent', () => {
       });
 
       expect(component.form.controls.numeroParcelas.invalid).toBeTrue(); // 50 > o novo max (40)
+    });
+  });
+
+  // ÁREA F — modo edição vs. criação + trava de parcela isolada. Risco:
+  // patchValue populando o form certo a partir do gasto existente; ehParcela
+  // travando descrição/valor/data (categoria/subcategoria/orçamento seguem
+  // editáveis - o backend também ignora mudança só nesses 3 campos,
+  // GastoService.atualizar); e o round-trip de data escrito à mão
+  // (parseDataLocal/formatarDataIso) - mesma classe de risco que já gerou um
+  // bug real (b67b6fa) noutro arquivo do projeto. Ali o bug vinha de
+  // Date.parse(texto digitado) (ambíguo MM/DD vs DD/MM, interpretação
+  // dependente de fuso); aqui o parsing é manual Y-M-D via new Date(ano,
+  // mes-1, dia) - sem essa ambiguidade específica -, mas o round-trip nunca
+  // tinha teste direto.
+  describe('modo edição vs. criação + trava de parcela (ehParcela)', () => {
+    it('modo criação: editando e ehParcela ficam false, form com os valores padrão (não populado)', () => {
+      const component = criarComponente({ gasto: null });
+
+      expect(component.editando).toBeFalse();
+      expect(component.ehParcela).toBeFalse();
+      expect(component.form.controls.descricao.value).toBe('');
+      expect(component.form.controls.categoriaId.value).toBeNull();
+    });
+
+    it('modo edição: patchValue popula o form com os dados do gasto existente', () => {
+      const gasto: Gasto = {
+        id: 7, descricao: 'Aluguel', valor: 1500, categoriaId: 10, subcategoriaId: 100,
+        orcamentoId: 3, data: '2026-09-15'
+      };
+      const component = criarComponente({ gasto });
+
+      expect(component.editando).toBeTrue();
+      expect(component.form.controls.descricao.value).toBe('Aluguel');
+      expect(component.form.controls.valor.value).toBe(1500);
+      expect(component.form.controls.categoriaId.value).toBe(10);
+      expect(component.form.controls.subcategoriaId.value).toBe(100);
+      expect(component.form.controls.orcamentoId.value).toBe(3);
+      expect(component.form.controls.data.value).toEqual(new Date(2026, 8, 15));
+    });
+
+    it('gasto que é uma parcela (compraParceladaId presente): ehParcela=true trava descrição/valor/data', () => {
+      const gasto: Gasto = {
+        id: 8, descricao: 'Notebook (2/6)', valor: 600, categoriaId: 7, compraParceladaId: 55, data: '2026-10-01'
+      };
+      const component = criarComponente({ gasto });
+
+      expect(component.ehParcela).toBeTrue();
+      expect(component.form.controls.descricao.disabled).toBeTrue();
+      expect(component.form.controls.valor.disabled).toBeTrue();
+      expect(component.form.controls.data.disabled).toBeTrue();
+      // categoria/subcategoria/orçamento continuam editáveis - só os 3 campos acima travam
+      expect(component.form.controls.categoriaId.disabled).toBeFalse();
+    });
+
+    it('gasto normal em edição (sem compraParceladaId): nenhum campo trava', () => {
+      const gasto: Gasto = { id: 9, descricao: 'Mercado', valor: 200, categoriaId: 3, data: '2026-09-10' };
+      const component = criarComponente({ gasto });
+
+      expect(component.ehParcela).toBeFalse();
+      expect(component.form.controls.descricao.disabled).toBeFalse();
+      expect(component.form.controls.valor.disabled).toBeFalse();
+      expect(component.form.controls.data.disabled).toBeFalse();
+    });
+
+    describe('parseDataLocal/formatarDataIso (round-trip de data escrito à mão)', () => {
+      function roundTrip(component: GastoFormDialogComponent, iso: string): string {
+        const priv = component as unknown as {
+          parseDataLocal(iso: string): Date;
+          formatarDataIso(data: Date): string;
+        };
+        return priv.formatarDataIso(priv.parseDataLocal(iso));
+      }
+
+      it('data comum (dois dígitos em mês e dia) faz o round-trip exato', () => {
+        const component = criarComponente();
+        expect(roundTrip(component, '2026-09-15')).toBe('2026-09-15');
+      });
+
+      it('mês e dia de um dígito ficam com zero à esquerda na volta (padStart)', () => {
+        const component = criarComponente();
+        expect(roundTrip(component, '2026-01-05')).toBe('2026-01-05');
+      });
+
+      it('fronteira de fim de ano (31/12) não estoura pro ano seguinte', () => {
+        const component = criarComponente();
+        expect(roundTrip(component, '2026-12-31')).toBe('2026-12-31');
+      });
+
+      it('29 de fevereiro em ano bissexto é uma data válida no round-trip', () => {
+        const component = criarComponente();
+        expect(roundTrip(component, '2024-02-29')).toBe('2024-02-29');
+      });
+
+      it('parseDataLocal constrói em horário local (meia-noite), não UTC - sem o deslocamento de fuso de Date.parse(texto)', () => {
+        const component = criarComponente();
+        const priv = component as unknown as { parseDataLocal(iso: string): Date };
+
+        const data = priv.parseDataLocal('2026-09-15');
+
+        // Se fosse interpretado como UTC (ex.: só `new Date('2026-09-15')`, sem
+        // hora), em fusos negativos (America/Sao_Paulo, UTC-3) o dia LOCAL
+        // apareceria como 14, não 15 - a mesma classe de bug de b67b6fa (lá,
+        // Date.parse de texto digitado; aqui seria a mesma armadilha se
+        // parseDataLocal usasse Date.parse em vez de new Date(ano, mes-1, dia)).
+        expect(data.getFullYear()).toBe(2026);
+        expect(data.getMonth()).toBe(8); // setembro = índice 8
+        expect(data.getDate()).toBe(15);
+        expect(data.getHours()).toBe(0);
+      });
+    });
+  });
+
+  // ÁREA I — boilerplate (cancelar, dispensarSugestao, telaPequena$). Risco
+  // baixo, mas nenhum tinha teste ainda.
+  describe('cancelar(), dispensarSugestao() e telaPequena$ (boilerplate)', () => {
+    it('cancelar() fecha o diálogo sem devolver nenhum resultado (não salva nada)', () => {
+      const component = criarComponente();
+      const dialogRef = TestBed.inject(MatDialogRef);
+      spyOn(dialogRef, 'close');
+
+      component.cancelar();
+
+      expect(dialogRef.close).toHaveBeenCalledWith();
+    });
+
+    it('dispensarSugestao() esconde o chip, sem reabrir sozinho', () => {
+      const component = criarComponente();
+      (component as unknown as { sugestaoBruta: unknown }).sugestaoBruta = {
+        categoriaId: 5, subcategoriaId: null, rotulo: 'x'
+      };
+      expect(component.sugestao).not.toBeNull(); // chip visível antes de dispensar
+
+      component.dispensarSugestao();
+
+      expect(component.sugestao).toBeNull();
+      // reler de novo, sem mexer em mais nada - continua escondido, não reabre sozinho
+      expect(component.sugestao).toBeNull();
+    });
+
+    it('telaPequena$ emite true quando o BreakpointObserver reporta Handset', () => {
+      const component = criarComponenteComBreakpoint(true);
+      let valor: boolean | undefined;
+
+      component.telaPequena$.subscribe((v) => { valor = v; });
+
+      expect(valor).toBeTrue();
+    });
+
+    it('telaPequena$ emite false quando o BreakpointObserver reporta desktop', () => {
+      const component = criarComponenteComBreakpoint(false);
+      let valor: boolean | undefined;
+
+      component.telaPequena$.subscribe((v) => { valor = v; });
+
+      expect(valor).toBeFalse();
     });
   });
 });
