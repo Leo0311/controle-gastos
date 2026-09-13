@@ -167,4 +167,45 @@ describe('GastosComponent', () => {
 
     expect(component.importando).toBeFalse();
   });
+
+  describe('botão de ação do empty-state', () => {
+    function botaoEmptyState(): HTMLButtonElement | null {
+      return fixture.nativeElement.querySelector('[empty-state-acao]');
+    }
+
+    it('mostra "Novo gasto" quando é só o mês/ano atual (filtro) que não tem gasto', () => {
+      drenarPendentes(); // filtroMes/filtroAno default = mês atual, sem categoria
+      fixture.detectChanges();
+
+      expect(component.gastos.length).toBe(0);
+      expect(component.rotuloAcaoVazio).toBe('Novo gasto');
+      expect(botaoEmptyState()?.textContent).toContain('Novo gasto');
+    });
+
+    it('mostra "Cadastrar primeiro gasto" em "Ver todos os meses" sem categoria (conta inteira vazia)', () => {
+      drenarPendentes();
+
+      component.filtroMes = null;
+      component.filtroAno = null;
+      component.filtroCategoriaId = null;
+      component.carregar();
+
+      requisicaoOpcoesCategoria().flush([]);
+      requisicaoPagina().flush(paginaVazia);
+      fixture.detectChanges();
+
+      expect(component.rotuloAcaoVazio).toBe('Cadastrar primeiro gasto');
+      expect(botaoEmptyState()?.textContent).toContain('Cadastrar primeiro gasto');
+    });
+
+    it('clicar no botão do empty-state chama o mesmo novoGasto() do botão do topo', () => {
+      drenarPendentes();
+      fixture.detectChanges();
+      spyOn(component, 'novoGasto');
+
+      botaoEmptyState()?.click();
+
+      expect(component.novoGasto).toHaveBeenCalled();
+    });
+  });
 });

@@ -243,16 +243,31 @@ export class GastosComponent implements OnInit {
     return categoria ? `${periodo} · ${categoria}` : periodo;
   }
 
-  // Mensagem do empty-state quando não há nenhum gasto no período/categoria
-  // selecionado - combina os dois (mês/ano e categoria).
-  get mensagemVazio(): string {
+  // Partes do filtro ativo (período + categoria) que compõem a mensagem e o
+  // rótulo do botão do empty-state - vazio só no modo "todo o histórico" sem
+  // categoria, ou seja, quando o empty-state reflete a conta inteira sem
+  // nenhum gasto, não só o recorte atual sem resultado.
+  private get partesFiltroAtivo(): string[] {
     const periodo = this.filtroAno
       ? (this.filtroMes ? `${MESES_NOMES[this.filtroMes - 1]}/${this.filtroAno}` : `${this.filtroAno}`)
       : '';
-    const partes = [periodo, this.nomeCategoriaFiltro].filter((p): p is string => !!p);
+    return [periodo, this.nomeCategoriaFiltro].filter((p): p is string => !!p);
+  }
+
+  // Mensagem do empty-state quando não há nenhum gasto no período/categoria
+  // selecionado - combina os dois (mês/ano e categoria).
+  get mensagemVazio(): string {
+    const partes = this.partesFiltroAtivo;
     return partes.length > 0
       ? `Nenhum gasto encontrado para ${partes.join(' · ')}.`
       : 'Nenhum gasto cadastrado ainda.';
+  }
+
+  // Rótulo do botão de ação do empty-state - mesma distinção da mensagem:
+  // sem filtro ativo é a conta inteira vazia (1º gasto), com filtro é só o
+  // recorte atual sem resultado (a conta pode ter gastos em outro mês/categoria).
+  get rotuloAcaoVazio(): string {
+    return this.partesFiltroAtivo.length > 0 ? 'Novo gasto' : 'Cadastrar primeiro gasto';
   }
 
   // true quando há algo fora do padrão pra "Limpar filtros" desfazer - mês/ano
