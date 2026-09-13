@@ -21,6 +21,7 @@ import { Gasto } from '../../../models/gasto.model';
 import { GastoRecorrente } from '../../../models/gasto-recorrente.model';
 import { CompraParcelada } from '../../../models/compra-parcelada.model';
 import { Orcamento } from '../../../models/orcamento.model';
+import { CompraParceladaLimites } from '../../../models/config.model';
 import { CategoriaFormDialogComponent } from '../../../shared/categoria-form-dialog/categoria-form-dialog.component';
 import {
   SubcategoriaFormDialogComponent,
@@ -853,6 +854,156 @@ describe('GastoFormDialogComponent', () => {
 
       expect(component.form.controls.subcategoriaId.value).toBeNull(); // SUB_A1 não pertence a CATEGORIA_B
       expect(component.opcoesSubcategoria).toEqual([SUB_B1]); // opções já refletem a categoria nova
+    });
+  });
+
+  // ÁREA C (resto) — validadores condicionais que faltavam (só o toggle da
+  // "Data" tinha teste até aqui). diaDoMes/mesesGerar ligam junto com
+  // "recorrente"; numeroParcelas/dataPrimeiraParcela ligam junto com
+  // "parcelado"; os dois checkboxes são mutuamente exclusivos (marcar um
+  // desabilita o outro). mesesGerar é a mesma área do bug real 805b7d6 (§ D) -
+  // aqui o que se testa é o VALIDATOR (obrigatório 1-12), não a montagem do
+  // payload, que já tem teste de regressão dedicado na Rodada 1.
+  describe('validadores condicionais de recorrente/parcelado (resto)', () => {
+    it('"Tornar recorrente" liga diaDoMes (1-31) e mesesGerar (1-12) como obrigatórios', () => {
+      const { component } = criarComponenteParaSalvar();
+
+      component.form.controls.recorrente.setValue(true);
+
+      component.form.controls.diaDoMes.setValue(0);
+      expect(component.form.controls.diaDoMes.invalid).toBeTrue(); // min 1
+      component.form.controls.diaDoMes.setValue(32);
+      expect(component.form.controls.diaDoMes.invalid).toBeTrue(); // max 31
+      component.form.controls.diaDoMes.setValue(15);
+      expect(component.form.controls.diaDoMes.valid).toBeTrue();
+
+      component.form.controls.mesesGerar.setValue(0);
+      expect(component.form.controls.mesesGerar.invalid).toBeTrue(); // min 1
+      component.form.controls.mesesGerar.setValue(13);
+      expect(component.form.controls.mesesGerar.invalid).toBeTrue(); // max 12
+      component.form.controls.mesesGerar.setValue(12);
+      expect(component.form.controls.mesesGerar.valid).toBeTrue();
+    });
+
+    it('desmarcar "Tornar recorrente" tira o obrigatório de diaDoMes/mesesGerar', () => {
+      const { component } = criarComponenteParaSalvar();
+      component.form.controls.recorrente.setValue(true);
+      component.form.controls.diaDoMes.setValue(null);
+      component.form.controls.mesesGerar.setValue(null);
+      expect(component.form.controls.diaDoMes.invalid).toBeTrue();
+      expect(component.form.controls.mesesGerar.invalid).toBeTrue();
+
+      component.form.controls.recorrente.setValue(false);
+
+      expect(component.form.controls.diaDoMes.valid).toBeTrue();
+      expect(component.form.controls.mesesGerar.valid).toBeTrue();
+    });
+
+    it('"Tornar recorrente" desabilita o checkbox "Parcelar compra" (exclusão mútua)', () => {
+      const { component } = criarComponenteParaSalvar();
+
+      component.form.controls.recorrente.setValue(true);
+
+      expect(component.form.controls.parcelado.disabled).toBeTrue();
+    });
+
+    it('"Parcelar compra" liga numeroParcelas (min/max do config) e dataPrimeiraParcela como obrigatórios', () => {
+      const { component } = criarComponenteParaSalvar(); // LIMITES do harness: parcelasMin 2, parcelasMax 120
+
+      component.form.controls.parcelado.setValue(true);
+
+      component.form.controls.numeroParcelas.setValue(1);
+      expect(component.form.controls.numeroParcelas.invalid).toBeTrue(); // min 2
+      component.form.controls.numeroParcelas.setValue(121);
+      expect(component.form.controls.numeroParcelas.invalid).toBeTrue(); // max 120
+      component.form.controls.numeroParcelas.setValue(6);
+      expect(component.form.controls.numeroParcelas.valid).toBeTrue();
+
+      component.form.controls.dataPrimeiraParcela.setValue(null);
+      expect(component.form.controls.dataPrimeiraParcela.invalid).toBeTrue();
+    });
+
+    it('desmarcar "Parcelar compra" tira o obrigatório de numeroParcelas/dataPrimeiraParcela', () => {
+      const { component } = criarComponenteParaSalvar();
+      component.form.controls.parcelado.setValue(true);
+      component.form.controls.numeroParcelas.setValue(null);
+      component.form.controls.dataPrimeiraParcela.setValue(null);
+      expect(component.form.controls.numeroParcelas.invalid).toBeTrue();
+      expect(component.form.controls.dataPrimeiraParcela.invalid).toBeTrue();
+
+      component.form.controls.parcelado.setValue(false);
+
+      expect(component.form.controls.numeroParcelas.valid).toBeTrue();
+      expect(component.form.controls.dataPrimeiraParcela.valid).toBeTrue();
+    });
+
+    it('"Parcelar compra" desabilita o checkbox "Tornar recorrente" (exclusão mútua)', () => {
+      const { component } = criarComponenteParaSalvar();
+
+      component.form.controls.parcelado.setValue(true);
+
+      expect(component.form.controls.recorrente.disabled).toBeTrue();
+    });
+  });
+
+  // ÁREA H — limites de parcela vindos do config (aplicarLimites). Achado
+  // durante a análise de risco: aplicarLimites só é chamado UMA VEZ, no
+  // construtor, com o snapshot síncrono que configService.limitesCompraParcelada()
+  // devolver naquele instante - não há nenhuma assinatura reativa ao signal
+  // (ver ConfigService.limitesCompraParceladaSignal) em nenhum outro lugar do
+  // componente. Isso significa que o branch defensivo dentro de aplicarLimites
+  // ("se já estiver em modo parcela, revalida numeroParcelas") é hoje
+  // inalcançável pelo fluxo real: no momento em que o construtor roda, o
+  // usuário ainda não teve chance de marcar "Parcelar compra". O comentário
+  // do código ("são substituídos assim que o config carrega") só se confirma
+  // de fato pro PRÓXIMO diálogo aberto na mesma sessão (o signal, providedIn
+  // root, já estaria resolvido) - não para o diálogo que estava aberto quando
+  // o GET respondeu. Não é um bug com efeito prático hoje (os padrões
+  // hardcoded coincidem de propósito com o backend, achado M3), mas vale
+  // documentar - por isso o teste abaixo chama aplicarLimites uma 2ª vez
+  // manualmente pra provar que o MECANISMO funciona, mesmo sem nada
+  // disparando isso sozinho.
+  describe('limites de parcela vindos do config (aplicarLimites)', () => {
+    it('aplica parcelasMin/Max e mesesAtrasMax/FrenteMax a partir dos limites recebidos no construtor', () => {
+      const { component } = criarComponenteParaSalvar(); // LIMITES do harness: 2/120, 12/2
+
+      expect(component.parcelasMin).toBe(2);
+      expect(component.parcelasMax).toBe(120);
+      expect(component.mesesAtrasMax).toBe(12);
+      expect(component.mesesFrenteMax).toBe(2);
+    });
+
+    it('janela minDataPrimeiraParcela/maxDataPrimeiraParcela usa os limites recebidos (não só o padrão)', () => {
+      const { component } = criarComponenteParaSalvar();
+      const priv = component as unknown as {
+        aplicarLimites(l: CompraParceladaLimites): void;
+        minDataPrimeiraParcela: Date;
+        maxDataPrimeiraParcela: Date;
+      };
+      const hoje = new Date();
+
+      priv.aplicarLimites({
+        parcelasMin: 3, parcelasMax: 24, primeiraParcelaMesesAtrasMax: 6, primeiraParcelaMesesFrenteMax: 1
+      });
+
+      const minEsperado = new Date(hoje.getFullYear(), hoje.getMonth() - 6, hoje.getDate());
+      const maxEsperado = new Date(hoje.getFullYear(), hoje.getMonth() + 1, hoje.getDate());
+      expect(priv.minDataPrimeiraParcela.getTime()).toBe(minEsperado.getTime());
+      expect(priv.maxDataPrimeiraParcela.getTime()).toBe(maxEsperado.getTime());
+    });
+
+    it('se "Parcelar compra" já está ativo quando aplicarLimites roda de novo, revalida numeroParcelas com os limites novos (mecanismo funciona, mesmo sem nada disparando isso sozinho hoje - ver nota acima)', () => {
+      const { component } = criarComponenteParaSalvar();
+      const priv = component as unknown as { aplicarLimites(l: CompraParceladaLimites): void };
+      component.form.controls.parcelado.setValue(true);
+      component.form.controls.numeroParcelas.setValue(50); // válido pros limites padrão do harness (2-120)
+      expect(component.form.controls.numeroParcelas.valid).toBeTrue();
+
+      priv.aplicarLimites({
+        parcelasMin: 2, parcelasMax: 40, primeiraParcelaMesesAtrasMax: 12, primeiraParcelaMesesFrenteMax: 2
+      });
+
+      expect(component.form.controls.numeroParcelas.invalid).toBeTrue(); // 50 > o novo max (40)
     });
   });
 });
