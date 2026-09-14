@@ -78,6 +78,23 @@
   flex-direction: column;
 }
 
+/* Corpo alternativo de um mês sem nenhuma pendência (janela de calendário fixo -
+   ver proximas-contas.ts): mesma cor de "Pago" já usada no chip de status, num
+   indicador leve em vez do empty-state grande (que é só pra "nada na janela
+   inteira"). */
+.mes-em-dia {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px;
+  color: var(--status-ok-texto);
+  font-size: 14px;
+}
+
+.mes-em-dia mat-icon {
+  flex: none;
+}
+
 /* Ação "Marcar mês como pago" - logo abaixo do cabeçalho do mês, antes da lista. */
 .acao-mes {
   padding: 4px 4px 10px;

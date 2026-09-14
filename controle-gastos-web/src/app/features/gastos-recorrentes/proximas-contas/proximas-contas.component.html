@@ -24,7 +24,7 @@
   </div>
 } @else if (erro) {
   <app-erro-carregamento oQue="as próximas contas" (tentarNovamente)="tentarNovamente.emit()"></app-erro-carregamento>
-} @else if (calendario.length === 0) {
+} @else if (!temAlgumItem) {
   <app-empty-state icon="event"
     mensagem="Nenhuma conta a pagar nessa janela. As atrasadas, se houver, aparecem em qualquer opção.">
   </app-empty-state>
@@ -58,29 +58,36 @@
           </div>
         }
 
-        <div class="itens-mes">
-          @for (item of grupo.itens; track item.id) {
-            <div class="item-calendario">
-              <span class="data-item">{{ formatarDiaMes(item.data) }}</span>
-              <span class="icone-origem" [title]="item.origem === 'parcela' ? 'Parcela' : 'Recorrente'">
-                {{ item.origem === 'parcela' ? '💳' : '🔁' }}
-              </span>
-              <span class="descricao-item">{{ item.descricao }}</span>
-              <mat-chip [class]="'chip-status-' + classeStatus(item.status)">{{ rotuloStatus(item.status) }}</mat-chip>
-              <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
-              <button mat-icon-button type="button" class="btn-acoes-item"
-                [matMenuTriggerFor]="menuItem" aria-label="Ações da conta">
-                <mat-icon>more_vert</mat-icon>
-              </button>
-              <mat-menu #menuItem="matMenu">
-                <button mat-menu-item (click)="marcarComoPaga(item)">
-                  <mat-icon>check_circle</mat-icon>
-                  <span>Marcar como paga</span>
+        @if (grupo.itens.length === 0) {
+          <div class="mes-em-dia">
+            <mat-icon>check_circle</mat-icon>
+            <span>Nada pendente neste mês.</span>
+          </div>
+        } @else {
+          <div class="itens-mes">
+            @for (item of grupo.itens; track item.id) {
+              <div class="item-calendario">
+                <span class="data-item">{{ formatarDiaMes(item.data) }}</span>
+                <span class="icone-origem" [title]="item.origem === 'parcela' ? 'Parcela' : 'Recorrente'">
+                  {{ item.origem === 'parcela' ? '💳' : '🔁' }}
+                </span>
+                <span class="descricao-item">{{ item.descricao }}</span>
+                <mat-chip [class]="'chip-status-' + classeStatus(item.status)">{{ rotuloStatus(item.status) }}</mat-chip>
+                <span class="valor-item">{{ item.valor | currency:'BRL' }}</span>
+                <button mat-icon-button type="button" class="btn-acoes-item"
+                  [matMenuTriggerFor]="menuItem" aria-label="Ações da conta">
+                  <mat-icon>more_vert</mat-icon>
                 </button>
-              </mat-menu>
-            </div>
-          }
-        </div>
+                <mat-menu #menuItem="matMenu">
+                  <button mat-menu-item (click)="marcarComoPaga(item)">
+                    <mat-icon>check_circle</mat-icon>
+                    <span>Marcar como paga</span>
+                  </button>
+                </mat-menu>
+              </div>
+            }
+          </div>
+        }
       </mat-expansion-panel>
     }
   </mat-accordion>

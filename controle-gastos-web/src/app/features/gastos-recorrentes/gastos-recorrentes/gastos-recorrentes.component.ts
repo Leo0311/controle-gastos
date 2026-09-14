@@ -83,7 +83,7 @@ export class GastosRecorrentesComponent implements OnInit {
       contadores: this.gastoService.statusPorFonte()
     }).subscribe({
       next: ({ agenda, contadores }) => {
-        this.calendario = agruparProximasContas(agenda, hojeIso());
+        this.calendario = agruparProximasContas(agenda, hojeIso(), this.mesesAgenda);
         this.aplicarContadores(contadores);
         this.carregandoCalendario = false;
       },
@@ -104,7 +104,7 @@ export class GastosRecorrentesComponent implements OnInit {
     this.erroCalendario = false;
     this.gastoService.proximasContas(meses).subscribe({
       next: (agenda) => {
-        this.calendario = agruparProximasContas(agenda, hojeIso());
+        this.calendario = agruparProximasContas(agenda, hojeIso(), meses);
         this.carregandoCalendario = false;
       },
       error: () => {

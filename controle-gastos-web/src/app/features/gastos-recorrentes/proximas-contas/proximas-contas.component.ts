@@ -12,7 +12,7 @@ import { forkJoin } from 'rxjs';
 
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { ErroCarregamentoComponent } from '../../../shared/erro-carregamento/erro-carregamento.component';
-import { GrupoMesCalendario, ItemCalendario, formatarDiaMes } from '../proximas-contas';
+import { GrupoMesCalendario, ItemCalendario, agendaTemAlgumItem, formatarDiaMes } from '../proximas-contas';
 import { classeStatus, rotuloStatus } from '../../../core/status-conta';
 import { GastoService } from '../../../services/gasto.service';
 import { NotificacaoService } from '../../../core/notificacao.service';
@@ -73,6 +73,14 @@ export class ProximasContasComponent {
   protected readonly formatarDiaMes = formatarDiaMes;
   protected readonly rotuloStatus = rotuloStatus;
   protected readonly classeStatus = classeStatus;
+
+  // Desde a janela de calendário fixo (achado de auditoria 2026-09-14), `calendario`
+  // sempre tem `meses` grupos - um mês sem pendência vem com itens: []. O
+  // empty-state global agora depende de "nenhum item em nenhum grupo", não de
+  // "nenhum grupo" (que nunca mais acontece de verdade fora do estado de erro).
+  protected get temAlgumItem(): boolean {
+    return agendaTemAlgumItem(this.calendario);
+  }
 
   onMesesChange(evento: MatButtonToggleChange): void {
     this.mesesAlterados.emit(evento.value);
