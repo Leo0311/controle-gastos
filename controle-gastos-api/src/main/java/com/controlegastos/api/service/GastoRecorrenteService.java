@@ -87,10 +87,25 @@ public class GastoRecorrenteService {
         return salvo;
     }
 
+    // Pausar só marca ativo=false - não deve lançar nada. Reativar é ação explícita
+    // do usuário (não um mount passivo de tela), então o mês corrente é lançado na
+    // hora, sem esperar a próxima visita ao Dashboard/Gastos: recorrentes-lista só
+    // recarrega a agenda (GET) ao alternar, nunca chama lancarPendentes/
+    // lancarPendentesSeNecessario (que além disso tem throttle de 5min por sessão
+    // no frontend). tentarLancar é a mesma checagem de idempotência usada por
+    // lancarPendentes (exists por mês + índice uq_gastos_recorrente_mes) - não
+    // duplica se o mês corrente já tiver sido lançado por outro caminho enquanto
+    // isso (outra aba, por exemplo).
+    @Transactional
     public GastoRecorrente alternarAtivo(Integer id, Integer usuarioId) {
         GastoRecorrente existente = buscarPorId(id, usuarioId);
-        existente.setAtivo(!existente.getAtivo());
-        return repository.save(existente);
+        boolean reativando = !existente.getAtivo();
+        existente.setAtivo(reativando);
+        GastoRecorrente salvo = repository.save(existente);
+        if (reativando) {
+            tentarLancar(salvo, usuarioId, LocalDate.now());
+        }
+        return salvo;
     }
 
     // Exclui a recorrência INTEIRA em cascata: todos os gastos gerados por ela

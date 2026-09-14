@@ -365,4 +365,51 @@ class GastoRecorrenteServiceTest {
 
         verify(repository).save(any());
     }
+
+    // ---------- alternarAtivo() - pausar não lança nada; reativar lança o mês
+    // corrente na hora (achado da auditoria: antes só refletia na próxima visita
+    // ao Dashboard/Gastos), reaproveitando a idempotência de tentarLancar ----------
+
+    @Test
+    void alternarAtivo_reativarLancaOMesCorrenteImediatamente() {
+        GastoRecorrente inativa = recorrente(1, null); // dia 1: já chegou em qualquer data
+        inativa.setAtivo(false);
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(inativa));
+        when(gastoRepository.existsByGastoRecorrenteIdAndVencimentoOriginalBetween(any(), any(), any()))
+                .thenReturn(false);
+
+        GastoRecorrente salvo = service.alternarAtivo(RECORRENTE, USUARIO);
+
+        assertThat(salvo.getAtivo()).isTrue();
+        verify(gastoService, times(1)).cadastrarVinculadoARecorrente(any(), any());
+    }
+
+    @Test
+    void alternarAtivo_pausarNaoLancaNada() {
+        GastoRecorrente ativa = recorrente(1, null);
+        ativa.setAtivo(true);
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(ativa));
+
+        GastoRecorrente salvo = service.alternarAtivo(RECORRENTE, USUARIO);
+
+        assertThat(salvo.getAtivo()).isFalse();
+        verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
+        verify(gastoRepository, never()).existsByGastoRecorrenteIdAndVencimentoOriginalBetween(any(), any(), any());
+    }
+
+    @Test
+    void alternarAtivo_reativarNaoDuplicaSeOMesCorrenteJaFoiLancadoPorOutroCaminho() {
+        GastoRecorrente inativa = recorrente(1, null);
+        inativa.setAtivo(false);
+        when(repository.findByIdAndUsuarioId(RECORRENTE, USUARIO)).thenReturn(Optional.of(inativa));
+        // Ex.: o throttle de outra aba (lancarPendentesSeNecessario) já rodou e
+        // lançou o mês corrente entre a pausa e a reativação.
+        when(gastoRepository.existsByGastoRecorrenteIdAndVencimentoOriginalBetween(any(), any(), any()))
+                .thenReturn(true);
+
+        GastoRecorrente salvo = service.alternarAtivo(RECORRENTE, USUARIO);
+
+        assertThat(salvo.getAtivo()).isTrue();
+        verify(gastoService, never()).cadastrarVinculadoARecorrente(any(), any());
+    }
 }
