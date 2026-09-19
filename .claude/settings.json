@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/application*.properties)",
+      "Read(**/.env*)",
+      "Read(//etc/controle-gastos.env)"
+    ]
+  }
+}
