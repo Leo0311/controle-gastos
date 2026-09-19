@@ -80,7 +80,7 @@ controle-gastos/            (raiz do repositório)
 ## Funcionalidades
 
 ### Autenticação
-Cadastro e login com senha (hash BCrypt no banco), sessão persistida em `localStorage` (sobrevive a F5 e a fechar/reabrir a aba) com token JWT válido por 6 horas, logout automático quando o token expira, e recuperação de senha por e-mail (link com token válido por 1 hora).
+Cadastro e login com senha (hash BCrypt no banco), sessão persistida em `localStorage` (sobrevive a F5 e a fechar/reabrir a aba) com token JWT válido por 6 horas, logout automático quando o token expira, e recuperação de senha por e-mail (link com token válido por 1 hora). Se o token expira (ou é invalidado) com um diálogo/modal aberto na tela, o logout automático fecha esse diálogo antes de redirecionar para o Login, em vez de deixá-lo flutuando por cima da tela de login.
 
 Também dá para entrar/cadastrar com **"Continuar com o Google"** (Google Identity Services), nas telas de Login e Cadastro, acima de um divisor "ou" e no mesmo estilo outline do resto do app. O clique abre um **popup OAuth tradicional** do Google (seleção de conta + confirmação) — não o One Tap/FedCM (bloqueado por padrão na Brave e não suportado pelo Firefox); compatível com Chrome, Edge, Opera, Firefox e Brave. Login com Google **vincula automaticamente** a uma conta já existente com o mesmo e-mail (o `email_verified` do Google confirma a posse do e-mail, algo que o próprio cadastro por senha nunca checa) e invalida qualquer sessão anterior nesse 1º vínculo, como proteção extra; um e-mail do Google sem verificação é sempre recusado. Uma conta criada só pelo Google não tem senha (login por senha nela simplesmente não bate, sem erro).
 
