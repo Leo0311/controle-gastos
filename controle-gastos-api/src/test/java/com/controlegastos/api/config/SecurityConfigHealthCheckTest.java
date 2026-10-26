@@ -31,8 +31,8 @@ class SecurityConfigHealthCheckTest {
     private MockMvc mockMvc;
 
     @Test
-    void getEHeadNaoExigemAutenticacaoNosDoisHealthChecks() throws Exception {
-        for (String caminho : new String[]{"/api/health", "/api/health/smtp"}) {
+    void getEHeadNaoExigemAutenticacaoNosHealthChecks() throws Exception {
+        for (String caminho : new String[]{"/api/health", "/api/health/live", "/api/health/smtp"}) {
             for (HttpMethod metodo : new HttpMethod[]{HttpMethod.GET, HttpMethod.HEAD}) {
                 int status = mockMvc.perform(request(metodo, caminho))
                         .andReturn().getResponse().getStatus();

@@ -15,6 +15,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class HealthControllerTest {
@@ -42,6 +43,21 @@ class HealthControllerTest {
 
         assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(resposta.getBody()).containsEntry("status", "DOWN");
+    }
+
+    // Incidente 2026-10-26: o UptimeRobot batendo no /api/health a cada 5 min
+    // rodava SELECT 1 antes do Neon suspender por inatividade (~5 min) - o
+    // banco nunca dormia e a cota de computação do plano gratuito estourou.
+    // O /api/health/live é o que o monitor de uptime consulta: não pode tocar
+    // no banco.
+
+    @Test
+    void live_devolve200ComStatusUpSemConsultarOBanco() {
+        ResponseEntity<Map<String, String>> resposta = controller.live();
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(resposta.getBody()).containsEntry("status", "UP");
+        verifyNoInteractions(jdbcTemplate);
     }
 
     // Achado M7 (tasks/auditoria-2026-09-05.md): SMTP fora do ar não derruba

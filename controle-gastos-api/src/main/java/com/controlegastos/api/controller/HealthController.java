@@ -57,6 +57,21 @@ public class HealthController {
     }
 
     /**
+     * Liveness sem banco: só confirma que a JVM está de pé e atendendo. É o
+     * endpoint do monitor de uptime (UptimeRobot), não o {@link #health()}.
+     *
+     * <p>Incidente 2026-10-26: o monitor batia no {@code /api/health} a cada
+     * 5 min e o {@code SELECT 1} chegava antes de o Neon suspender por
+     * inatividade (~5 min) - o banco ficava ligado 24h e a cota de computação do
+     * plano gratuito estourou, derrubando a API. O {@link #health()} com banco
+     * continua existindo para o deploy-api.yml, que o chama só após restart.
+     */
+    @GetMapping("/live")
+    public ResponseEntity<Map<String, String>> live() {
+        return ResponseEntity.ok(Map.of("status", "UP"));
+    }
+
+    /**
      * Testa a conexão SMTP de verdade (handshake + autenticação, sem enviar
      * e-mail nenhum) a cada chamada, mas cacheada por {@link #CACHE_SMTP} - o
      * endpoint é público e sem essa cache um monitor mal configurado (ou

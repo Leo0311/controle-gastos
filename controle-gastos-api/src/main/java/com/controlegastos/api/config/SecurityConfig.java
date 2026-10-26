@@ -74,8 +74,8 @@ public class SecurityConfig {
                         // tomou 403; o do /api/health original só nunca pegou esse caminho
                         // porque o monitor dele usa GET). @GetMapping já responde HEAD
                         // automaticamente (Spring MVC), então só faltava liberar aqui.
-                        .requestMatchers(HttpMethod.GET, "/api/health", "/api/health/smtp").permitAll()
-                        .requestMatchers(HttpMethod.HEAD, "/api/health", "/api/health/smtp").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/health", "/api/health/live", "/api/health/smtp").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/api/health", "/api/health/live", "/api/health/smtp").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Sem isto, o Spring Security cai no padrão (Http403ForbiddenEntryPoint) pra
